@@ -94,6 +94,9 @@ function solve() {
     addToGameOutput("(none)");
   }
 
+  addToOutput("");
+  addToGameOutput("");
+
   new_program = get_reified_program(program);
   if (new_program) {
     addToGameOutput(new_program);
@@ -119,7 +122,7 @@ function end_reifying() {
 }
 function handleOutputLine(text) {
   if (currently_reifying) {
-    reified_program += text;
+    reified_program += text + "\n";
   } else {
     if (next_line_will_be_answer_set) {
       answer_set = text;
