@@ -79,7 +79,8 @@ function solve() {
   program = "a :- not b.\nb :- not a.\n"
   solution = get_answer_set(program, options);
   if (solution) {
-    addToGameOutput(solution);
+    var text = solution.join(". ") + "."
+    addToGameOutput(text);
   } else {
     addToGameOutput("(none)");
   }
