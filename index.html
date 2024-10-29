@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>A logic game</title>
+
+  <link rel="stylesheet" href="css/main.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/d3-require@1"></script>
+</head>
+
+<body>
+
+  <h1>A Logic Game</h1>
+
+  <main>
+    <p>[Here the visualization will appear.]</p>
+
+    <input id="tab1" type="radio" name="tabs" onChange="change_tabs()" checked>
+    <label for="tab1">Control</label>
+
+    <input id="tab2" type="radio" name="tabs" onChange="change_tabs()">
+    <label for="tab2">Game rules</label>
+
+    <input id="tab3" type="radio" name="tabs" onChange="change_tabs()">
+    <label for="tab3">Strategy</label>
+
+    <input id="tab4" type="radio" name="tabs" onChange="change_tabs()">
+    <label for="tab4">Instructions</label>
+
+    <input id="tab5" type="radio" name="tabs" onChange="change_tabs()">
+    <label for="tab5">Console</label>
+
+    <section id="content1">
+      <p>
+        Bacon ipsum dolor sit amet beef venison beef ribs kielbasa. Sausage pig leberkas, t-bone sirloin shoulder bresaola. Frankfurter rump porchetta ham. Pork belly prosciutto brisket meatloaf short ribs.
+      </p>
+
+      <h3>Load game</h3>
+      <p>
+        Select a game from the list.
+      </p>
+      <select id="example_games" onchange="load_example()">
+        <optgroup label="Find the flag">
+          <option value="examples/flag1.json">Flag 1</option>
+          <option value="examples/flag2.json">Flag 2</option>
+          <option value="examples/flag3.json">Flag 3</option>
+          <option value="examples/flag4.json">Flag 4</option>
+          <option value="examples/flag5.json">Flag 5</option>
+          <option value="examples/flag6.json">Flag 6</option>
+        </optgroup>
+      </select>
+      <br>
+      <button onclick="load_game()" class="control-button">Load</button>
+      <p id="load_status"></p>
+
+      <h3>Load game from file</h3>
+      <form id="upload_form" enctype="multipart/form-data">
+        <label for="file_input" class="control-button">Select file</label>
+        <input type="file" id="file_input" onchange="load_game_from_file(event)" required>
+      </form>
+      <p id="upload_status"></p>
+
+      <h3>Download current game</h3>
+      <button onclick="download_game()" class="control-button">Download</button>
+
+    </section>
+
+    <section id="content2">
+      <!-- <p>
+        Bacon ipsum dolor sit amet landjaeger sausage brisket, jerky drumstick fatback boudin ball tip turducken. Pork belly meatball t-bone bresaola tail filet mignon kevin turkey ribeye shank flank doner cow kielbasa shankle. Pig swine chicken hamburger, tenderloin turkey rump ball tip sirloin frankfurter meatloaf boudin brisket ham hock. Hamburger venison brisket tri-tip andouille pork belly ball tip short ribs biltong meatball chuck. Pork chop ribeye tail short ribs, beef hamburger meatball kielbasa rump corned beef porchetta landjaeger flank. Doner rump frankfurter meatball meatloaf, cow kevin pork pork loin venison fatback spare ribs salami beef ribs.
+      </p> -->
+
+      <h3>Level generation</h3>
+      <p>
+        This program expresses how levels are generated.
+      </p>
+      <pre id="level_gen_program"></pre>
+
+      <h3>Visibility</h3>
+      <p>
+        This program expresses what the player can observe.
+      </p>
+      <pre id="visibility_program"></pre>
+
+      <h3>Nature's moves</h3>
+      <p>
+        This program expresses <i>Nature</i>'s moves, i.e.,
+        how the state of the board changes as a result of
+        <i>Player</i>'s moves.
+      </p>
+      <pre id="nature_program"></pre>
+
+      <h3>Winning conditions</h3>
+      <p>
+        This program expresses when the game is won or lost.
+      </p>
+      <pre id="goal_program"></pre>
+
+      <!-- <p>
+        Jerky jowl pork chop tongue, kielbasa shank venison. Capicola shank pig ribeye leberkas filet mignon brisket beef kevin tenderloin porchetta. Capicola fatback venison shank kielbasa, drumstick ribeye landjaeger beef kevin tail meatball pastrami prosciutto pancetta. Tail kevin spare ribs ground round ham ham hock brisket shoulder. Corned beef tri-tip leberkas flank sausage ham hock filet mignon beef ribs pancetta turkey.
+      </p> -->
+    </section>
+
+    <section id="content3">
+      <h3>Planning phase</h3>
+      <p>
+        This program expresses <i>Player</i>'s planning phase.
+      </p>
+      <pre id="player_plan_program"></pre>
+
+      <h3>Execution phase</h3>
+      <p>
+        This program computes <i>Player</i>'s move(s).
+        Note, this program may only contain stratified negation,
+        and may not contain disjunctive heads nor choice rules.
+      </p>
+      <pre id="player_move_program"></pre>
+    </section>
+
+    <section id="content4">
+      <p>
+        Bacon ipsum dolor sit amet landjaeger sausage brisket, jerky drumstick fatback boudin ball tip turducken. Pork belly meatball t-bone bresaola tail filet mignon kevin turkey ribeye shank flank doner cow kielbasa shankle. Pig swine chicken hamburger, tenderloin turkey rump ball tip sirloin frankfurter meatloaf boudin brisket ham hock. Hamburger venison brisket tri-tip andouille pork belly ball tip short ribs biltong meatball chuck. Pork chop ribeye tail short ribs, beef hamburger meatball kielbasa rump corned beef porchetta landjaeger flank. Doner rump frankfurter meatball meatloaf, cow kevin pork pork loin venison fatback spare ribs salami beef ribs.
+      </p>
+      <p>
+        Jerky jowl pork chop tongue, kielbasa shank venison. Capicola shank pig ribeye leberkas filet mignon brisket beef kevin tenderloin porchetta. Capicola fatback venison shank kielbasa, drumstick ribeye landjaeger beef kevin tail meatball pastrami prosciutto pancetta. Tail kevin spare ribs ground round ham ham hock brisket shoulder. Corned beef tri-tip leberkas flank sausage ham hock filet mignon beef ribs pancetta turkey.
+      </p>
+    </section>
+
+    <section id="content5">
+      <h3>Game output</h3>
+      <pre id="game-output" class="code"></pre>
+      <h3>Clingo output</h3>
+      <pre id="clingo-output" class="code"></pre>
+      <h3>Test run</h3>
+      <button onclick="solve()" class="control-button">Go</button>
+    </section>
+
+  </main>
+
+  <script type="text/javascript" src="js/ace.js" charset="utf-8"></script>
+  <script type="text/javascript" src="js/clingo-module.js" charset="utf-8"></script>
+  <script type="text/javascript" src="js/inputs.js" charset="utf-8"></script>
+  <script type="text/javascript" src="js/control.js" charset="utf-8"></script>
+
+</body>
+</html>
