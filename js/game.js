@@ -23,14 +23,12 @@ function generate_level() {
   // Take level generation program
   program = level_gen_program.getValue();
 
-  // Evaluate RANDINT(x,y) commands in program
+  // Evaluate 'RANDINT(x,y)' commands in program
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
   parts = preprocessed.split("RANDOM");
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 == 1) {
-      console.log("PROCESSING: " + parts[i]);
       nums = parts[i].split(",");
-      console.log("nums[0]: " + Number(nums[0]));
       random_int = randint(Number(nums[0]),Number(nums[1]));
       parts[i] = random_int.toString();
     }
@@ -46,4 +44,8 @@ function generate_level() {
     level_state = "";
     level_settings = "";
   }
+
+  clearGameOutput();
+  addToGameOutput("Level state:\n" + level_state)
+  addToGameOutput("\nLevel settings:\n" + level_settings)
 }
