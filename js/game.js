@@ -46,7 +46,7 @@ function generate_level() {
     level_state = "";
     level_settings = "";
   }
-  
+
   addToGameOutput("Level state:\n" + level_state + "\n")
   addToGameOutput("Level settings:\n" + level_settings + "\n")
 }

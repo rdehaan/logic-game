@@ -16,7 +16,7 @@ function load_named_program(name, path) {
     request.open("GET", path, true);
     request.send();
 }
-// load_named_program("heuristics", "stored/heuristics.lp")
+load_named_program("stratified", "stored/stratified.lp")
 
 // Infrastructure for clingo output
 var output_elem = document.getElementById('clingo-output');
@@ -148,10 +148,17 @@ function solve() {
 
   // document.getElementById("run").disabled = false;
 
+  clearOutput();
   clearGameOutput();
   generate_level();
   addToOutput("\n");
   init_state = generate_initial_state(level_state);
+
+  if (check_if_stratified_and_simple(visibility_program.getValue())) {
+    addToGameOutput("stratified and simple\n");
+  } else {
+    addToGameOutput("NOT stratified and simple\n");
+  }
 }
 
 var next_line_will_be_answer_set = false;
@@ -180,6 +187,15 @@ function handleOutputLine(text) {
   }
   addToOutput(text);
   updateOutput();
+}
+
+// Check if program is stratified and 'simple'
+function check_if_stratified_and_simple(program) {
+  reified_program = get_reified_program(program);
+  check_program = stored_programs["stratified"];
+  answer_set = get_answer_set(reified_program + check_program);
+  answer_set = filter_answer_set(answer_set, ["has_choice","has_proper_disjunction","has_negative_cycle"]);
+  return answer_set.length > 0;
 }
 
 // Load clingo
