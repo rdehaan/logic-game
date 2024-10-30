@@ -25,8 +25,8 @@ function play_game() {
 
     if (verbose) {
       addToGameOutput("## STEP " + time_step + " ##\n")
-      addToGameOutput("Player input:\n" + player_input + "\n")
-      addToGameOutput("Player memory:\n" + player_memory + "\n")
+      addToGameOutput("- Player input:\n" + player_input + "\n")
+      addToGameOutput("- Player memory:\n" + player_memory + "\n")
     }
 
     // Check if player's program is stratified and simple
@@ -41,7 +41,7 @@ function play_game() {
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
     if (verbose) {
-      addToGameOutput("Player moves:\n" + player_moves + "\n")
+      addToGameOutput("- Player moves:\n" + player_moves + "\n")
     }
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
@@ -55,16 +55,16 @@ function play_game() {
       keep_going = false;
       if (verbose) {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n")
-        addToGameOutput("Player input:\n" + player_input + "\n")
-        addToGameOutput("Player memory:\n" + player_memory + "\n")
+        addToGameOutput("- Player input:\n" + player_input + "\n")
+        addToGameOutput("- Player memory:\n" + player_memory + "\n")
       }
       addToGameOutput("WIN!")
     } else if (game_condition == "lose") {
       keep_going = false;
       if (verbose) {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n")
-        addToGameOutput("Player input:\n" + player_input + "\n")
-        addToGameOutput("Player memory:\n" + player_memory + "\n")
+        addToGameOutput("- Player input:\n" + player_input + "\n")
+        addToGameOutput("- Player memory:\n" + player_memory + "\n")
       }
       addToGameOutput("LOSE!")
     }
