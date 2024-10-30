@@ -30,7 +30,7 @@ function generate_level() {
       parts[i] = random_int.toString();
     }
   }
-  program = "".join(parts)
+  program = parts.join('')
   console.log(program);
 
   answer_set = get_answer_set(preprocessed);
