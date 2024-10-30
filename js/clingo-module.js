@@ -146,6 +146,8 @@ function solve() {
   updateOutput();
   updateGameOutput();
   // document.getElementById("run").disabled = false;
+
+  play_game();
 }
 
 var next_line_will_be_answer_set = false;
