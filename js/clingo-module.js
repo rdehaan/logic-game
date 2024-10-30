@@ -83,7 +83,7 @@ function get_reified_program(program) {
 function filter_answer_set(answer_set, pred_names) {
   function keep(atom) {
     for (let i = 0; i < pred_names.length; i++) {
-      if (atom == pred_names[i] || atom.startswith(pred_names[i]+"(")) {
+      if (atom == pred_names[i] || atom.startsWith(pred_names[i]+"(")) {
         return true
       }
     }
@@ -95,11 +95,23 @@ function filter_answer_set(answer_set, pred_names) {
 // Clingo solving
 function solve() {
 
-  alert('7');
   clearOutput();
   clearGameOutput();
 
   program = "num(1..3).\n{ foo(X) : num(X) }.\n:- foo(1), foo(2).\n"
+  solution = get_answer_set(program);
+  if (solution) {
+    solution = filter_answer_set(solution, ["foo", "bar"])
+    var text = solution.join(". ") + "."
+    addToGameOutput(text);
+  } else {
+    addToGameOutput("(none)");
+  }
+
+  addToOutput("");
+  addToGameOutput("");
+
+  program = "num(1..3).\n{ foo(X) : num(X) }.\n:- num(1).\n"
   solution = get_answer_set(program);
   if (solution) {
     solution = filter_answer_set(solution, ["foo", "bar"])
