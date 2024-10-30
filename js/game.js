@@ -38,6 +38,15 @@ function play_game() {
     game_state = generate_next_state(working_game, game_state, player_moves);
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
+    // Check if game won/lost already
+    game_condition = analyze_state(working_game, game_state);
+    if (game_condition == "win") {
+      keep_going = false;
+      addToGameOutput("WIN!")
+    } else if (game_condition == "lose") {
+      keep_going = false;
+      addToGameOutput("LOSE!")
+    }
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
@@ -226,4 +235,25 @@ function generate_next_state(working_game, game_state, player_moves) {
 
   addToGameOutput("Game state:\n" + output + "\n")
   return output;
+}
+
+// Analyze state for win/lose conditions
+function analyze_state(working_game, game_state) {
+  program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
+  program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
+  program += game_state;
+  program += working_game['level_settings'];
+  program += working_game['goal_program'];
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var loses = filter_answer_set(answer_set, ["lose"]);
+    if (loses.length > 0) {
+      return "lose";
+    }
+    var wins = filter_answer_set(answer_set, ["win"]);
+    if (wins.length > 0) {
+      return "win";
+    }
+  }
+  return "";
 }
