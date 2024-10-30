@@ -21,10 +21,6 @@ function play_game() {
   var max_time = 20;
   while (keep_going) {
     time_step += 1;
-    // Generate player's input for next move
-    if (time_step > 1) {
-      player_input = generate_player_input(working_game, game_state);
-    }
     // Check if player's program is stratified and simple
     var program_to_check = player_input + player_memory;
     program_to_check += working_game['level_settings'];
@@ -40,6 +36,9 @@ function play_game() {
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
     game_state = generate_next_state(working_game, game_state, player_moves);
+
+    // Generate player input for next move
+    player_input = generate_player_input(working_game, game_state);
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
@@ -174,6 +173,8 @@ function update_player_memory(player_memory, memory_updates) {
   } else {
     return player_memory;
   }
+  console.log("intermediate:")
+  console.log(intermediate)
   program = "memory(X) :- new_memory(X).\n";
   answer_set = get_answer_set(program);
   if (answer_set) {
