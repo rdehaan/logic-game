@@ -22,7 +22,7 @@ function play_game() {
   while (keep_going) {
     time_step += 1;
     // Generate player's input for next move
-    if (i > 1) {
+    if (time_step > 1) {
       player_input = generate_player_input(working_game, game_state);
     }
     // Check if player's program is stratified and simple
