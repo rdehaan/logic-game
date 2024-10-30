@@ -19,8 +19,10 @@ function generate_level() {
   program = level_gen_program.getValue();
   // TODO: preprocess_program
   answer_set = get_answer_set(program);
-  level_state = filter_answer_set(answer_set, ["at"]);
-  level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
-  console.log(level_state);
-  console.log(level_settings);
+  if (answer_set) {
+    level_state = filter_answer_set(answer_set, ["at"]);
+    level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
+    console.log(level_state);
+    console.log(level_settings);
+  }
 }
