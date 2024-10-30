@@ -36,7 +36,7 @@ function play_game() {
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
-    game_state = generate_next_state(working_game, game_state, player_moves);
+    // game_state = generate_next_state(working_game, game_state, player_moves);
 
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
