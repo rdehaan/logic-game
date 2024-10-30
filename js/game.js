@@ -18,7 +18,7 @@ function play_game() {
 function generate_level() {
   program = level_gen_program.getValue();
   preprocessed = program.replace(/player/g, "schlayer");
-  preprocessed = preprocessed.replace(/RANDINT\(\d+,\d+\)/g, "asdf");
+  preprocessed = preprocessed.replace(/RANDINT\((\d+),(\d+)\)/g, "randint(a$1,b$2)");
   console.log(preprocessed);
   // TODO: preprocess_program
   answer_set = get_answer_set(program);
