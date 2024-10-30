@@ -65,9 +65,9 @@ function updateGameOutput() {
 // Clingo solving (1)
 function get_answer_set(program) {
   options = "-n1 -Wnone --heuristic=Domain";
-  answer_set = null;
+  constructed_answer_set = null;
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
-  return answer_set.split(" ");
+  return constructed_answer_set.split(" ");
 }
 
 // Clingo reifying
@@ -79,15 +79,29 @@ function get_reified_program(program) {
   return reified_program;
 }
 
+// TODO
+function filter_answer_set(answer_set, predicate_names) {
+  function keep(elem) {
+    for (let i = 0; i < predicate_names.length; i++) {
+      if elem.startswith(predicate_names[i]) {
+        return true
+      }
+    }
+    return false
+  }
+  return answer_set.filter(keep);
+}
+
 // Clingo solving
 function solve() {
 
   clearOutput();
   clearGameOutput();
 
-  program = "a :- not b.\nb :- not a.\n"
+  program = "num(1..3).\n{ foo(X) : num(X) }.\n:- foo(1), foo(2).\n"
   solution = get_answer_set(program);
   if (solution) {
+    solution = filter_answer_set(solution, ["foo", "bar"])
     var text = solution.join(". ") + "."
     addToGameOutput(text);
   } else {
@@ -110,7 +124,7 @@ function solve() {
 }
 
 var next_line_will_be_answer_set = false;
-var answer_set = null;
+var constructed_answer_set = null;
 var currently_reifying = false;
 var reified_program = "";
 function start_reifying() {
@@ -125,7 +139,7 @@ function handleOutputLine(text) {
     reified_program += text + "\n";
   } else {
     if (next_line_will_be_answer_set) {
-      answer_set = text;
+      constructed_answer_set = text;
     }
     if (text.startsWith("Answer:")) {
       next_line_will_be_answer_set = true;
