@@ -64,6 +64,7 @@ function updateGameOutput() {
 
 // Clingo solving (1)
 function get_answer_set(program) {
+  clearOutput();
   options = "-n1 -Wnone --heuristic=Domain";
   constructed_answer_set = null;
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
@@ -76,6 +77,7 @@ function get_answer_set(program) {
 
 // Clingo reifying
 function get_reified_program(program) {
+  clearOutput();
   options = "--output=reify --reify-sccs -Wnone";
   start_reifying();
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])

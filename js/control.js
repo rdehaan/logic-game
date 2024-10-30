@@ -86,4 +86,4 @@ function save(filename, data) {
     }
 }
 
-// load_game_from_path('examples/flag1.json');
+load_game_from_path('examples/flag1.json');
