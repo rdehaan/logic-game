@@ -34,6 +34,8 @@ function play_game() {
       addToGameOutput("PROGRAM TOO COMPLICATED..\n")
       break;
     }
+    // Generate player moves and memory updates
+    var {moves, memory_updates} = generate_player_move(working_game, player_input);
   }
 }
 
@@ -120,5 +122,29 @@ function generate_player_plan(working_game, player_input) {
     return output;
   } else {
     return "";
+  }
+}
+
+// Generate player move
+function generate_player_move(working_game, player_input) {
+  program = player_input;
+  program += working_game['player_move_program'];
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var moves = filter_answer_set(answer_set, ["do"]);
+    moves = answer_set_to_facts(moves);
+    addToGameOutput("Player moves:\n" + moves + "\n")
+    var memory_updates = filter_answer_set(answer_set, ["remember","forget"]);
+    memory_updates = answer_set_to_facts(memory_updates);
+    addToGameOutput("Player memory updates:\n" + memory_updates + "\n")
+    return {
+      moves: moves,
+      memory_updates: memory_updates
+    };
+  } else {
+    return {
+      moves: "",
+      memory_updates: ""
+    };
   }
 }
