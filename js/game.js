@@ -139,7 +139,7 @@ function generate_player_move(working_game, player_input) {
   answer_set = get_answer_set(program);
   if (answer_set) {
     var player_moves = filter_answer_set(answer_set, ["do"]);
-    player_moves = answer_set_to_facts(moves);
+    player_moves = answer_set_to_facts(player_moves);
     addToGameOutput("Player moves:\n" + player_moves + "\n")
     var memory_updates = filter_answer_set(answer_set, ["remember","forget"]);
     memory_updates = answer_set_to_facts(memory_updates);
@@ -194,7 +194,6 @@ function generate_next_state(working_game, game_state, player_moves) {
   program += player_moves;
   program += working_game['nature_program'];
   program += working_game['level_settings'];
-  console.log(program);
   answer_set = get_answer_set(program);
   var nexts = null;
   if (answer_set) {
@@ -219,7 +218,6 @@ function generate_next_state(working_game, game_state, player_moves) {
   program = "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).\n"
   program += game_state;
   program += nexts;
-  console.log(program);
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["at_time","win","lose"]);
