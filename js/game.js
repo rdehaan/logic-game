@@ -13,6 +13,7 @@ function play_game() {
 
   game_state = generate_initial_game_state(working_game);
   player_input = generate_player_input(working_game, game_state);
+  player_plan = generate_player_plan(working_game, player_input);
 }
 
 // Generate random integer in given range
@@ -79,6 +80,22 @@ function generate_player_input(working_game, game_state) {
     var output = filter_answer_set(answer_set, ["observe"]);
     output = answer_set_to_facts(output);
     addToGameOutput("Player input:\n" + output + "\n")
+    return output;
+  } else {
+    return "";
+  }
+}
+
+// Generate player plan from (initial) observable state
+function generate_player_plan(working_game, player_input) {
+  program = player_input;
+  program += working_game['level_settings'];
+  program += working_game['player_plan_program'];
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var output = filter_answer_set(answer_set, ["plan"]);
+    output = answer_set_to_facts(output);
+    addToGameOutput("Player plan:\n" + output + "\n")
     return output;
   } else {
     return "";
