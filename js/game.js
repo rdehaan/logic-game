@@ -1,7 +1,7 @@
 // Run the game
 function play_game() {
   // Store the current level/game
-  working_game = {}
+  var working_game = {}
   working_game['level_gen_program'] = level_gen_program.getValue();
   working_game['visibility_program'] = visibility_program.getValue();
   working_game['player_plan_program'] = player_plan_program.getValue();
@@ -11,7 +11,8 @@ function play_game() {
   working_game['level_state'] = level_state;
   working_game['level_settings'] = level_settings;
 
-  console.log(working_game);
+  game_state = generate_initial_game_state(working_game, level_state);
+  player_input = generate_player_input(working_game, game_state);
 }
 
 function randint(min, max) {
@@ -21,7 +22,7 @@ function randint(min, max) {
 // Generate the level
 function generate_level() {
   // Take level generation program
-  program = level_gen_program.getValue();
+  program = working_game['level_gen_program'];
 
   // Evaluate 'RANDINT(x,y)' commands in program
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
@@ -51,14 +52,32 @@ function generate_level() {
   addToGameOutput("Level settings:\n" + level_settings + "\n")
 }
 
-// Generate initial state from level state
-function generate_initial_state(level_state) {
+// Generate initial game state from level state
+function generate_initial_game_state(working_game, level_state) {
   transfer_program = "at_time(0,R,C,O) :- at(R,C,O).\n"
   answer_set = get_answer_set(level_state + transfer_program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["at_time"]);
     addToGameOutput("Initial state:\n" + answer_set_to_facts(output) + "\n")
     return answer_set_to_facts(output);
+  } else {
+    return "";
+  }
+}
+
+// Generate player input from game state
+function generate_player_input(working_game, game_state) {
+  program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
+  program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
+  program += "observe(at(R,C,O)) :- at(R,C,O), observe(at(R,C,O)).\n"
+  program += game_state;
+  program += working_game['visibility_program'];
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var output = filter_answer_set(answer_set, ["observe"]);
+    output = answer_set_to_facts(output);
+    addToGameOutput("Player input:\n" + output + "\n")
+    return output;
   } else {
     return "";
   }

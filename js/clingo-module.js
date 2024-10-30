@@ -151,14 +151,8 @@ function solve() {
   clearOutput();
   clearGameOutput();
   generate_level();
-  addToOutput("\n");
-  init_state = generate_initial_state(level_state);
+  play_game();
 
-  if (check_if_stratified_and_simple(visibility_program.getValue())) {
-    addToGameOutput("stratified and simple\n");
-  } else {
-    addToGameOutput("NOT stratified and simple\n");
-  }
 }
 
 var next_line_will_be_answer_set = false;
