@@ -110,7 +110,7 @@ function solve() {
   clearOutput();
   clearGameOutput();
 
-  program = "num(1..3).\n{ foo(X) : num(X) }.\n:- foo(1), foo(2).\n"
+  program = "num(1..3).\n{ foo(X) : num(X) }.\n:- not foo(1).\n"
   answer_set = get_answer_set(program);
   if (answer_set) {
     answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
