@@ -166,6 +166,8 @@ function update_player_memory(player_memory, memory_updates) {
   program += "new_memory(X) :- remember(X).\n"
   program += player_memory;
   program += memory_updates;
+  console.log("program:");
+  console.log(program);
   answer_set = get_answer_set(program);
   if (answer_set) {
     var intermediate = filter_answer_set(answer_set, ["plan","new_memory"]);
