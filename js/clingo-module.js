@@ -113,7 +113,7 @@ function solve() {
   program = "num(1..3).\n{ foo(X) : num(X) }.\n:- foo(1), foo(2).\n"
   answer_set = get_answer_set(program);
   if (answer_set) {
-    answer_set = filter_answer_set(solution, ["foo", "bar"]);
+    answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
     var text = answer_set_to_facts(answer_set);
     addToGameOutput(text);
   } else {
@@ -124,10 +124,10 @@ function solve() {
   addToGameOutput("");
 
   program = "num(1..3).\n{ foo(X) : num(X) }.\n:- num(1).\n"
-  solution = get_answer_set(program);
-  if (solution) {
-    solution = filter_answer_set(solution, ["foo", "bar"])
-    var text = solution.join(". ") + "."
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    answer_set = filter_answer_set(answer_set, ["foo", "bar"])
+    var text = answer_set_to_facts(answer_set);
     addToGameOutput(text);
   } else {
     addToGameOutput("(none)");
