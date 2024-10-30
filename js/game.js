@@ -32,13 +32,10 @@ function play_game() {
     }
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
-    console.log("player_moves");
-    console.log(player_moves);
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
     game_state = generate_next_state(working_game, game_state, player_moves);
-
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
 
@@ -141,19 +138,19 @@ function generate_player_move(working_game, player_input) {
   program += working_game['player_move_program'];
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var moves = filter_answer_set(answer_set, ["do"]);
-    moves = answer_set_to_facts(moves);
-    addToGameOutput("Player moves:\n" + moves + "\n")
+    var player_moves = filter_answer_set(answer_set, ["do"]);
+    player_moves = answer_set_to_facts(moves);
+    addToGameOutput("Player moves:\n" + player_moves + "\n")
     var memory_updates = filter_answer_set(answer_set, ["remember","forget"]);
     memory_updates = answer_set_to_facts(memory_updates);
     addToGameOutput("Player memory updates:\n" + memory_updates + "\n")
     return {
-      moves: moves,
+      player_moves: player_moves,
       memory_updates: memory_updates
     };
   } else {
     return {
-      moves: "",
+      player_moves: "",
       memory_updates: ""
     };
   }
