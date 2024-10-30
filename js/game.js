@@ -39,13 +39,25 @@ function generate_level() {
   answer_set = get_answer_set(program);
   if (answer_set) {
     level_state = filter_answer_set(answer_set, ["at"]);
+    level_state = answer_set_to_facts(level_state);
     level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
+    level_settings = answer_set_to_facts(level_settings);
   } else {
     level_state = "";
     level_settings = "";
   }
 
-  clearGameOutput();
-  addToGameOutput("Level state:\n" + level_state)
-  addToGameOutput("\nLevel settings:\n" + level_settings)
+  addToGameOutput("Level settings:\n" + level_settings + "\n")
+}
+
+function generate_initial_state() {
+  transfer_program = "at_time(0,R,C,O) :- at(R,C,O).\n"
+  answer_set = get_answer_set(level_state + transfer_program);
+  if (answer_set) {
+    var output = filter_answer_set(answer_set, ["at_time"]);
+    addToGameOutput("Initial state:\n" + output + "\n")
+    return answer_set_to_facts(output);
+  } else {
+    return "";
+  }
 }

@@ -149,6 +149,7 @@ function solve() {
   // document.getElementById("run").disabled = false;
 
   generate_level();
+  generate_initial_state();
 }
 
 var next_line_will_be_answer_set = false;
