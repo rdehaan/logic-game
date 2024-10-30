@@ -79,11 +79,11 @@ function get_reified_program(program) {
   return reified_program;
 }
 
-// TODO
+// Keep only some predicate names in answer set
 function filter_answer_set(answer_set, predicate_names) {
   function keep(elem) {
     for (let i = 0; i < predicate_names.length; i++) {
-      if elem.startswith(predicate_names[i]) {
+      if (elem == predicate_names[i] || elem.startswith(predicate_names[i]+"(") {
         return true
       }
     }
