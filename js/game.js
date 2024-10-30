@@ -22,12 +22,13 @@ function randint(min, max) {
 function generate_level() {
   program = level_gen_program.getValue();
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOMa$1,b$2RANDOM");
-  parts = preprocessed.split("RANDOM")
+  parts = preprocessed.split("RANDOM");
   for (let i = 0; i < parts.length; i++) {
-    if (i % 2 == 0):
+    if (i % 2 == 0) {
       nums = parts[i].split(",");
       random_int = randint(nums[0],nums[1]);
       parts[i] = random_int.toString();
+    }
   }
   program = "".join(parts)
   console.log(program);
