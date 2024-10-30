@@ -11,10 +11,11 @@ function play_game() {
   working_game['level_state'] = level_state;
   working_game['level_settings'] = level_settings;
 
-  game_state = generate_initial_game_state(working_game, level_state);
+  game_state = generate_initial_game_state(working_game);
   player_input = generate_player_input(working_game, game_state);
 }
 
+// Generate random integer in given range
 function randint(min, max) {
   return Math.floor(Math.random() * (max - min) ) + min;
 }
@@ -22,7 +23,7 @@ function randint(min, max) {
 // Generate the level
 function generate_level() {
   // Take level generation program
-  program = working_game['level_gen_program'];
+  program = level_gen_program.getValue();
 
   // Evaluate 'RANDINT(x,y)' commands in program
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
@@ -53,9 +54,10 @@ function generate_level() {
 }
 
 // Generate initial game state from level state
-function generate_initial_game_state(working_game, level_state) {
-  transfer_program = "at_time(0,R,C,O) :- at(R,C,O).\n"
-  answer_set = get_answer_set(level_state + transfer_program);
+function generate_initial_game_state(working_game) {
+  program = "at_time(0,R,C,O) :- at(R,C,O).\n"
+  program += working_game['level_state'];
+  answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["at_time"]);
     addToGameOutput("Initial state:\n" + answer_set_to_facts(output) + "\n")
