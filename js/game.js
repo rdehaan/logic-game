@@ -32,6 +32,8 @@ function play_game() {
     }
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
+    console.log("player_moves");
+    console.log(player_moves);
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
