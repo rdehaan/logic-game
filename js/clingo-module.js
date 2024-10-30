@@ -68,7 +68,7 @@ function get_answer_set(program) {
   options = "-n1 -Wnone --heuristic=Domain";
   constructed_answer_set = null;
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
-  if (constructed_answer_set) {
+  if (constructed_answer_set || constructed_answer_set == "") {
     return constructed_answer_set.split(" ");
   } else {
     return null
@@ -197,15 +197,10 @@ function handleOutputLine(text) {
 
 // Check if program is stratified and 'simple'
 function check_if_stratified_and_simple(program) {
-  console.log("Checking: ")
-  console.log(program);
   reified_program = get_reified_program(program);
-  console.log(reified_program);
   check_program = stored_programs["stratified"];
   answer_set = get_answer_set(reified_program + check_program);
-  console.log(reified_program + check_program);
   if (answer_set) {
-    console.log(answer_set);
     answer_set = filter_answer_set(answer_set, ["has_choice","has_proper_disjunction","has_negative_cycle"]);
     return answer_set.length == 0;
   }
