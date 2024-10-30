@@ -53,15 +53,26 @@ function play_game() {
     game_condition = analyze_state(working_game, game_state);
     if (game_condition == "win") {
       keep_going = false;
+      if (verbose) {
+        addToGameOutput("## STEP " + (time_step+1) + " ##\n")
+        addToGameOutput("Player input:\n" + player_input + "\n")
+        addToGameOutput("Player memory:\n" + player_memory + "\n")
+      }
       addToGameOutput("WIN!")
     } else if (game_condition == "lose") {
       keep_going = false;
+      if (verbose) {
+        addToGameOutput("## STEP " + (time_step+1) + " ##\n")
+        addToGameOutput("Player input:\n" + player_input + "\n")
+        addToGameOutput("Player memory:\n" + player_memory + "\n")
+      }
       addToGameOutput("LOSE!")
     }
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
       keep_going = false;
+      addToGameOutput("TIMEOUT!")
     }
   }
 }
