@@ -132,6 +132,7 @@ function generate_player_input(working_game, game_state) {
   program += "observe(at(R,C,O)) :- at(R,C,O), observe(at(R,C,O)).\n"
   program += game_state;
   program += working_game['visibility_program'];
+  program += working_game['level_settings'];
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["observe"]);
