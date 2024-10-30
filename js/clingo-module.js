@@ -67,7 +67,11 @@ function get_answer_set(program) {
   options = "-n1 -Wnone --heuristic=Domain";
   constructed_answer_set = null;
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
-  return constructed_answer_set.split(" ");
+  if (constructed_answer_set) {
+    return constructed_answer_set.split(" ");
+  } else {
+    return null
+  }
 }
 
 // Clingo reifying
@@ -79,7 +83,7 @@ function get_reified_program(program) {
   return reified_program;
 }
 
-// Keep only some predicate names in answer set
+// Keep only some predicate names in an answer set
 function filter_answer_set(answer_set, pred_names) {
   function keep(atom) {
     for (let i = 0; i < pred_names.length; i++) {
