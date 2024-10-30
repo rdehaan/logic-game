@@ -197,7 +197,7 @@ function check_if_stratified_and_simple(program) {
   answer_set = get_answer_set(reified_program + check_program);
   if (answer_set) {
     answer_set = filter_answer_set(answer_set, ["has_choice","has_proper_disjunction","has_negative_cycle"]);
-    return answer_set.length > 0;
+    return answer_set.length == 0;
   }
 }
 
