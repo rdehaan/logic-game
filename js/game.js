@@ -35,9 +35,11 @@ function play_game() {
       break;
     }
     // Generate player moves and memory updates
-    var {moves, memory_updates} = generate_player_move(working_game, player_input);
+    var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
+    // Generate next state
+    game_state = generate_next_state(working_game, game_state, player_moves);
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
@@ -181,5 +183,49 @@ function update_player_memory(player_memory, memory_updates) {
     return player_memory;
   }
   addToGameOutput("New player memory:\n" + output + "\n")
+  return output;
+}
+
+// Generate next state
+function generate_next_state(working_game, game_state, player_moves) {
+
+  // Generate 'nexts'
+  program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
+  program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
+  program += game_state;
+  program += player_moves;
+  program += working_game['nature_program'];
+  program += working_game['level_settings'];
+  answer_set = get_answer_set(program);
+  var nexts = null;
+  if (answer_set) {
+    nexts = filter_answer_set(answer_set, ["next","current_time"]);
+    nexts = answer_set_to_facts(nexts);
+  }
+
+  // Generate trivial 'nexts' if needed
+  if (!nexts) {
+    program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
+    program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
+    program += "next(R,C,O) :- at(R,C,O).\n"
+    program += game_state;
+    answer_set = get_answer_set(program);
+    if (answer_set) {
+      nexts = filter_answer_set(answer_set, ["next","current_time"]);
+      nexts = answer_set_to_facts(nexts);
+    }
+  }
+
+  // Generate next state based on 'nexts'
+  program = "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T)\n"
+  program += game_state;
+  program += nexts;
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var output = filter_answer_set(answer_set, ["at_time","win","lose"]);
+    output = answer_set_to_facts(output);
+  }
+
+  addToGameOutput("Game state:\n" + output + "\n")
   return output;
 }
