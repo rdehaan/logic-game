@@ -202,6 +202,9 @@ function generate_next_state(working_game, game_state, player_moves) {
     nexts = answer_set_to_facts(nexts);
   }
 
+  console.log('nexts:');
+  console.log(nexts);
+
   // Generate trivial 'nexts' if needed
   if (!nexts) {
     program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
@@ -215,10 +218,14 @@ function generate_next_state(working_game, game_state, player_moves) {
     }
   }
 
+  console.log('nexts:');
+  console.log(nexts);
+
   // Generate next state based on 'nexts'
   program = "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).\n"
   program += game_state;
   program += nexts;
+  console.log(program);
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["at_time","win","lose"]);
