@@ -17,7 +17,8 @@ function play_game() {
 // Generate the level
 function generate_level() {
   program = level_gen_program.getValue();
-  preprocessed = program.replace(/RANDINT(\d+,\d+)/g, "asdf");
+  preprocessed = program.replace(/player/g, "schlayer");
+  preprocessed = preprocessed.replace(/RANDINT\(\d+,\d+\)/g, "asdf");
   console.log(preprocessed);
   // TODO: preprocess_program
   answer_set = get_answer_set(program);
