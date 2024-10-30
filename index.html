@@ -21,19 +21,19 @@
     <p>[Here the visualization will appear.]</p>
 
     <input id="tab1" type="radio" name="tabs" onChange="change_tabs()" checked>
-    <label for="tab1">Control</label>
+    <label for="tab1" name="tabs">Control</label>
 
     <input id="tab2" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab2">Game rules</label>
+    <label for="tab2" name="tabs">Game rules</label>
 
     <input id="tab3" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab3">Strategy</label>
+    <label for="tab3" name="tabs">Strategy</label>
 
     <input id="tab4" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab4">Instructions</label>
+    <label for="tab4" name="tabs">Instructions</label>
 
     <input id="tab5" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab5">Debug</label>
+    <label for="tab5" name="tabs">Debug</label>
 
     <section id="content1">
       <p>
@@ -138,6 +138,7 @@
       <pre id="clingo-output" class="code"></pre>
       <h3>Verbosity</h3>
       <input type="checkbox" id="verbose" name="verbose" value="Verbose" checked>
+      <label for="verbose"> Verbose</label><br>
       <h3>Generate level</h3>
       <button onclick="do_generate()" class="control-button">Generate</button>
       <h3>Play game</h3>

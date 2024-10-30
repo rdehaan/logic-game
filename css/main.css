@@ -60,11 +60,19 @@ pre {
   margin: 0 0 10px;
 }
 
-input {
+input[name="tabs"] {
   display: none;
 }
 
 label {
+  display: inline-block;
+  margin: 0 0 -1px;
+  padding: 5px 15px;
+  text-align: center;
+  border: 1px solid transparent;
+}
+
+label[name="tabs"] {
   display: inline-block;
   margin: 0 0 -1px;
   padding: 15px 25px;
@@ -105,7 +113,7 @@ label:hover {
   cursor: pointer;
 }
 
-input:checked + label {
+input[name="tabs"]:checked + label {
   color: #555;
   border: 1px solid #ddd;
   border-top: 2px solid orange;
