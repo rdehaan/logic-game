@@ -36,6 +36,8 @@ function play_game() {
     }
     // Generate player moves and memory updates
     var {moves, memory_updates} = generate_player_move(working_game, player_input);
+    // Update player memory
+    player_memory = update_player_memory(player_memory, memory_updates);
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
@@ -152,4 +154,32 @@ function generate_player_move(working_game, player_input) {
       memory_updates: ""
     };
   }
+}
+
+// Update player memory
+function update_player_memory(player_memory, memory_updates) {
+  if (!memory_updates) {
+    return player_memory;
+  }
+  program = "new_memory(X) :- memory(X), not forget(X).\n"
+  program += "new_memory(X) :- remember(X).\n"
+  program += player_memory;
+  program += memory_updates;
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var intermediate = filter_answer_set(answer_set, ["plan","new_memory"]);
+    intermediate = answer_set_to_facts(intermediate);
+  } else {
+    return player_memory;
+  }
+  program = "memory(X) :- new_memory(X).\n";
+  answer_set = get_answer_set(program);
+  if (answer_set) {
+    var output = filter_answer_set(answer_set, ["plan","memory"]);
+    output = answer_set_to_facts(output);
+  } else {
+    return player_memory;
+  }
+  addToGameOutput("New player memory:\n" + output + "\n")
+  return output;
 }
