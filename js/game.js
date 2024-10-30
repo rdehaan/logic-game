@@ -10,10 +10,15 @@ function play_game() {
   working_game['goal_program'] = goal_program.getValue();
   working_game['level_state'] = level_state;
   working_game['level_settings'] = level_settings;
+  var verbose = document.getElementById("verbose").checked;
 
   var game_state = generate_initial_game_state(working_game);
   var player_input = generate_player_input(working_game, game_state);
   var player_memory = generate_player_plan(working_game, player_input);
+
+  if (verbose) {
+    addToGameOutput("Found a checked checkbox!\n");
+  }
 
   // Main loop
   var keep_going = true;
