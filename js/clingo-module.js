@@ -105,54 +105,62 @@ function answer_set_to_facts(answer_set) {
 }
 
 // Clingo solving
-function solve() {
+// function solve() {
+//
+//   // clearOutput();
+//   // clearGameOutput();
+//   //
+//   // program = "num(1..3).\n{ foo(X) : num(X) }.\n:- not foo(1).\n"
+//   // answer_set = get_answer_set(program);
+//   // if (answer_set) {
+//   //   answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
+//   //   var text = answer_set_to_facts(answer_set);
+//   //   addToGameOutput(text);
+//   // } else {
+//   //   addToGameOutput("(none)");
+//   // }
+//   //
+//   // addToOutput("");
+//   // addToGameOutput("");
+//   //
+//   // program = "num(1..3).\n{ foo(X) : num(X) }.\n:- num(1).\n"
+//   // answer_set = get_answer_set(program);
+//   // if (answer_set) {
+//   //   answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
+//   //   var text = answer_set_to_facts(answer_set);
+//   //   addToGameOutput(text);
+//   // } else {
+//   //   addToGameOutput("(none)");
+//   // }
+//   //
+//   // addToOutput("");
+//   // addToGameOutput("");
+//   //
+//   // new_program = get_reified_program(program);
+//   // if (new_program) {
+//   //   addToGameOutput(new_program);
+//   // } else {
+//   //   addToGameOutput("(none)");
+//   // }
+//   //
+//   // updateOutput();
+//   // updateGameOutput();
+//
+//   // document.getElementById("run").disabled = false;
+//
+//   clearOutput();
+//   clearGameOutput();
+//   generate_level();
+//   play_game();
+//
+// }
 
-  // clearOutput();
-  // clearGameOutput();
-  //
-  // program = "num(1..3).\n{ foo(X) : num(X) }.\n:- not foo(1).\n"
-  // answer_set = get_answer_set(program);
-  // if (answer_set) {
-  //   answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
-  //   var text = answer_set_to_facts(answer_set);
-  //   addToGameOutput(text);
-  // } else {
-  //   addToGameOutput("(none)");
-  // }
-  //
-  // addToOutput("");
-  // addToGameOutput("");
-  //
-  // program = "num(1..3).\n{ foo(X) : num(X) }.\n:- num(1).\n"
-  // answer_set = get_answer_set(program);
-  // if (answer_set) {
-  //   answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
-  //   var text = answer_set_to_facts(answer_set);
-  //   addToGameOutput(text);
-  // } else {
-  //   addToGameOutput("(none)");
-  // }
-  //
-  // addToOutput("");
-  // addToGameOutput("");
-  //
-  // new_program = get_reified_program(program);
-  // if (new_program) {
-  //   addToGameOutput(new_program);
-  // } else {
-  //   addToGameOutput("(none)");
-  // }
-  //
-  // updateOutput();
-  // updateGameOutput();
-
-  // document.getElementById("run").disabled = false;
-
-  clearOutput();
+function do_generate() {
   clearGameOutput();
   generate_level();
+}
+function do_play() {
   play_game();
-
 }
 
 var next_line_will_be_answer_set = false;
