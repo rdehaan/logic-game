@@ -81,9 +81,9 @@ function get_reified_program(program) {
 
 // Keep only some predicate names in answer set
 function filter_answer_set(answer_set, pred_names) {
-  function keep(elem) {
+  function keep(atom) {
     for (let i = 0; i < pred_names.length; i++) {
-      if (elem == pred_names[i] || elem.startswith(pred_names[i]+"(")) {
+      if (atom == pred_names[i] || atom.startswith(pred_names[i]+"(")) {
         return true
       }
     }
@@ -95,6 +95,7 @@ function filter_answer_set(answer_set, pred_names) {
 // Clingo solving
 function solve() {
 
+  alert('7');
   clearOutput();
   clearGameOutput();
 
