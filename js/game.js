@@ -20,7 +20,10 @@ function randint(min, max) {
 
 // Generate the level
 function generate_level() {
+  // Take level generation program
   program = level_gen_program.getValue();
+
+  // Evaluate RANDINT(x,y) commands in program
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
   parts = preprocessed.split("RANDOM");
   for (let i = 0; i < parts.length; i++) {
@@ -33,9 +36,9 @@ function generate_level() {
     }
   }
   program = parts.join('')
-  console.log(program);
 
-  answer_set = get_answer_set(preprocessed);
+  // Find answer set, and split into two sets of facts
+  answer_set = get_answer_set(program);
   if (answer_set) {
     level_state = filter_answer_set(answer_set, ["at"]);
     level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
