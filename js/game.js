@@ -270,3 +270,13 @@ function analyze_state(working_game, game_state) {
   }
   return "";
 }
+
+function reset_debugging() {
+  clearOutput();
+  clearGameOutput();
+  if (level_state) {
+    addToGameOutput("## LEVEL PRESENT ##\n");
+  } else {
+    addToGameOutput("## NO LEVEL YET ##\n");
+  }
+}

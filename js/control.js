@@ -23,6 +23,7 @@ function load_game_from_path(path) {
       level_settings = game['level_settings'];
     }
   }
+  reset_debugging();
   request.open("GET", path, true);
   request.send();
 }
