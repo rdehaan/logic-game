@@ -126,7 +126,7 @@ function solve() {
   program = "num(1..3).\n{ foo(X) : num(X) }.\n:- num(1).\n"
   answer_set = get_answer_set(program);
   if (answer_set) {
-    answer_set = filter_answer_set(answer_set, ["foo", "bar"])
+    answer_set = filter_answer_set(answer_set, ["foo", "bar"]);
     var text = answer_set_to_facts(answer_set);
     addToGameOutput(text);
   } else {
@@ -147,7 +147,7 @@ function solve() {
   updateGameOutput();
   // document.getElementById("run").disabled = false;
 
-  play_game();
+  generate_level();
 }
 
 var next_line_will_be_answer_set = false;

@@ -1,3 +1,4 @@
+// Run the game
 function play_game() {
   // Store the current level/game
   working_game = {}
@@ -11,4 +12,15 @@ function play_game() {
   working_game['level_settings'] = level_settings;
 
   console.log(working_game);
+}
+
+// Generate the level
+function generate_level() {
+  program = level_gen_program.getValue();
+  // TODO: preprocess_program
+  answer_set = get_answer_set(program);
+  level_state = filter_answer_set(answer_set, ["at"]);
+  level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
+  console.log(level_state);
+  console.log(level_settings);
 }
