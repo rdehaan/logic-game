@@ -68,7 +68,7 @@ function get_answer_set(program) {
   options = "-n1 -Wnone --heuristic=Domain";
   constructed_answer_set = null;
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
-  if (constructed_answer_set || constructed_answer_set == "") {
+  if (constructed_answer_set || constructed_answer_set === "") {
     return constructed_answer_set.split(" ");
   } else {
     return null
