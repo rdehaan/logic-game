@@ -25,8 +25,10 @@ function generate_level() {
   parts = preprocessed.split("RANDOM");
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 == 0) {
+      console.log("PROCESSING: " + parts[i]);
       nums = parts[i].split(",");
-      random_int = randint(nums[0],nums[1]);
+      console.log("nums[0]: " + Number(nums[0]));
+      random_int = randint(Number(nums[0]),Number(nums[1]));
       parts[i] = random_int.toString();
     }
   }
