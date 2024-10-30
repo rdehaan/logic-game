@@ -21,7 +21,7 @@ function randint(min, max) {
 // Generate the level
 function generate_level() {
   program = level_gen_program.getValue();
-  preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOMa$1,b$2RANDOM");
+  preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
   parts = preprocessed.split("RANDOM");
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 == 0) {
