@@ -36,6 +36,11 @@ function play_game() {
     }
     // Generate player moves and memory updates
     var {moves, memory_updates} = generate_player_move(working_game, player_input);
+
+    // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
+    if (time_step > max_time) {
+      keep_going = false;
+    }
   }
 }
 
