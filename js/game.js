@@ -14,14 +14,25 @@ function play_game() {
   console.log(working_game);
 }
 
+function randint(min, max) {
+  return Math.floor(Math.random() * (max - min) ) + min;
+}
+
 // Generate the level
 function generate_level() {
   program = level_gen_program.getValue();
-  preprocessed = program.replace(/player/g, "schlayer");
-  preprocessed = preprocessed.replace(/RANDINT\((\d+),(\d+)\)/g, "randint(a$1,b$2)");
-  console.log(preprocessed);
-  // TODO: preprocess_program
-  answer_set = get_answer_set(program);
+  preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOMa$1,b$2RANDOM");
+  parts = preprocessed.split("RANDOM")
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 == 0):
+      nums = parts[i].split(",");
+      random_int = randint(nums[0],nums[1]);
+      parts[i] = random_int.toString();
+  }
+  program = "".join(parts)
+  console.log(program);
+
+  answer_set = get_answer_set(preprocessed);
   if (answer_set) {
     level_state = filter_answer_set(answer_set, ["at"]);
     level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
