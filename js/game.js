@@ -16,27 +16,33 @@ function play_game() {
   var player_input = generate_player_input(working_game, game_state);
   var player_memory = generate_player_plan(working_game, player_input);
 
-  if (verbose) {
-    addToGameOutput("Found a checked checkbox!\n");
-  }
-
   // Main loop
   var keep_going = true;
   var time_step = 0;
   var max_time = 20;
   while (keep_going) {
     time_step += 1;
+
+    if (verbose) {
+      addToGameOutput("## STEP " + time_step + " ##\n")
+      addToGameOutput("Player input:\n" + player_input + "\n")
+      addToGameOutput("Player memory:\n" + player_memory + "\n")
+    }
+
     // Check if player's program is stratified and simple
     var program_to_check = player_input + player_memory;
     program_to_check += working_game['level_settings'];
     program_to_check += working_game['player_move_program'];
     if (!check_if_stratified_and_simple(program_to_check)) {
       keep_going = false;
-      addToGameOutput("PROGRAM TOO COMPLICATED..\n")
+      addToGameOutput("LOSE! (program not simple)\n")
       break;
     }
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
+    if (verbose) {
+      addToGameOutput("Player moves:\n" + player_moves + "\n")
+    }
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
@@ -93,9 +99,6 @@ function generate_level() {
     level_state = "";
     level_settings = "";
   }
-
-  addToGameOutput("Level state:\n" + level_state + "\n")
-  addToGameOutput("Level settings:\n" + level_settings + "\n")
 }
 
 // Generate initial game state from level state
@@ -105,7 +108,6 @@ function generate_initial_game_state(working_game) {
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["at_time"]);
-    addToGameOutput("Initial state:\n" + answer_set_to_facts(output) + "\n")
     return answer_set_to_facts(output);
   } else {
     return "";
@@ -123,7 +125,6 @@ function generate_player_input(working_game, game_state) {
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["observe"]);
     output = answer_set_to_facts(output);
-    addToGameOutput("Player input:\n" + output + "\n")
     return output;
   } else {
     return "";
@@ -139,7 +140,6 @@ function generate_player_plan(working_game, player_input) {
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["plan"]);
     output = answer_set_to_facts(output);
-    addToGameOutput("Player plan:\n" + output + "\n")
     return output;
   } else {
     return "";
@@ -154,10 +154,8 @@ function generate_player_move(working_game, player_input) {
   if (answer_set) {
     var player_moves = filter_answer_set(answer_set, ["do"]);
     player_moves = answer_set_to_facts(player_moves);
-    addToGameOutput("Player moves:\n" + player_moves + "\n")
     var memory_updates = filter_answer_set(answer_set, ["remember","forget"]);
     memory_updates = answer_set_to_facts(memory_updates);
-    addToGameOutput("Player memory updates:\n" + memory_updates + "\n")
     return {
       player_moves: player_moves,
       memory_updates: memory_updates
@@ -194,7 +192,6 @@ function update_player_memory(player_memory, memory_updates) {
   } else {
     return player_memory;
   }
-  addToGameOutput("New player memory:\n" + output + "\n")
   return output;
 }
 
@@ -238,7 +235,6 @@ function generate_next_state(working_game, game_state, player_moves) {
     output = answer_set_to_facts(output);
   }
 
-  addToGameOutput("Game state:\n" + output + "\n")
   return output;
 }
 
