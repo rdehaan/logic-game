@@ -24,7 +24,7 @@ function generate_level() {
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
   parts = preprocessed.split("RANDOM");
   for (let i = 0; i < parts.length; i++) {
-    if (i % 2 == 0) {
+    if (i % 2 == 1) {
       console.log("PROCESSING: " + parts[i]);
       nums = parts[i].split(",");
       console.log("nums[0]: " + Number(nums[0]));
