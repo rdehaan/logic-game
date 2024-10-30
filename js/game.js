@@ -11,9 +11,30 @@ function play_game() {
   working_game['level_state'] = level_state;
   working_game['level_settings'] = level_settings;
 
-  game_state = generate_initial_game_state(working_game);
-  player_input = generate_player_input(working_game, game_state);
-  player_plan = generate_player_plan(working_game, player_input);
+  var game_state = generate_initial_game_state(working_game);
+  var player_input = generate_player_input(working_game, game_state);
+  var player_memory = generate_player_plan(working_game, player_input);
+
+  // Main loop
+  var keep_going = true;
+  var time_step = 0;
+  var max_time = 20;
+  while (keep_going) {
+    time_step += 1;
+    // Generate player's input for next move
+    if (i > 1) {
+      player_input = generate_player_input(working_game, game_state);
+    }
+    // Check if player's program is stratified and simple
+    var program_to_check = player_input + player_memory;
+    program_to_check += working_game['level_settings'];
+    program_to_check += working_game['player_move_program'];
+    if (!check_if_stratified_and_simple(program_to_check)) {
+      keep_going = false;
+      addToGameOutput("PROGRAM TOO COMPLICATED..\n")
+      break;
+    }
+  }
 }
 
 // Generate random integer in given range
