@@ -19,7 +19,7 @@ function play_game() {
   // Main loop
   var keep_going = true;
   var time_step = 0;
-  var max_time = 20;
+  var max_time = 50;
   while (keep_going) {
     time_step += 1;
 

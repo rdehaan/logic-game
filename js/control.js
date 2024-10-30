@@ -6,6 +6,7 @@ var level_settings = "";
 function load_game() {
   load_game_from_path(example_games.value);
   load_status.innerText = "Loading successful.."
+  reset_debugging();
 }
 
 function load_game_from_path(path) {
@@ -23,7 +24,6 @@ function load_game_from_path(path) {
       level_settings = game['level_settings'];
     }
   }
-  reset_debugging();
   request.open("GET", path, true);
   request.send();
 }
@@ -56,6 +56,7 @@ async function load_game_from_file(event) {
   nature_program.setValue(game['nature_program'], 1);
   goal_program.setValue(game['goal_program'], 1);
   upload_status.innerText = "Loading successful.."
+  reset_debugging();
 }
 
 // Downloading game currently in memory
@@ -86,5 +87,3 @@ function save(filename, data) {
         document.body.removeChild(elem);
     }
 }
-
-load_game_from_path('examples/flag1.json');
