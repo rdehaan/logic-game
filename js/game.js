@@ -32,11 +32,10 @@ function play_game() {
     }
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
-    console.log("point 6");
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
-    // game_state = generate_next_state(working_game, game_state, player_moves);
+    game_state = generate_next_state(working_game, game_state, player_moves);
 
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
@@ -167,8 +166,6 @@ function update_player_memory(player_memory, memory_updates) {
   program += "new_memory(X) :- remember(X).\n"
   program += player_memory;
   program += memory_updates;
-  console.log("program:");
-  console.log(program);
   answer_set = get_answer_set(program);
   if (answer_set) {
     var intermediate = filter_answer_set(answer_set, ["plan","new_memory"]);
@@ -176,8 +173,6 @@ function update_player_memory(player_memory, memory_updates) {
   } else {
     return player_memory;
   }
-  console.log("intermediate:")
-  console.log(intermediate)
   program = "memory(X) :- new_memory(X).\n";
   answer_set = get_answer_set(program);
   if (answer_set) {
@@ -221,7 +216,7 @@ function generate_next_state(working_game, game_state, player_moves) {
   }
 
   // Generate next state based on 'nexts'
-  program = "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T)\n"
+  program = "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).\n"
   program += game_state;
   program += nexts;
   answer_set = get_answer_set(program);
