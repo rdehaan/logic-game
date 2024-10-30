@@ -17,12 +17,15 @@ function play_game() {
 // Generate the level
 function generate_level() {
   program = level_gen_program.getValue();
+  preprocessed = program.replace(/RANDINT(\d+,\d+)/g, "asdf");
+  console.log(preprocessed);
   // TODO: preprocess_program
   answer_set = get_answer_set(program);
   if (answer_set) {
     level_state = filter_answer_set(answer_set, ["at"]);
     level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
-    console.log(level_state);
-    console.log(level_settings);
+  } else {
+    level_state = "";
+    level_settings = "";
   }
 }
