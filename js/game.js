@@ -50,12 +50,13 @@ function generate_level() {
   addToGameOutput("Level settings:\n" + level_settings + "\n")
 }
 
-function generate_initial_state() {
+// Generate initial state from level state
+function generate_initial_state(level_state) {
   transfer_program = "at_time(0,R,C,O) :- at(R,C,O).\n"
   answer_set = get_answer_set(level_state + transfer_program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["at_time"]);
-    addToGameOutput("Initial state:\n" + output + "\n")
+    addToGameOutput("Initial state:\n" + answer_set_to_facts(output) + "\n")
     return answer_set_to_facts(output);
   } else {
     return "";
