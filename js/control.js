@@ -49,12 +49,6 @@ function update_interface() {
     clear_grid();
   }
 }
-function do_generate2() {
-  level_state = "at(1,1,player). at(5,7,flag).";
-  level_settings = "setting(grid_width(8)). setting(grid_height(6)). setting(time_bound(15)). setting(col(1)). setting(col(2)). setting(col(3)). setting(col(4)). setting(col(5)). setting(col(6)). setting(col(7)). setting(col(8)). setting(row(1)). setting(row(2)). setting(row(3)). setting(row(4)). setting(row(5)). setting(row(6)). decorate(game_type,grid). decorate(label,flag,font_f024). decorate(label,player,font_f007).";
-  update_interface();
-  show_grid(level_state + level_settings);
-}
 function do_generate() {
   generate_level();
   update_interface();
