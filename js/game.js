@@ -31,7 +31,7 @@ function play_game() {
     if (game_condition == "win") {
       keep_going = false;
       if (verbose) {
-        report += "## STEP " + (time_step+1) + " ##\n";
+        report += "## STEP " + time_step + " ##\n";
         report += "- Player input:\n" + player_input + "\n";
         report += "- Player memory:\n" + player_memory + "\n";
         show_grid(player_input + working_game["level_settings"]);
@@ -42,7 +42,7 @@ function play_game() {
     } else if (game_condition == "lose") {
       keep_going = false;
       if (verbose) {
-        report = "## STEP " + (time_step+1) + " ##\n";
+        report = "## STEP " + time_step + " ##\n";
         report += "- Player input:\n" + player_input + "\n";
         report += "- Player memory:\n" + player_memory + "\n";
         show_grid(player_input + working_game["level_settings"]);
@@ -53,7 +53,7 @@ function play_game() {
     }
 
     if (verbose) {
-      var report = "## STEP " + (time_step+1) + " ##\n";
+      var report = "## STEP " + time_step + " ##\n";
       report += "- Player input:\n" + player_input + "\n";
       report += "- Player memory:\n" + player_memory + "\n";
       show_grid(player_input + working_game["level_settings"]);
