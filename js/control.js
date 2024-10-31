@@ -9,7 +9,6 @@ var stop_button = document.getElementById('stop-button');
 var speed_selector = document.getElementById('speed-selector');
 
 // Moving between different states of the game engine
-var level_gen_locked = false;
 var speed;
 function select_speed() {
   speed = speed_selector.value;
@@ -17,14 +16,12 @@ function select_speed() {
 }
 select_speed();
 function lock_level_generation() {
-  level_gen_locked = true;
   lock_button.disabled = true;
   unlock_button.disabled = false;
   generate_button.disabled = false;
   level_gen_program.setReadOnly(true);
 }
 function unlock_level_generation() {
-  level_gen_locked = false;
   lock_button.disabled = false;
   unlock_button.disabled = true;
   generate_button.disabled = true;
@@ -70,6 +67,11 @@ function do_play() {
   play_button.disabled = true;
   pause_button.disabled = false;
   stop_button.disabled = false;
+  visibility_program.setReadOnly(true);
+  nature_program.setReadOnly(true);
+  goal_program.setReadOnly(true);
+  player_plan_program.setReadOnly(true);
+  player_move_program.setReadOnly(true);
   clearGameOutput();
   play_game();
 }
@@ -80,6 +82,11 @@ function end_playing() {
   play_button.disabled = false;
   pause_button.disabled = true;
   stop_button.disabled = true;
+  visibility_program.setReadOnly(false);
+  nature_program.setReadOnly(false);
+  goal_program.setReadOnly(false);
+  player_plan_program.setReadOnly(false);
+  player_move_program.setReadOnly(false);
 }
 function do_pause() {
 }
@@ -89,7 +96,6 @@ function reset_debugging() {
   clearOutput();
   clearGameOutput();
 }
-
 
 // Variables for generated level
 var level_state = "";
@@ -115,6 +121,7 @@ function load_game_from_path(path) {
       level_state = game['level_state'];
       level_settings = game['level_settings'];
       reset_debugging();
+      update_interface();
     }
   }
   request.open("GET", path, true);
@@ -152,6 +159,7 @@ async function load_game_from_file(event) {
   level_settings = game['level_settings'];
   upload_status.innerText = "Done loading.."
   reset_debugging();
+  update_interface();
 }
 
 // Downloading game currently in memory
