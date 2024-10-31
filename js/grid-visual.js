@@ -125,6 +125,12 @@ function visualize_grid(grid_ds) {
 function show_grid(answer_set) {
   visualize_grid(compute_grid_ds(answer_set));
 }
+function clear_grid() {
+  var visual_elem = document.getElementById("visual");
+  visual_elem.innerHTML = '';
+  visual_elem.className = '';
+  visual_elem.style.setProperty("width", "0");
+}
 
 // Test it..
 // answer_set = `

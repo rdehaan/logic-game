@@ -23,6 +23,28 @@
       <div id="visual"></div>
     </div>
 
+    <div class="game-controls">
+      <div>
+        <button onclick="do_generate2()" class="control-button" id="generate-button" disabled>&#x21BA; Generate level</button>
+        &nbsp;
+        <button onclick="clear_level()" class="control-button" id="clear-button" disabled>&#x239A; Clear level</button>
+        &nbsp;&mdash;&nbsp;
+        <button onclick="do_play()" class="control-button" id="play-button" disabled>&#x23F5; Play</button>
+        &nbsp;
+        <button onclick="do_pause()" class="control-button" id="pause-button" disabled>&#x23F8; Pause</button>
+        &nbsp;
+        <button onclick="do_stop()" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
+        &nbsp;&mdash;&nbsp;
+        Speed:&nbsp;
+        <select id="speed">
+          <option value="2000">Slow</option>
+          <option value="1000">Medium</option>
+          <option value="500" selected>Fast</option>
+          <option value="250">Very fast</option>
+        </select>
+      </div>
+    </div>
+
     <input id="tab1" type="radio" name="tabs" onChange="change_tabs()" checked>
     <label for="tab1" name="tabs">Control</label>
 
@@ -40,7 +62,7 @@
 
     <section id="content1">
       <p>
-        Bacon ipsum dolor sit amet beef venison beef ribs kielbasa. Sausage pig leberkas, t-bone sirloin shoulder bresaola. Frankfurter rump porchetta ham. Pork belly prosciutto brisket meatloaf short ribs.
+        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
       </p>
 
       <h3>Load game</h3>
@@ -57,7 +79,7 @@
           <option value="examples/flag6.json">Flag 6</option>
         </optgroup>
       </select>
-      <br>
+      &nbsp;
       <button onclick="load_game()" class="control-button">Load</button>
       <p id="load_status"></p>
 
@@ -74,14 +96,15 @@
     </section>
 
     <section id="content2">
-      <!-- <p>
-        Bacon ipsum dolor sit amet landjaeger sausage brisket, jerky drumstick fatback boudin ball tip turducken. Pork belly meatball t-bone bresaola tail filet mignon kevin turkey ribeye shank flank doner cow kielbasa shankle. Pig swine chicken hamburger, tenderloin turkey rump ball tip sirloin frankfurter meatloaf boudin brisket ham hock. Hamburger venison brisket tri-tip andouille pork belly ball tip short ribs biltong meatball chuck. Pork chop ribeye tail short ribs, beef hamburger meatball kielbasa rump corned beef porchetta landjaeger flank. Doner rump frankfurter meatball meatloaf, cow kevin pork pork loin venison fatback spare ribs salami beef ribs.
-      </p> -->
-
       <h3>Level generation</h3>
       <p>
         This program expresses how levels are generated.
       </p>
+      <div class="inline-controls" >
+        <button onclick="lock_level_generation()" class="control-button" id="lock-button">&#x25CF; Lock</button>
+        &nbsp;
+        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
+      </div>
       <pre id="level_gen_program"></pre>
 
       <h3>Visibility</h3>
@@ -103,10 +126,6 @@
         This program expresses when the game is won or lost.
       </p>
       <pre id="goal_program"></pre>
-
-      <!-- <p>
-        Jerky jowl pork chop tongue, kielbasa shank venison. Capicola shank pig ribeye leberkas filet mignon brisket beef kevin tenderloin porchetta. Capicola fatback venison shank kielbasa, drumstick ribeye landjaeger beef kevin tail meatball pastrami prosciutto pancetta. Tail kevin spare ribs ground round ham ham hock brisket shoulder. Corned beef tri-tip leberkas flank sausage ham hock filet mignon beef ribs pancetta turkey.
-      </p> -->
     </section>
 
     <section id="content3">
@@ -127,10 +146,10 @@
 
     <section id="content4">
       <p>
-        Bacon ipsum dolor sit amet landjaeger sausage brisket, jerky drumstick fatback boudin ball tip turducken. Pork belly meatball t-bone bresaola tail filet mignon kevin turkey ribeye shank flank doner cow kielbasa shankle. Pig swine chicken hamburger, tenderloin turkey rump ball tip sirloin frankfurter meatloaf boudin brisket ham hock. Hamburger venison brisket tri-tip andouille pork belly ball tip short ribs biltong meatball chuck. Pork chop ribeye tail short ribs, beef hamburger meatball kielbasa rump corned beef porchetta landjaeger flank. Doner rump frankfurter meatball meatloaf, cow kevin pork pork loin venison fatback spare ribs salami beef ribs.
+        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
       </p>
       <p>
-        Jerky jowl pork chop tongue, kielbasa shank venison. Capicola shank pig ribeye leberkas filet mignon brisket beef kevin tenderloin porchetta. Capicola fatback venison shank kielbasa, drumstick ribeye landjaeger beef kevin tail meatball pastrami prosciutto pancetta. Tail kevin spare ribs ground round ham ham hock brisket shoulder. Corned beef tri-tip leberkas flank sausage ham hock filet mignon beef ribs pancetta turkey.
+        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
       </p>
     </section>
 
@@ -144,8 +163,6 @@
       <label for="verbose"> Verbose</label><br>
       <h3>Gameplay</h3>
       <button onclick="reset_debugging()" class="control-button">Reset</button>
-      <br>
-      <button onclick="do_generate()" class="control-button">Generate</button>
       <br>
       <button onclick="do_play()" class="control-button">Play</button>
     </section>

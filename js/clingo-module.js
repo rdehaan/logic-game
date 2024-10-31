@@ -157,16 +157,6 @@ function answer_set_to_facts(answer_set) {
 //
 // }
 
-function do_generate() {
-  clearGameOutput();
-  addToGameOutput("## LEVEL GENERATED ##\n")
-  generate_level();
-}
-function do_play() {
-  clearGameOutput();
-  play_game();
-}
-
 var next_line_will_be_answer_set = false;
 var constructed_answer_set = null;
 var currently_reifying = false;

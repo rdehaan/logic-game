@@ -38,6 +38,7 @@ function play_game() {
       show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("WIN!\n");
+      end_playing();
       return;
     } else if (game_condition == "lose") {
       keep_going = false;
@@ -49,6 +50,7 @@ function play_game() {
       show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("LOSE!\n");
+      end_playing();
       return;
     }
 
@@ -67,6 +69,7 @@ function play_game() {
       keep_going = false;
       addToGameOutput(report);
       addToGameOutput("LOSE! (program not simple)\n")
+      end_playing();
       return;
     }
     // Generate player moves and memory updates
@@ -293,16 +296,4 @@ function analyze_state(working_game, game_state) {
     }
   }
   return "";
-}
-
-function reset_debugging() {
-  clearOutput();
-  clearGameOutput();
-  console.log(level_state);
-  if (level_state) {
-    addToGameOutput("## LEVEL PRESENT ##\n");
-    show_grid(level_state + level_settings);
-  } else {
-    addToGameOutput("## NO LEVEL YET ##\n");
-  }
 }

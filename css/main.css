@@ -154,6 +154,14 @@ input[type="file"] {
   cursor: pointer;
   background: #fff;
 }
+.control-button:disabled {
+  border: 1px solid #ccc;
+  display: inline-block;
+  padding: 6px 12px;
+  cursor: pointer;
+  background: #eee;
+  color: #aaa;
+}
 
 #output {
   margin: 10px auto;
@@ -179,6 +187,12 @@ pre {
     padding-right: 0;
     padding-left: 0; }
 
-.visual-container {
-  text-align: center;
+.game-controls {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 2em;
+}
+
+.inline-controls {
+  padding-bottom: 1em;
 }
