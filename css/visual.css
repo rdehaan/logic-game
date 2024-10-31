@@ -1,0 +1,32 @@
+.visual-container {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 2em;
+}
+
+.grid-visual {
+  --columns-row: 2;
+  --font-size: 1em;
+  display: grid;
+  grid-template-columns: repeat(var(--columns-row), 1fr);
+  /* grid-template-rows: repeat(var(--columns-row), 1fr); */
+  min-width: 400px;
+  max-height: 400px;
+  width: 40%;
+  aspect-ratio: 16/9;
+  font-family: FontAwesome;
+  border: 1px solid #000;
+}
+.grid-visual .div {
+  border: 1px solid #000;
+}
+.grid-visual-cell {
+  text-align: center;
+  display: table;
+  border: 1px solid #000;
+}
+.grid-visual span {
+  display: table-cell;
+  vertical-align: middle;
+  font-size: var(--font-size, 1em);
+}

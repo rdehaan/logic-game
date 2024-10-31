@@ -9,6 +9,7 @@
   <title>A logic game</title>
 
   <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/visual.css">
 
   <script src="https://cdn.jsdelivr.net/npm/d3-require@1"></script>
 </head>
@@ -18,7 +19,9 @@
   <h1>A Logic Game</h1>
 
   <main>
-    <p>[Here the visualization will appear.]</p>
+    <div class="visual-container" id="visual-container">
+      <div id="visual"></div>
+    </div>
 
     <input id="tab1" type="radio" name="tabs" onChange="change_tabs()" checked>
     <label for="tab1" name="tabs">Control</label>
@@ -155,6 +158,7 @@
   <script type="text/javascript" src="js/control.js" charset="utf-8"></script>
   <script type="text/javascript" src="js/game.js" charset="utf-8"></script>
   <script type="text/javascript" src="js/init.js" charset="utf-8"></script>
+  <script type="text/javascript" src="js/grid-visual.js" charset="utf-8"></script>
 
 </body>
 </html>

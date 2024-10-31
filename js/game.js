@@ -20,7 +20,8 @@ function play_game() {
   var keep_going = true;
   var time_step = 0;
   var max_time = 50;
-  while (keep_going) {
+
+  function main_loop() {
     time_step += 1;
 
     if (verbose) {
@@ -74,7 +75,14 @@ function play_game() {
       keep_going = false;
       addToGameOutput("TIMEOUT!")
     }
+
+    // Keep going as needed, with a delay
+    if (keep_going) {
+      setTimeout(main_loop, 1000);
+    }
   }
+  // Start main loop
+  main_loop();
 }
 
 // Generate random integer in given range
