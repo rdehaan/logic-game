@@ -85,7 +85,7 @@ function play_game() {
 
     // Keep going as needed, with a delay
     if (keep_going) {
-      setTimeout(main_loop, 1000);
+      setTimeout(main_loop, 500);
     }
   }
   // Start main loop
@@ -213,6 +213,7 @@ function update_player_memory(player_memory, memory_updates) {
     return player_memory;
   }
   program = "memory(X) :- new_memory(X).\n";
+  program += intermediate;
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["plan","memory"]);
