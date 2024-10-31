@@ -28,7 +28,7 @@ function play_game() {
       addToGameOutput("## STEP " + time_step + " ##\n")
       addToGameOutput("- Player input:\n" + player_input + "\n")
       addToGameOutput("- Player memory:\n" + player_memory + "\n")
-      visualize_grid(compute_grid_ds(player_input));
+      show_grid(player_input + working_game['level_settings']));
     }
 
     // Check if player's program is stratified and simple
@@ -59,7 +59,7 @@ function play_game() {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n")
         addToGameOutput("- Player input:\n" + player_input + "\n")
         addToGameOutput("- Player memory:\n" + player_memory + "\n")
-        visualize_grid(compute_grid_ds(player_input));
+        show_grid(player_input + working_game['level_settings']));
       }
       addToGameOutput("WIN!")
     } else if (game_condition == "lose") {
@@ -68,7 +68,7 @@ function play_game() {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n")
         addToGameOutput("- Player input:\n" + player_input + "\n")
         addToGameOutput("- Player memory:\n" + player_memory + "\n")
-        visualize_grid(compute_grid_ds(player_input));
+        show_grid(player_input + working_game['level_settings']));
       }
       addToGameOutput("LOSE!")
     }
