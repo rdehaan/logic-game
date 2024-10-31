@@ -293,7 +293,7 @@ function reset_debugging() {
   clearGameOutput();
   if (level_state) {
     addToGameOutput("## LEVEL PRESENT ##\n");
-    show_grid(working_game["level_state"] + working_game["level_settings"]);
+    show_grid(level_state + level_settings);
   } else {
     addToGameOutput("## NO LEVEL YET ##\n");
   }
