@@ -29,5 +29,5 @@
 .grid-visual span {
   display: table-cell;
   vertical-align: middle;
-  font-size: var(--font-size, 1em);
+  font-size: calc(var(--font-size, 1em) + 10pt);
 }
