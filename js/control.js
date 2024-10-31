@@ -14,7 +14,6 @@ var speed_selector = document.getElementById('speed-selector');
 var speed;
 function select_speed() {
   speed = speed_selector.value;
-  console.log(speed);
 }
 select_speed();
 function lock_level_generation() {
@@ -54,6 +53,7 @@ function update_interface() {
     partial_game['level_state'] = level_state;
     partial_game['level_settings'] = level_settings;
     partial_game['visibility_program'] = visibility_program.getValue();
+    console.log(partial_game);
     var game_state = generate_initial_game_state(partial_game);
     var player_input = generate_player_input(partial_game, game_state);
     show_grid(player_input + level_settings);
