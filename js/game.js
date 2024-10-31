@@ -24,6 +24,30 @@ function play_game() {
   function main_loop() {
     time_step += 1;
 
+    // Check if game won/lost already
+    game_condition = analyze_state(working_game, game_state);
+    if (game_condition == "win") {
+      keep_going = false;
+      if (verbose) {
+        addToGameOutput("## STEP " + (time_step+1) + " ##\n");
+        addToGameOutput("- Player input:\n" + player_input + "\n");
+        addToGameOutput("- Player memory:\n" + player_memory + "\n");
+        show_grid(player_input + working_game['level_settings']);
+      }
+      addToGameOutput("WIN!");
+      return;
+    } else if (game_condition == "lose") {
+      keep_going = false;
+      if (verbose) {
+        addToGameOutput("## STEP " + (time_step+1) + " ##\n");
+        addToGameOutput("- Player input:\n" + player_input + "\n");
+        addToGameOutput("- Player memory:\n" + player_memory + "\n");
+        show_grid(player_input + working_game['level_settings']);
+      }
+      addToGameOutput("LOSE!");
+      return;
+    }
+
     if (verbose) {
       addToGameOutput("## STEP " + time_step + " ##\n")
       addToGameOutput("- Player input:\n" + player_input + "\n")
@@ -51,27 +75,6 @@ function play_game() {
     game_state = generate_next_state(working_game, game_state, player_moves);
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
-    // Check if game won/lost already
-    game_condition = analyze_state(working_game, game_state);
-    if (game_condition == "win") {
-      keep_going = false;
-      if (verbose) {
-        addToGameOutput("## STEP " + (time_step+1) + " ##\n")
-        addToGameOutput("- Player input:\n" + player_input + "\n")
-        addToGameOutput("- Player memory:\n" + player_memory + "\n")
-        show_grid(player_input + working_game['level_settings']);
-      }
-      addToGameOutput("WIN!")
-    } else if (game_condition == "lose") {
-      keep_going = false;
-      if (verbose) {
-        addToGameOutput("## STEP " + (time_step+1) + " ##\n")
-        addToGameOutput("- Player input:\n" + player_input + "\n")
-        addToGameOutput("- Player memory:\n" + player_memory + "\n")
-        show_grid(player_input + working_game['level_settings']);
-      }
-      addToGameOutput("LOSE!")
-    }
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
