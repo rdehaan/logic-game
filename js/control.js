@@ -1,6 +1,8 @@
 // Handles for buttons
 var lock_button = document.getElementById('lock-button');
 var unlock_button = document.getElementById('unlock-button');
+var lock_button2 = document.getElementById('lock-button2');
+var unlock_button2 = document.getElementById('unlock-button2');
 var generate_button = document.getElementById('generate-button');
 var clear_button = document.getElementById('clear-button');
 var play_button = document.getElementById('play-button');
@@ -18,12 +20,16 @@ select_speed();
 function lock_level_generation() {
   lock_button.disabled = true;
   unlock_button.disabled = false;
+  lock_button2.disabled = true;
+  unlock_button2.disabled = false;
   generate_button.disabled = false;
   level_gen_program.setReadOnly(true);
 }
 function unlock_level_generation() {
   lock_button.disabled = false;
   unlock_button.disabled = true;
+  lock_button2.disabled = false;
+  unlock_button2.disabled = true;
   generate_button.disabled = true;
   clear_button.disabled = true;
   play_button.disabled = true;
@@ -56,6 +62,7 @@ function do_generate() {
 }
 function do_play() {
   unlock_button.disabled = true;
+  unlock_button2.disabled = true;
   clear_button.disabled = true;
   generate_button.disabled = true;
   play_button.disabled = true;
@@ -71,6 +78,7 @@ function do_play() {
 }
 function end_playing() {
   unlock_button.disabled = false;
+  unlock_button2.disabled = false;
   clear_button.disabled = false;
   generate_button.disabled = false;
   play_button.disabled = false;
