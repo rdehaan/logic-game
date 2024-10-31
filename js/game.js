@@ -93,7 +93,7 @@ function play_game() {
 
     // Keep going as needed, with a delay
     if (keep_going) {
-      setTimeout(main_loop, 500);
+      setTimeout(main_loop, speed);
     }
   }
   // Start main loop

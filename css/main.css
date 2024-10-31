@@ -163,10 +163,17 @@ input[type="file"] {
   color: #aaa;
 }
 
-#output {
+#clingo-output {
   margin: 10px auto;
   font: 12px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
   text-align:left;
+}
+
+#game-output {
+  margin: 10px auto;
+  font: 12px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  text-align:left;
+  max-height: 200px;
 }
 
 pre,

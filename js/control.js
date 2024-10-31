@@ -6,9 +6,15 @@ var clear_button = document.getElementById('clear-button');
 var play_button = document.getElementById('play-button');
 var pause_button = document.getElementById('pause-button');
 var stop_button = document.getElementById('stop-button');
+var speed_selector = document.getElementById('speed-selector');
 
 // Moving between different states of the game engine
 var level_gen_locked = false;
+var speed;
+function select_speed() {
+  speed = speed_selector.value;
+}
+select_speed();
 function lock_level_generation() {
   level_gen_locked = true;
   lock_button.disabled = true;
