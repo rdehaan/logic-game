@@ -43,7 +43,7 @@ p {
 }
 
 main {
-  min-width: 280px;
+  min-width: 250px;
   max-width: 1400px;
   padding: 50px;
   margin: 0 auto;
