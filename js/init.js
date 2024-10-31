@@ -1,2 +1,4 @@
-load_game_from_path('examples/flag1.json');
-reset_debugging();
+document.addEventListener("DOMContentLoaded", function() {
+  load_game_from_path('examples/flag1.json');
+  reset_debugging();
+});
