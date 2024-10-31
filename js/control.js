@@ -68,7 +68,6 @@ function update_interface() {
 function do_generate() {
   generate_level();
   update_interface();
-  show_grid(level_state + level_settings);
 }
 function do_play() {
   unlock_button.disabled = true;
