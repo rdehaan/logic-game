@@ -86,7 +86,8 @@ function visualize_grid(grid_ds) {
   let width = grid_ds["width"];
   let num_cells = height * width;
 
-  visual_elem.style.setProperty("--columns-row", width);
+  visual_elem.style.setProperty("--num-cols", width);
+  visual_elem.style.setProperty("--num-rows", height);
 
   visual_elem.style.setProperty("width", "80%");
 
@@ -128,8 +129,8 @@ function show_grid(answer_set) {
 }
 
 // Test it..
-// answer_set = `
-// observe(at(5,7,flag)) observe(at(1,1,player)) observe(at(1,1,woo)) observe(fog(2,3))  setting(grid_width(8)) setting(grid_height(6)) setting(time_bound(15)) setting(col(1)) setting(col(2)) setting(col(3)) setting(col(4)) setting(col(5)) setting(col(6)) setting(col(7)) setting(col(8)) setting(row(1)) setting(row(2)) setting(row(3)) setting(row(4)) setting(row(5)) setting(row(6)) decorate(game_type,grid) decorate(label,flag,font_f024) decorate(label,woo,font_f085) decorate(label,player,font_f007)
-// `
-// grid_ds = compute_grid_ds(answer_set);
-// visualize_grid(grid_ds);
+answer_set = `
+observe(at(5,7,flag)) observe(at(1,1,player)) observe(at(1,1,woo)) observe(fog(2,3))  setting(grid_width(8)) setting(grid_height(6)) setting(time_bound(15)) setting(col(1)) setting(col(2)) setting(col(3)) setting(col(4)) setting(col(5)) setting(col(6)) setting(col(7)) setting(col(8)) setting(row(1)) setting(row(2)) setting(row(3)) setting(row(4)) setting(row(5)) setting(row(6)) decorate(game_type,grid) decorate(label,flag,font_f024) decorate(label,woo,font_f085) decorate(label,player,font_f007)
+`
+grid_ds = compute_grid_ds(answer_set);
+visualize_grid(grid_ds);

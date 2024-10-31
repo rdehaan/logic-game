@@ -5,11 +5,12 @@
 }
 
 .grid-visual {
-  --columns-row: 2;
+  --num-cols: 2;
+  --num-rows: 6;
   --font-size: 1em;
   display: grid;
-  grid-template-columns: repeat(var(--columns-row), 1fr);
-  /* grid-template-rows: repeat(var(--columns-row), 1fr); */
+  grid-template-columns: repeat(var(--num-cols), 1fr);
+  grid-template-rows: repeat(var(--num-rows), 1fr);
   min-width: 400px;
   max-height: 400px;
   width: 40%;
