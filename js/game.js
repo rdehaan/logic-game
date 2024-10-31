@@ -28,6 +28,7 @@ function play_game() {
       addToGameOutput("## STEP " + time_step + " ##\n")
       addToGameOutput("- Player input:\n" + player_input + "\n")
       addToGameOutput("- Player memory:\n" + player_memory + "\n")
+      addToGameOutput("...");
       show_grid(player_input + working_game['level_settings']));
     }
 
