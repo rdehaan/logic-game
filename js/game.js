@@ -119,7 +119,7 @@ function generate_level() {
   if (answer_set) {
     level_state = filter_answer_set(answer_set, ["at"]);
     level_state = answer_set_to_facts(level_state);
-    level_settings = filter_answer_set(answer_set, ["setting", "decorate"]);
+    level_settings = filter_answer_set(answer_set, ["setting","decorate"]);
     level_settings = answer_set_to_facts(level_settings);
   } else {
     level_state = "";
@@ -150,7 +150,7 @@ function generate_player_input(working_game, game_state) {
   program += working_game['level_settings'];
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["observe", "setting"]);
+    var output = filter_answer_set(answer_set, ["observe","setting","decorate"]);
     output = answer_set_to_facts(output);
     return output;
   } else {
