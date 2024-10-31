@@ -37,7 +37,7 @@ function play_game() {
     if (!check_if_stratified_and_simple(program_to_check)) {
       keep_going = false;
       addToGameOutput("LOSE! (program not simple)\n")
-      break;
+      return;
     }
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
