@@ -228,7 +228,7 @@ d3.require(`wasm-clingo@${version}`).then(Clingo => {
 
     Clingo(Module).then(clingo => {
         ClingoModule = clingo;
-        console.log("ready for clingo :)");
+        initalize_after_clingo_loaded();
     });
 
 });
