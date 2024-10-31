@@ -24,6 +24,7 @@ function lock_level_generation() {
   unlock_button2.disabled = false;
   generate_button.disabled = false;
   level_gen_program.setReadOnly(true);
+  visibility_program.setReadOnly(true);
 }
 function unlock_level_generation() {
   lock_button.disabled = false;
@@ -36,6 +37,7 @@ function unlock_level_generation() {
   pause_button.disabled = true;
   stop_button.disabled = true;
   level_gen_program.setReadOnly(false);
+  visibility_program.setReadOnly(false);
   clear_level();
   reset_debugging();
 }
@@ -48,7 +50,13 @@ function update_interface() {
   if (level_state) {
     clear_button.disabled = false;
     play_button.disabled = false;
-    show_grid(level_state + level_settings);
+    var partial_game = {};
+    partial_game['level_state'] = level_state;
+    partial_game['level_settings'] = level_settings;
+    partial_game['visibility_program'] = visibility_program.getValue();
+    var game_state = generate_initial_game_state(partial_game);
+    var player_input = generate_player_input(partial_game, game_state);
+    show_grid(player_input + level_settings);
   } else {
     clear_button.disabled = true;
     play_button.disabled = true;
