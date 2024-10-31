@@ -27,6 +27,7 @@ function unlock_level_generation() {
   stop_button.disabled = true;
   level_gen_program.setReadOnly(false);
   clear_level();
+  reset_debugging();
 }
 function clear_level() {
   level_state = "";
@@ -55,6 +56,7 @@ function do_generate() {
   show_grid(level_state + level_settings);
 }
 function do_play() {
+  unlock_button.disabled = true;
   clear_button.disabled = true;
   generate_button.disabled = true;
   play_button.disabled = true;
@@ -64,6 +66,7 @@ function do_play() {
   play_game();
 }
 function end_playing() {
+  unlock_button.disabled = false;
   clear_button.disabled = false;
   generate_button.disabled = false;
   play_button.disabled = false;
