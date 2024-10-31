@@ -5,8 +5,7 @@ var level_settings = "";
 // Loading games from file
 function load_game() {
   load_game_from_path(example_games.value);
-  load_status.innerText = "Loading successful.."
-  reset_debugging();
+  load_status.innerText = "Loading successful..";
 }
 
 function load_game_from_path(path) {
@@ -22,6 +21,7 @@ function load_game_from_path(path) {
       goal_program.setValue(game['goal_program'], 1);
       level_state = game['level_state'];
       level_settings = game['level_settings'];
+      reset_debugging();
     }
   }
   request.open("GET", path, true);
