@@ -293,6 +293,7 @@ function analyze_state(working_game, game_state) {
 function reset_debugging() {
   clearOutput();
   clearGameOutput();
+  console.log(level_state);
   if (level_state) {
     addToGameOutput("## LEVEL PRESENT ##\n");
     show_grid(level_state + level_settings);

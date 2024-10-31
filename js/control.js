@@ -21,7 +21,6 @@ function load_game_from_path(path) {
       nature_program.setValue(game['nature_program'], 1);
       goal_program.setValue(game['goal_program'], 1);
       level_state = game['level_state'];
-      console.log(level_state);
       level_settings = game['level_settings'];
     }
   }
