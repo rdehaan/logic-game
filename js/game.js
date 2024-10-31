@@ -125,6 +125,8 @@ function generate_level() {
     level_state = "";
     level_settings = "";
   }
+
+  reset_debugging();
 }
 
 // Generate initial game state from level state

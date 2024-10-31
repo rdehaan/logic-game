@@ -26,7 +26,6 @@ function load_game_from_path(path) {
   }
   request.open("GET", path, true);
   request.send();
-  reset_debugging();
 }
 
 file_input = document.getElementById('file_input');
