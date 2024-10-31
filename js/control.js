@@ -13,6 +13,7 @@ var level_gen_locked = false;
 var speed;
 function select_speed() {
   speed = speed_selector.value;
+  console.log(speed);
 }
 select_speed();
 function lock_level_generation() {
