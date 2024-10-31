@@ -53,11 +53,8 @@ function update_interface() {
     partial_game['level_state'] = level_state;
     partial_game['level_settings'] = level_settings;
     partial_game['visibility_program'] = visibility_program.getValue();
-    console.log(partial_game);
     var game_state = generate_initial_game_state(partial_game);
-    console.log(game_state);
     var player_input = generate_player_input(partial_game, game_state);
-    console.log(player_input);
     show_grid(player_input + level_settings);
   } else {
     clear_button.disabled = true;
