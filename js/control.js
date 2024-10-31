@@ -40,15 +40,16 @@ function clear_level() {
   level_state = "";
   level_settings = "";
   update_interface();
-  clear_grid();
 }
 function update_interface() {
   if (level_state) {
     clear_button.disabled = false;
     play_button.disabled = false;
+    show_grid(level_state + level_settings);
   } else {
     clear_button.disabled = true;
     play_button.disabled = true;
+    clear_grid();
   }
 }
 function do_generate2() {
