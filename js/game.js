@@ -24,34 +24,38 @@ function play_game() {
   function main_loop() {
     time_step += 1;
 
+    var report = "";
+
     // Check if game won/lost already
     game_condition = analyze_state(working_game, game_state);
     if (game_condition == "win") {
       keep_going = false;
       if (verbose) {
-        addToGameOutput("## STEP " + (time_step+1) + " ##\n");
-        addToGameOutput("- Player input:\n" + player_input + "\n");
-        addToGameOutput("- Player memory:\n" + player_memory + "\n");
+        report += "## STEP " + (time_step+1) + " ##\n";
+        report += "- Player input:\n" + player_input + "\n";
+        report += "- Player memory:\n" + player_memory + "\n";
         show_grid(player_input + working_game["level_settings"]);
       }
+      addToGameOutput(report);
       addToGameOutput("WIN!");
       return;
     } else if (game_condition == "lose") {
       keep_going = false;
       if (verbose) {
-        addToGameOutput("## STEP " + (time_step+1) + " ##\n");
-        addToGameOutput("- Player input:\n" + player_input + "\n");
-        addToGameOutput("- Player memory:\n" + player_memory + "\n");
+        report = "## STEP " + (time_step+1) + " ##\n";
+        report += "- Player input:\n" + player_input + "\n";
+        report += "- Player memory:\n" + player_memory + "\n";
         show_grid(player_input + working_game["level_settings"]);
       }
+      addToGameOutput(report);
       addToGameOutput("LOSE!");
       return;
     }
 
     if (verbose) {
-      addToGameOutput("## STEP " + time_step + " ##\n")
-      addToGameOutput("- Player input:\n" + player_input + "\n")
-      addToGameOutput("- Player memory:\n" + player_memory + "\n")
+      var report = "## STEP " + (time_step+1) + " ##\n";
+      report += "- Player input:\n" + player_input + "\n";
+      report += "- Player memory:\n" + player_memory + "\n";
       show_grid(player_input + working_game["level_settings"]);
     }
 
@@ -61,14 +65,15 @@ function play_game() {
     program_to_check += working_game['player_move_program'];
     if (!check_if_stratified_and_simple(program_to_check)) {
       keep_going = false;
+      addToGameOutput(report);
       addToGameOutput("LOSE! (program not simple)\n")
       return;
     }
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
     if (verbose) {
-      addToGameOutput("- Player moves:\n" + player_moves + "\n")
-      addToGameOutput("- Player memory updates:\n" + memory_updates + "\n")
+      report += "- Player moves:\n" + player_moves + "\n";
+      addToGameOutput(report);
     }
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);

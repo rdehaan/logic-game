@@ -51,7 +51,7 @@ function addToGameOutput(text) {
   if (game_output == "") {
       game_output += text;
   } else {
-      game_output += "\n" + text;
+      game_output = text + "\n" + game_output;
   }
   updateGameOutput();
 }
