@@ -21,6 +21,7 @@ function load_game_from_path(path) {
       nature_program.setValue(game['nature_program'], 1);
       goal_program.setValue(game['goal_program'], 1);
       level_state = game['level_state'];
+      console.log(level_state);
       level_settings = game['level_settings'];
     }
   }
@@ -55,6 +56,8 @@ async function load_game_from_file(event) {
   player_move_program.setValue(game['player_move_program'], 1);
   nature_program.setValue(game['nature_program'], 1);
   goal_program.setValue(game['goal_program'], 1);
+  level_state = game['level_state'];
+  level_settings = game['level_settings'];
   upload_status.innerText = "Loading successful.."
   reset_debugging();
 }
