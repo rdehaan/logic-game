@@ -32,7 +32,7 @@ function play_game() {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n");
         addToGameOutput("- Player input:\n" + player_input + "\n");
         addToGameOutput("- Player memory:\n" + player_memory + "\n");
-        show_grid(player_input + working_game['level_settings']);
+        show_grid(player_input);
       }
       addToGameOutput("WIN!");
       return;
@@ -42,7 +42,7 @@ function play_game() {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n");
         addToGameOutput("- Player input:\n" + player_input + "\n");
         addToGameOutput("- Player memory:\n" + player_memory + "\n");
-        show_grid(player_input + working_game['level_settings']);
+        show_grid(player_input);
       }
       addToGameOutput("LOSE!");
       return;
@@ -52,7 +52,7 @@ function play_game() {
       addToGameOutput("## STEP " + time_step + " ##\n")
       addToGameOutput("- Player input:\n" + player_input + "\n")
       addToGameOutput("- Player memory:\n" + player_memory + "\n")
-      show_grid(player_input + working_game['level_settings']);
+      show_grid(player_input);
     }
 
     // Check if player's program is stratified and simple
@@ -65,7 +65,7 @@ function play_game() {
       return;
     }
     // Generate player moves and memory updates
-    var {player_moves, memory_updates} = generate_player_move(working_game, player_input);
+    var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
     if (verbose) {
       addToGameOutput("- Player moves:\n" + player_moves + "\n")
     }
@@ -173,8 +173,9 @@ function generate_player_plan(working_game, player_input) {
 }
 
 // Generate player move
-function generate_player_move(working_game, player_input) {
+function generate_player_move(working_game, player_input, player_memory) {
   program = player_input;
+  program += player_memory;
   program += working_game['player_move_program'];
   answer_set = get_answer_set(program);
   if (answer_set) {
