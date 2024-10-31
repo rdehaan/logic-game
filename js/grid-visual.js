@@ -60,8 +60,6 @@ function compute_grid_ds(answer_set) {
   }
   grid_ds["labels"] = labels;
 
-  console.log(grid_ds);
-
   return grid_ds;
 }
 
