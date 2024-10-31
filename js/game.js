@@ -37,7 +37,7 @@ function play_game() {
         show_grid(player_input + working_game["level_settings"]);
       }
       addToGameOutput(report);
-      addToGameOutput("WIN!");
+      addToGameOutput("WIN!\n");
       return;
     } else if (game_condition == "lose") {
       keep_going = false;
@@ -48,7 +48,7 @@ function play_game() {
         show_grid(player_input + working_game["level_settings"]);
       }
       addToGameOutput(report);
-      addToGameOutput("LOSE!");
+      addToGameOutput("LOSE!\n");
       return;
     }
 
