@@ -68,6 +68,7 @@ function play_game() {
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
     if (verbose) {
       addToGameOutput("- Player moves:\n" + player_moves + "\n")
+      addToGameOutput("- Player memory updates:\n" + memory_updates + "\n")
     }
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
