@@ -34,8 +34,8 @@ function play_game() {
         report += "## STEP " + time_step + " ##\n";
         report += "- Player input:\n" + player_input + "\n";
         report += "- Player memory:\n" + player_memory + "\n";
-        show_grid(player_input + working_game["level_settings"]);
       }
+      show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("WIN!\n");
       return;
@@ -45,8 +45,8 @@ function play_game() {
         report = "## STEP " + time_step + " ##\n";
         report += "- Player input:\n" + player_input + "\n";
         report += "- Player memory:\n" + player_memory + "\n";
-        show_grid(player_input + working_game["level_settings"]);
       }
+      show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("LOSE!\n");
       return;
@@ -56,8 +56,8 @@ function play_game() {
       var report = "## STEP " + time_step + " ##\n";
       report += "- Player input:\n" + player_input + "\n";
       report += "- Player memory:\n" + player_memory + "\n";
-      show_grid(player_input + working_game["level_settings"]);
     }
+    show_grid(player_input + working_game["level_settings"]);
 
     // Check if player's program is stratified and simple
     var program_to_check = player_input + player_memory;
