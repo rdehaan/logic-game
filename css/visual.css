@@ -11,7 +11,7 @@
   display: grid;
   grid-template-columns: repeat(var(--num-cols), 1fr);
   grid-template-rows: repeat(var(--num-rows), 1fr);
-  min-width: 300px;
+  min-width: 260px;
   max-height: 400px;
   width: 40%;
   aspect-ratio: 16/9;
