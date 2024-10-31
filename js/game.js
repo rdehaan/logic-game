@@ -149,7 +149,7 @@ function generate_player_input(working_game, game_state) {
   program += working_game['level_settings'];
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["observe"]);
+    var output = filter_answer_set(answer_set, ["observe", "setting"]);
     output = answer_set_to_facts(output);
     return output;
   } else {
