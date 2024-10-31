@@ -32,7 +32,7 @@ function play_game() {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n");
         addToGameOutput("- Player input:\n" + player_input + "\n");
         addToGameOutput("- Player memory:\n" + player_memory + "\n");
-        show_grid(player_input);
+        show_grid(player_input + working_game["level_settings"]);
       }
       addToGameOutput("WIN!");
       return;
@@ -42,7 +42,7 @@ function play_game() {
         addToGameOutput("## STEP " + (time_step+1) + " ##\n");
         addToGameOutput("- Player input:\n" + player_input + "\n");
         addToGameOutput("- Player memory:\n" + player_memory + "\n");
-        show_grid(player_input);
+        show_grid(player_input + working_game["level_settings"]);
       }
       addToGameOutput("LOSE!");
       return;
@@ -52,7 +52,7 @@ function play_game() {
       addToGameOutput("## STEP " + time_step + " ##\n")
       addToGameOutput("- Player input:\n" + player_input + "\n")
       addToGameOutput("- Player memory:\n" + player_memory + "\n")
-      show_grid(player_input);
+      show_grid(player_input + working_game["level_settings"]);
     }
 
     // Check if player's program is stratified and simple
@@ -150,7 +150,7 @@ function generate_player_input(working_game, game_state) {
   program += working_game['level_settings'];
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["observe","setting","decorate"]);
+    var output = filter_answer_set(answer_set, ["observe","setting"]);
     output = answer_set_to_facts(output);
     return output;
   } else {
