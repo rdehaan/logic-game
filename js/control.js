@@ -99,6 +99,7 @@ function end_playing() {
   goal_program.setReadOnly(false);
   player_plan_program.setReadOnly(false);
   player_move_program.setReadOnly(false);
+  game_paused = false;
 }
 function do_pause() {
   game_paused = true;

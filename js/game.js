@@ -73,12 +73,10 @@ function play_game() {
     }
     show_grid(player_input + working_game["level_settings"]);
 
-    console.log(1);
     // Check if player's program is stratified and simple
     var program_to_check = player_input + player_memory;
     program_to_check += working_game['level_settings'];
     program_to_check += working_game['player_move_program'];
-    console.log(program_to_check);
     if (!check_if_stratified_and_simple(program_to_check)) {
       keep_going = false;
       addToGameOutput(report);
@@ -86,24 +84,19 @@ function play_game() {
       end_playing();
       return;
     }
-    console.log(2);
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
     if (verbose) {
       report += "- Player moves:\n" + player_moves + "\n";
       addToGameOutput(report);
     }
-    console.log(3);
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
-    console.log(4);
     // Generate next state
     game_state = generate_next_state(working_game, game_state, player_moves);
-    console.log(5);
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
-    console.log(6);
-
+    
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
       keep_going = false;
