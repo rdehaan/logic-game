@@ -34,7 +34,7 @@ h3 {
 
 h4 {
   padding: 10px 0;
-  font-weight: 400;
+  font-weight: 600;
 }
 
 p {
@@ -202,4 +202,67 @@ pre {
 
 .inline-controls {
   padding-bottom: 1em;
+}
+
+a.modal-link {
+  font-family: fontawesome;
+  font-size: 16px;
+}
+a.modal-link:visited,
+a.modal-link:active,
+a.modal-link:hover,
+a.modal-link:link {
+  color: #aaa;
+  text-decoration-line: none;
+}
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 50px;
+  background: rgba(0,0,0,0.25);
+  opacity: 1;
+  cursor: pointer;
+  visibility: hidden;
+  z-index: 1000;
+}
+.modal.is-visible {
+  visibility: visible;
+  opacity: 1;
+}
+.modal-dialog {
+  position: relative;
+  width: 100%;
+  min-width: 320px;
+  max-width: 1300px;
+  max-height: 80vh;
+  background: #fff;
+  overflow: auto;
+  cursor: default;
+}
+.modal-dialog > * {
+  padding: 1rem;
+}
+.modal-content {
+  background: #fff;
+}
+.modal-header {
+  display: flex;
+  float: right;
+  justify-content: space-between;
+}
+.modal-header .modal-close {
+  font-size: 1.5rem;
+}
+.close-modal {
+  border: 1px solid #ccc;
+  display: inline-block;
+  padding: 3px 6px;
+  cursor: pointer;
+  background: #fff;
 }
