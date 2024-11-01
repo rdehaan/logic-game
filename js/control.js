@@ -73,7 +73,6 @@ function do_play() {
     unlock_button2.disabled = true;
     clear_button.disabled = true;
     generate_button.disabled = true;
-    play_button.disabled = true;
     pause_button.disabled = false;
     stop_button.disabled = false;
     visibility_program.setReadOnly(true);
@@ -83,8 +82,9 @@ function do_play() {
     player_move_program.setReadOnly(true);
     clearGameOutput();
   }
-  game_paused = false;
+  play_button.disabled = true;
   pause_button.disabled = false;
+  game_paused = false;
   play_game();
 }
 function end_playing() {

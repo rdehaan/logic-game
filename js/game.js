@@ -1,9 +1,11 @@
+//
+var working_game = {}
+
 // Run the game
 function play_game() {
 
   if (!game_paused) {
     // Store the current level/game
-    var working_game = {}
     working_game['level_gen_program'] = level_gen_program.getValue();
     working_game['visibility_program'] = visibility_program.getValue();
     working_game['player_plan_program'] = player_plan_program.getValue();
