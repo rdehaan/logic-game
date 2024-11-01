@@ -121,6 +121,15 @@ function visualize_grid(grid_ds) {
   }
 }
 
+function display_win() {
+  var visual_elem = document.getElementById("visual");
+  visual_elem.style.setProperty("border", "3px solid #AADB1E");
+}
+function display_lose() {
+  var visual_elem = document.getElementById("visual");
+  visual_elem.style.setProperty("border", "3px solid #E10600");
+}
+
 // Wrapper
 function show_grid(answer_set) {
   visualize_grid(compute_grid_ds(answer_set));

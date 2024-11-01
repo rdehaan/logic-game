@@ -50,6 +50,7 @@ function play_game() {
       show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("WIN!\n");
+      display_win();
       end_playing();
       return;
     } else if (game_condition == "lose") {
@@ -62,6 +63,7 @@ function play_game() {
       show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("LOSE!\n");
+      display_lose();
       end_playing();
       return;
     }
@@ -81,6 +83,7 @@ function play_game() {
       keep_going = false;
       addToGameOutput(report);
       addToGameOutput("LOSE! (program not simple)\n")
+      display_lose();
       end_playing();
       return;
     }
