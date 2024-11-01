@@ -86,7 +86,7 @@ function visualize_grid(grid_ds) {
 
   visual_elem.style.setProperty("--num-cols", width);
   visual_elem.style.setProperty("--num-rows", height);
-
+  visual_elem.style.setProperty("border", "1px solid #000");
   visual_elem.style.setProperty("width", "80%");
 
   ratio = width/height;
