@@ -106,6 +106,7 @@ function play_game() {
     // Keep going as needed, with a delay
     if (stop_playing) {
       end_playing();
+      reset_debugging();
       return;
     }
     if (game_paused) {

@@ -120,7 +120,6 @@ function do_pause() {
 }
 function do_stop() {
   stop_playing = true;
-  reset_debugging();
   if (game_paused) {
     end_playing();
   }
