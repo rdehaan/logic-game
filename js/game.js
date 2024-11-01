@@ -3,6 +3,9 @@ var working_game = {}
 var keep_going = true;
 var time_step = 0;
 var max_time = 50;
+var game_state = null;
+var player_input = "";
+var player_memory = "";
 
 // Run the game
 function play_game() {
@@ -19,9 +22,9 @@ function play_game() {
     working_game['level_settings'] = level_settings;
     var verbose = document.getElementById("verbose").checked;
 
-    var game_state = generate_initial_game_state(working_game);
-    var player_input = generate_player_input(working_game, game_state);
-    var player_memory = generate_player_plan(working_game, player_input);
+    game_state = generate_initial_game_state(working_game);
+    player_input = generate_player_input(working_game, game_state);
+    player_memory = generate_player_plan(working_game, player_input);
 
     // Initialize variables for main loop
     keep_going = true;
