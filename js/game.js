@@ -1,5 +1,8 @@
-//
+// Control variables for main playing loop
 var working_game = {}
+var keep_going = true;
+var time_step = 0;
+var max_time = 50;
 
 // Run the game
 function play_game() {
@@ -20,10 +23,9 @@ function play_game() {
     var player_input = generate_player_input(working_game, game_state);
     var player_memory = generate_player_plan(working_game, player_input);
 
-    // Main loop
-    var keep_going = true;
-    var time_step = 0;
-    var max_time = 50;
+    // Initialize variables for main loop
+    keep_going = true;
+    time_step = 0;
   } else {
     game_paused = false;
   }
