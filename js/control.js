@@ -5,6 +5,7 @@ var lock_button2 = document.getElementById('lock-button2');
 var unlock_button2 = document.getElementById('unlock-button2');
 var generate_button = document.getElementById('generate-button');
 var clear_button = document.getElementById('clear-button');
+var reset_button = document.getElementById('reset-button');
 var play_button = document.getElementById('play-button');
 var pause_button = document.getElementById('pause-button');
 var stop_button = document.getElementById('stop-button');
@@ -34,6 +35,7 @@ function unlock_level_generation() {
   unlock_button2.disabled = true;
   generate_button.disabled = true;
   clear_button.disabled = true;
+  reset_button.disabled = true;
   play_button.disabled = true;
   pause_button.disabled = true;
   stop_button.disabled = true;
@@ -50,6 +52,7 @@ function clear_level() {
 function update_interface() {
   if (level_state) {
     clear_button.disabled = false;
+    reset_button.disabled = false;
     play_button.disabled = false;
     var partial_game = {};
     partial_game['level_state'] = level_state;
@@ -60,6 +63,7 @@ function update_interface() {
     show_grid(player_input + level_settings);
   } else {
     clear_button.disabled = true;
+    reset_button.disabled = true;
     play_button.disabled = true;
     clear_grid();
   }
@@ -73,6 +77,7 @@ function do_play() {
     unlock_button.disabled = true;
     unlock_button2.disabled = true;
     clear_button.disabled = true;
+    reset_button.disabled = true;
     generate_button.disabled = true;
     pause_button.disabled = false;
     stop_button.disabled = false;
@@ -92,6 +97,7 @@ function end_playing() {
   unlock_button.disabled = false;
   unlock_button2.disabled = false;
   clear_button.disabled = false;
+  reset_button.disabled = false;
   generate_button.disabled = false;
   play_button.disabled = false;
   pause_button.disabled = true;
