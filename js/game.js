@@ -49,7 +49,7 @@ function play_game() {
       }
       show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
-      addToGameOutput("WIN!\n");
+      addToGameOutput("WIN!");
       end_playing();
       return;
     } else if (game_condition == "lose") {
@@ -61,7 +61,7 @@ function play_game() {
       }
       show_grid(player_input + working_game["level_settings"]);
       addToGameOutput(report);
-      addToGameOutput("LOSE!\n");
+      addToGameOutput("LOSE!");
       end_playing();
       return;
     }
@@ -80,7 +80,7 @@ function play_game() {
     if (!check_if_stratified_and_simple(program_to_check)) {
       keep_going = false;
       addToGameOutput(report);
-      addToGameOutput("LOSE! (program not simple)\n")
+      addToGameOutput("LOSE! (program not simple)")
       end_playing();
       return;
     }

@@ -120,6 +120,7 @@ function do_pause() {
 }
 function do_stop() {
   stop_playing = true;
+  reset_debugging();
   if (game_paused) {
     end_playing();
   }
@@ -130,6 +131,7 @@ function reset_debugging() {
 }
 function reset_level() {
   update_interface();
+  reset_debugging();
 }
 
 // Variables for generated level
