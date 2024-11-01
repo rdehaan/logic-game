@@ -127,6 +127,9 @@ function reset_debugging() {
   clearOutput();
   clearGameOutput();
 }
+function reset_level() {
+  update_interface();
+}
 
 // Variables for generated level
 var level_state = "";
