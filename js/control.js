@@ -12,6 +12,7 @@ var speed_selector = document.getElementById('speed-selector');
 
 // Moving between different states of the game engine
 var game_paused = false;
+var stop_playing = false;
 var speed;
 function select_speed() {
   speed = speed_selector.value;
@@ -84,6 +85,7 @@ function do_play() {
   }
   play_button.disabled = true;
   pause_button.disabled = false;
+  stop_playing = false;
   play_game();
 }
 function end_playing() {
@@ -100,12 +102,14 @@ function end_playing() {
   player_plan_program.setReadOnly(false);
   player_move_program.setReadOnly(false);
   game_paused = false;
+  stop_playing = false;
 }
 function do_pause() {
   game_paused = true;
   pause_button.disabled = true;
 }
 function do_stop() {
+  stop_playing = true;
 }
 function reset_debugging() {
   clearOutput();

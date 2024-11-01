@@ -96,7 +96,7 @@ function play_game() {
     game_state = generate_next_state(working_game, game_state, player_moves);
     // Generate player input for next move
     player_input = generate_player_input(working_game, game_state);
-    
+
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
       keep_going = false;
@@ -104,6 +104,10 @@ function play_game() {
     }
 
     // Keep going as needed, with a delay
+    if (stop_playing) {
+      end_playing();
+      return;
+    }
     if (game_paused) {
       play_button.disabled = false;
     }
