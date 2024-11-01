@@ -24,6 +24,8 @@ function play_game() {
     var keep_going = true;
     var time_step = 0;
     var max_time = 50;
+  } else {
+    game_paused = false;
   }
 
   function main_loop() {

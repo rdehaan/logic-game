@@ -84,7 +84,6 @@ function do_play() {
   }
   play_button.disabled = true;
   pause_button.disabled = false;
-  game_paused = false;
   play_game();
 }
 function end_playing() {
