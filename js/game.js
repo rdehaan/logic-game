@@ -1,25 +1,28 @@
 // Run the game
 function play_game() {
-  // Store the current level/game
-  var working_game = {}
-  working_game['level_gen_program'] = level_gen_program.getValue();
-  working_game['visibility_program'] = visibility_program.getValue();
-  working_game['player_plan_program'] = player_plan_program.getValue();
-  working_game['player_move_program'] = player_move_program.getValue();
-  working_game['nature_program'] = nature_program.getValue();
-  working_game['goal_program'] = goal_program.getValue();
-  working_game['level_state'] = level_state;
-  working_game['level_settings'] = level_settings;
-  var verbose = document.getElementById("verbose").checked;
 
-  var game_state = generate_initial_game_state(working_game);
-  var player_input = generate_player_input(working_game, game_state);
-  var player_memory = generate_player_plan(working_game, player_input);
+  if (!game_paused) {
+    // Store the current level/game
+    var working_game = {}
+    working_game['level_gen_program'] = level_gen_program.getValue();
+    working_game['visibility_program'] = visibility_program.getValue();
+    working_game['player_plan_program'] = player_plan_program.getValue();
+    working_game['player_move_program'] = player_move_program.getValue();
+    working_game['nature_program'] = nature_program.getValue();
+    working_game['goal_program'] = goal_program.getValue();
+    working_game['level_state'] = level_state;
+    working_game['level_settings'] = level_settings;
+    var verbose = document.getElementById("verbose").checked;
 
-  // Main loop
-  var keep_going = true;
-  var time_step = 0;
-  var max_time = 50;
+    var game_state = generate_initial_game_state(working_game);
+    var player_input = generate_player_input(working_game, game_state);
+    var player_memory = generate_player_plan(working_game, player_input);
+
+    // Main loop
+    var keep_going = true;
+    var time_step = 0;
+    var max_time = 50;
+  }
 
   function main_loop() {
     time_step += 1;
@@ -92,7 +95,7 @@ function play_game() {
     }
 
     // Keep going as needed, with a delay
-    if (keep_going) {
+    if (keep_going && !game_paused) {
       setTimeout(main_loop, speed);
     }
   }

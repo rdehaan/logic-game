@@ -11,6 +11,7 @@ var stop_button = document.getElementById('stop-button');
 var speed_selector = document.getElementById('speed-selector');
 
 // Moving between different states of the game engine
+var game_paused = false;
 var speed;
 function select_speed() {
   speed = speed_selector.value;
@@ -67,19 +68,23 @@ function do_generate() {
   update_interface();
 }
 function do_play() {
-  unlock_button.disabled = true;
-  unlock_button2.disabled = true;
-  clear_button.disabled = true;
-  generate_button.disabled = true;
-  play_button.disabled = true;
+  if (!game_paused) {
+    unlock_button.disabled = true;
+    unlock_button2.disabled = true;
+    clear_button.disabled = true;
+    generate_button.disabled = true;
+    play_button.disabled = true;
+    pause_button.disabled = false;
+    stop_button.disabled = false;
+    visibility_program.setReadOnly(true);
+    nature_program.setReadOnly(true);
+    goal_program.setReadOnly(true);
+    player_plan_program.setReadOnly(true);
+    player_move_program.setReadOnly(true);
+    clearGameOutput();
+  }
+  game_paused = false;
   pause_button.disabled = false;
-  stop_button.disabled = false;
-  visibility_program.setReadOnly(true);
-  nature_program.setReadOnly(true);
-  goal_program.setReadOnly(true);
-  player_plan_program.setReadOnly(true);
-  player_move_program.setReadOnly(true);
-  clearGameOutput();
   play_game();
 }
 function end_playing() {
@@ -97,6 +102,8 @@ function end_playing() {
   player_move_program.setReadOnly(false);
 }
 function do_pause() {
+  game_paused = true;
+  pause_button.disabled = true;
 }
 function do_stop() {
 }
