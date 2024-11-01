@@ -139,6 +139,7 @@ var level_settings = "";
 
 // Loading games from file
 function load_game() {
+  do_stop();
   load_game_from_path(example_games.value);
   load_status.innerText = "Done loading..";
 }
@@ -182,6 +183,7 @@ function change_tabs() {
 
 // Loading games from upload
 async function load_game_from_file(event) {
+  do_stop();
   const file = event.target.files.item(0)
   const text = await file.text();
   game = JSON.parse(text);
