@@ -75,6 +75,7 @@ function play_game() {
     var program_to_check = player_input + player_memory;
     program_to_check += working_game['level_settings'];
     program_to_check += working_game['player_move_program'];
+    console.log(program_to_check);
     if (!check_if_stratified_and_simple(program_to_check)) {
       keep_going = false;
       addToGameOutput(report);
