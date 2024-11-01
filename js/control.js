@@ -101,6 +101,9 @@ function end_playing() {
   goal_program.setReadOnly(false);
   player_plan_program.setReadOnly(false);
   player_move_program.setReadOnly(false);
+  if (stop_playing) {
+    update_interface();
+  }
   game_paused = false;
   stop_playing = false;
 }
@@ -110,6 +113,9 @@ function do_pause() {
 }
 function do_stop() {
   stop_playing = true;
+  if (game_paused) {
+    end_playing();
+  }
 }
 function reset_debugging() {
   clearOutput();
