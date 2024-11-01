@@ -52,7 +52,7 @@ function clear_level() {
 function update_interface() {
   if (level_state) {
     clear_button.disabled = false;
-    reset_button.disabled = false;
+    reset_button.disabled = true;
     play_button.disabled = false;
     var partial_game = {};
     partial_game['level_state'] = level_state;
@@ -97,7 +97,6 @@ function end_playing() {
   unlock_button.disabled = false;
   unlock_button2.disabled = false;
   clear_button.disabled = false;
-  reset_button.disabled = false;
   generate_button.disabled = false;
   play_button.disabled = false;
   pause_button.disabled = true;
@@ -109,6 +108,8 @@ function end_playing() {
   player_move_program.setReadOnly(false);
   if (stop_playing) {
     update_interface();
+  } else {
+    reset_button.disabled = false;
   }
   game_paused = false;
   stop_playing = false;
