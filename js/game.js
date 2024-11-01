@@ -95,6 +95,9 @@ function play_game() {
     }
 
     // Keep going as needed, with a delay
+    if (game_paused) {
+      play_button.disabled = false;
+    }
     if (keep_going && !game_paused) {
       setTimeout(main_loop, speed);
     }
