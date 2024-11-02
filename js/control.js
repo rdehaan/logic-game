@@ -141,6 +141,7 @@ var level_settings = "";
 function load_game() {
   do_stop();
   load_game_from_path(example_games.value);
+  lock_level_generation();
   load_status.innerText = "Done loading..";
 }
 
@@ -184,6 +185,7 @@ function change_tabs() {
 // Loading games from upload
 async function load_game_from_file(event) {
   do_stop();
+  lock_level_generation();
   const file = event.target.files.item(0)
   const text = await file.text();
   game = JSON.parse(text);
