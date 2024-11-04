@@ -76,17 +76,17 @@ function play_game() {
     show_grid(player_input + working_game["level_settings"]);
 
     // Check if player's program is stratified and simple
-    // var program_to_check = player_input + player_memory;
-    // program_to_check += working_game['level_settings'];
-    // program_to_check += working_game['player_move_program'];
-    // if (!check_if_stratified_and_simple(program_to_check)) {
-    //   keep_going = false;
-    //   addToGameOutput(report);
-    //   addToGameOutput("LOSE! (program not simple)\n")
-    //   display_lose();
-    //   end_playing();
-    //   return;
-    // }
+    var program_to_check = player_input + player_memory;
+    program_to_check += working_game['level_settings'];
+    program_to_check += working_game['player_move_program'];
+    if (!check_if_stratified_and_simple(program_to_check)) {
+      keep_going = false;
+      addToGameOutput(report);
+      addToGameOutput("LOSE! (program not simple)\n")
+      display_lose();
+      end_playing();
+      return;
+    }
 
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
