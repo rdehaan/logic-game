@@ -185,14 +185,26 @@ function handleOutputLine(text) {
   updateOutput();
 }
 
+// // Check if program is stratified and 'simple'
+// function check_if_stratified_and_simple(program) {
+//   reified_program = get_reified_program(program);
+//   check_program = stored_programs["stratified"];
+//   answer_set = get_answer_set(reified_program + check_program);
+//   if (answer_set) {
+//     answer_set = filter_answer_set(answer_set, ["has_choice","has_proper_disjunction","has_negative_cycle"]);
+//     return answer_set.length == 0;
+//   }
+// }
+
 // Check if program is stratified and 'simple'
 function check_if_stratified_and_simple(program) {
   reified_program = get_reified_program(program);
   check_program = stored_programs["stratified"];
   answer_set = get_answer_set(reified_program + check_program);
   if (answer_set) {
-    answer_set = filter_answer_set(answer_set, ["has_choice","has_proper_disjunction","has_negative_cycle"]);
-    return answer_set.length == 0;
+    return true;
+  } else {
+    return false;
   }
 }
 

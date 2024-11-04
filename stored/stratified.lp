@@ -27,3 +27,7 @@ dependency(A,C,plus) :- dependency(A,B,plus), dependency(B,C,plus).
 dependency(A,C,minus) :- dependency(A,B,minus), dependency(B,C,_).
 dependency(A,C,minus) :- dependency(A,B,_), dependency(B,C,minus).
 has_negative_cycle :- dependency(A,B,minus), dependency(B,A,_).
+
+:- has_negative_cycle.
+:- has_proper_disjunction.
+:- has_choise.
