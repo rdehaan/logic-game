@@ -187,6 +187,8 @@ function handleOutputLine(text) {
 
 // Check if program is stratified and 'simple'
 function check_if_stratified_and_simple(program) {
+  return true; // for debugging
+
   reified_program = get_reified_program(program);
   check_program = stored_programs["stratified"];
   answer_set = get_answer_set(reified_program + check_program);
