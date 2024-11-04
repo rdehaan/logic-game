@@ -142,6 +142,7 @@ function preprocess_program(program) {
     }
   }
   output = parts.join('');
+  console.log(output);
   return output;
 }
 
