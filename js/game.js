@@ -142,7 +142,6 @@ function preprocess_program(program) {
     }
   }
   output = parts.join('');
-  console.log(output);
   return output;
 }
 
@@ -217,10 +216,9 @@ function generate_player_plan(working_game, player_input) {
 
 // Generate player move
 function generate_player_move(working_game, player_input, player_memory) {
-  program = preprocess_program(player_input);
+  program = player_input;
   program += player_memory;
-  program += working_game['player_move_program'];
-  console.log(program);
+  program += preprocess_program(working_game['player_move_program']);
   answer_set = get_answer_set(program);
   if (answer_set) {
     var player_moves = filter_answer_set(answer_set, ["do"]);
