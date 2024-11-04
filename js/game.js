@@ -104,7 +104,7 @@ function play_game() {
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
       keep_going = false;
-      addToGameOutput("TIMEOUT!")
+      addToGameOutput("TIMEOUT!\n")
     }
 
     // Keep going as needed, with a delay
