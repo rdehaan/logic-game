@@ -200,6 +200,7 @@ function handleOutputLine(text) {
 function check_if_stratified_and_simple(program) {
   reified_program = get_reified_program(program);
   check_program = stored_programs["stratified"];
+  console.log(reified_program + check_program);
   answer_set = get_answer_set(reified_program + check_program);
   if (answer_set) {
     return true;
