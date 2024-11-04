@@ -75,18 +75,19 @@ function play_game() {
     }
     show_grid(player_input + working_game["level_settings"]);
 
-    // Check if player's program is stratified and simple
-    var program_to_check = player_input + player_memory;
-    program_to_check += working_game['level_settings'];
-    program_to_check += working_game['player_move_program'];
-    if (!check_if_stratified_and_simple(program_to_check)) {
-      keep_going = false;
-      addToGameOutput(report);
-      addToGameOutput("LOSE! (program not simple)\n")
-      display_lose();
-      end_playing();
-      return;
-    }
+    // // Check if player's program is stratified and simple
+    // var program_to_check = player_input + player_memory;
+    // program_to_check += working_game['level_settings'];
+    // program_to_check += working_game['player_move_program'];
+    // if (!check_if_stratified_and_simple(program_to_check)) {
+    //   keep_going = false;
+    //   addToGameOutput(report);
+    //   addToGameOutput("LOSE! (program not simple)\n")
+    //   display_lose();
+    //   end_playing();
+    //   return;
+    // }
+
     // Generate player moves and memory updates
     var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
     if (verbose) {
@@ -128,11 +129,8 @@ function randint(min, max) {
   return Math.floor(Math.random() * (max - min) ) + min;
 }
 
-// Generate the level
-function generate_level() {
-  // Take level generation program
-  program = level_gen_program.getValue();
-
+// Preprocess programs
+function preprocess_program(program) {
   // Evaluate 'RANDINT(x,y)' commands in program
   preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
   parts = preprocessed.split("RANDOM");
@@ -143,7 +141,17 @@ function generate_level() {
       parts[i] = random_int.toString();
     }
   }
-  program = parts.join('')
+  output = parts.join('');
+  return output;
+}
+
+// Generate the level
+function generate_level() {
+  // Take level generation program
+  program = level_gen_program.getValue();
+
+  // Preprocess it
+  program = preprocess_program(program);
 
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
@@ -208,7 +216,7 @@ function generate_player_plan(working_game, player_input) {
 
 // Generate player move
 function generate_player_move(working_game, player_input, player_memory) {
-  program = player_input;
+  program = preprocess_program(player_input);
   program += player_memory;
   program += working_game['player_move_program'];
   answer_set = get_answer_set(program);
