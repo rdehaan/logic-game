@@ -219,8 +219,8 @@ function generate_player_move(working_game, player_input, player_memory) {
   program = preprocess_program(player_input);
   program += player_memory;
   program += working_game['player_move_program'];
-  answer_set = get_answer_set(program);
   console.log(program);
+  answer_set = get_answer_set(program);
   if (answer_set) {
     var player_moves = filter_answer_set(answer_set, ["do"]);
     player_moves = answer_set_to_facts(player_moves);
