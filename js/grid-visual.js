@@ -139,6 +139,7 @@ function clear_grid() {
   visual_elem.innerHTML = '';
   visual_elem.className = '';
   visual_elem.style.setProperty("width", "0");
+  visual_elem.style.setProperty("border", "0px solid #000");
 }
 
 // Test it..
