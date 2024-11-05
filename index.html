@@ -51,18 +51,18 @@
     <label for="tab1" name="tabs">Control</label>
 
     <input id="tab2" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab2" name="tabs">Game rules</label>
+    <label for="tab2" name="tabs">Instructions</label>
 
     <input id="tab3" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab3" name="tabs">Strategy</label>
+    <label for="tab3" name="tabs">Game rules</label>
 
     <input id="tab4" type="radio" name="tabs" onChange="change_tabs()">
-    <label for="tab4" name="tabs">Instructions</label>
+    <label for="tab4" name="tabs">Strategy</label>
 
     <input id="tab5" type="radio" name="tabs" onChange="change_tabs()">
     <label for="tab5" name="tabs">Debug</label>
 
-    <section id="content1">
+    <section id="section-control">
       <p>
         Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
       </p>
@@ -84,30 +84,39 @@
         </optgroup>
       </select>
       &nbsp;
-      <button onclick="load_game()" class="control-button">Load</button>
+      <button onclick="load_game()" title="Load the selected game." class="control-button">Load</button>
       <p id="load_status"></p>
 
       <h3>Load game from file</h3>
       <form id="upload_form" enctype="multipart/form-data">
-        <label for="file_input" class="control-button">Select file</label>
+        <label for="file_input" title="Load a game from a file on your device." class="control-button">Select file</label>
         <input type="file" id="file_input" onchange="load_game_from_file(event)" required>
       </form>
       <p id="upload_status"></p>
 
       <h3>Download current game</h3>
-      <button onclick="download_game()" class="control-button">Download</button>
+      <button onclick="download_game()" title="Download the current game." class="control-button">Download</button>
 
     </section>
 
-    <section id="content2">
+    <section id="section-instructions">
+      <p>
+        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+      </p>
+      <p>
+        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+      </p>
+    </section>
+
+    <section id="section-game-rules">
       <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-generation">&#xf05a;</a></h3>
       <p>
         This program expresses how levels are generated.
       </p>
       <div class="inline-controls" >
-        <button onclick="lock_level_generation()" class="control-button" id="lock-button">&#x25CF; Lock</button>
+        <button onclick="lock_level_generation()" title="Lock editing for level generation and visibility." class="control-button" id="lock-button">&#x25CF; Lock</button>
         &nbsp;
-        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
+        <button onclick="unlock_level_generation()" title="Unlock editing for level generation and visibility." class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="level_gen_program"></pre>
 
@@ -116,9 +125,9 @@
         This program expresses what the player can observe.
       </p>
       <div class="inline-controls" >
-        <button onclick="lock_level_generation()" class="control-button" id="lock-button2">&#x25CF; Lock</button>
+        <button onclick="lock_level_generation()" title="Lock editing for level generation and visibility." class="control-button" id="lock-button2">&#x25CF; Lock</button>
         &nbsp;
-        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
+        <button onclick="unlock_level_generation()" title="Unlock editing for level generation and visibility." class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="visibility_program"></pre>
 
@@ -137,7 +146,7 @@
       <pre id="goal_program"></pre>
     </section>
 
-    <section id="content3">
+    <section id="section-player-strategy">
       <h3>Planning phase</h3>
       <p>
         This program expresses <i>Player</i>'s planning phase.
@@ -153,16 +162,7 @@
       <pre id="player_move_program"></pre>
     </section>
 
-    <section id="content4">
-      <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
-      </p>
-      <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
-      </p>
-    </section>
-
-    <section id="content5">
+    <section id="section-debug">
       <h3>Game output</h3>
       <input type="checkbox" id="verbose" name="verbose" value="Verbose" checked>
       <label for="verbose"> Verbose</label><br>

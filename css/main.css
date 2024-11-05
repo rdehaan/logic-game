@@ -120,11 +120,11 @@ input[name="tabs"]:checked + label {
   border-bottom: 1px solid #fff;
 }
 
-#tab1:checked ~ #content1,
-#tab2:checked ~ #content2,
-#tab3:checked ~ #content3,
-#tab4:checked ~ #content4,
-#tab5:checked ~ #content5 {
+#tab1:checked ~ #section-control,
+#tab2:checked ~ #section-instructions,
+#tab3:checked ~ #section-game-rules,
+#tab4:checked ~ #section-player-strategy,
+#tab5:checked ~ #section-debug {
   display: block;
 }
 
