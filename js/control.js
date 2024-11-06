@@ -21,6 +21,7 @@ function select_speed() {
 select_speed();
 function lock_level_generation() {
   lock_button.disabled = true;
+  lock_button.title = "asdf";
   unlock_button.disabled = false;
   lock_button2.disabled = true;
   unlock_button2.disabled = false;
