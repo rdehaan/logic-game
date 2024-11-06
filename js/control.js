@@ -109,7 +109,9 @@ function end_playing() {
   unlock_button.disabled = false;
   unlock_button2.disabled = false;
   clear_button.disabled = false;
+  clear_button.title = "";
   generate_button.disabled = false;
+  generate_button.title = "";
   play_button.disabled = false;
   pause_button.disabled = true;
   stop_button.disabled = true;
@@ -121,6 +123,7 @@ function end_playing() {
     update_interface();
   } else {
     reset_button.disabled = false;
+    reset_button.title = "";
   }
   game_paused = false;
   stop_playing = false;
