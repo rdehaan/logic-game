@@ -21,7 +21,6 @@ function select_speed() {
 select_speed();
 function lock_level_generation() {
   lock_button.disabled = true;
-  lock_button.title = "asdf";
   unlock_button.disabled = false;
   lock_button2.disabled = true;
   unlock_button2.disabled = false;
@@ -35,9 +34,13 @@ function unlock_level_generation() {
   lock_button2.disabled = false;
   unlock_button2.disabled = true;
   generate_button.disabled = true;
+  generate_button.title = "Level generation and visibility programs need to be locked to generate a level."
   clear_button.disabled = true;
+  clear_button.title = "There is no level to be cleared.";
   reset_button.disabled = true;
+  reset_button.title = "There is no level to be reset.";
   play_button.disabled = true;
+  play_button.title = "There is no level to play.";
   pause_button.disabled = true;
   stop_button.disabled = true;
   level_gen_program.setReadOnly(false);
@@ -53,8 +56,11 @@ function clear_level() {
 function update_interface() {
   if (level_state) {
     clear_button.disabled = false;
+    clear_button.title = "";
     reset_button.disabled = true;
+    reset_button.title = "The level is already in its initial state.";
     play_button.disabled = false;
+    play_button.title = "";
     var partial_game = {};
     partial_game['level_state'] = level_state;
     partial_game['level_settings'] = level_settings;
@@ -64,8 +70,11 @@ function update_interface() {
     show_grid(player_input + level_settings);
   } else {
     clear_button.disabled = true;
+    clear_button.title = "There is no level to be cleared.";
     reset_button.disabled = true;
+    reset_button.title = "There is no level to be reset.";
     play_button.disabled = true;
+    play_button.title = "There is no level to play.";
     clear_grid();
   }
 }
@@ -78,8 +87,11 @@ function do_play() {
     unlock_button.disabled = true;
     unlock_button2.disabled = true;
     clear_button.disabled = true;
+    clear_button.title = "The level cannot be cleared while another game is ongoing.";
     reset_button.disabled = true;
+    reset_button.title = "The level cannot be reset while the game is ongoing.";
     generate_button.disabled = true;
+    generate_button.title = "A new level cannot be generated while the game is ongoing.";
     pause_button.disabled = false;
     stop_button.disabled = false;
     visibility_program.setReadOnly(true);
