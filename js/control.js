@@ -25,6 +25,7 @@ function lock_level_generation() {
   lock_button2.disabled = true;
   unlock_button2.disabled = false;
   generate_button.disabled = false;
+  generate_button.title = "";
   level_gen_program.setReadOnly(true);
   visibility_program.setReadOnly(true);
 }
@@ -87,7 +88,7 @@ function do_play() {
     unlock_button.disabled = true;
     unlock_button2.disabled = true;
     clear_button.disabled = true;
-    clear_button.title = "The level cannot be cleared while another game is ongoing.";
+    clear_button.title = "The level cannot be cleared while the game is ongoing.";
     reset_button.disabled = true;
     reset_button.title = "The level cannot be reset while the game is ongoing.";
     generate_button.disabled = true;
