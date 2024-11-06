@@ -42,17 +42,6 @@ goal_program.setOptions({
   autoScrollEditorIntoView: true
 });
 
-var player_plan_program = ace.edit("player_plan_program");
-player_plan_program.setTheme("ace/theme/textmate");
-player_plan_program.$blockScrolling = Infinity;
-player_plan_program.setOptions({
-  useSoftTabs: true,
-  tabSize: 2,
-  maxLines: Infinity,
-  mode: "ace/mode/gringo",
-  autoScrollEditorIntoView: true
-});
-
 var player_move_program = ace.edit("player_move_program");
 player_move_program.setTheme("ace/theme/textmate");
 player_move_program.$blockScrolling = Infinity;

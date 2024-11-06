@@ -14,7 +14,6 @@ function play_game() {
     // Store the current level/game
     working_game['level_gen_program'] = level_gen_program.getValue();
     working_game['visibility_program'] = visibility_program.getValue();
-    working_game['player_plan_program'] = player_plan_program.getValue();
     working_game['player_move_program'] = player_move_program.getValue();
     working_game['nature_program'] = nature_program.getValue();
     working_game['goal_program'] = goal_program.getValue();
@@ -24,7 +23,7 @@ function play_game() {
 
     game_state = generate_initial_game_state(working_game);
     player_input = generate_player_input(working_game, game_state);
-    player_memory = generate_player_plan(working_game, player_input);
+    player_memory = "";
 
     // Initialize variables for main loop
     keep_going = true;
@@ -199,21 +198,6 @@ function generate_player_input(working_game, game_state) {
   }
 }
 
-// Generate player plan from (initial) observable state
-function generate_player_plan(working_game, player_input) {
-  program = player_input;
-  program += working_game['level_settings'];
-  program += working_game['player_plan_program'];
-  answer_set = get_answer_set(program);
-  if (answer_set) {
-    var output = filter_answer_set(answer_set, ["plan"]);
-    output = answer_set_to_facts(output);
-    return output;
-  } else {
-    return "";
-  }
-}
-
 // Generate player move
 function generate_player_move(working_game, player_input, player_memory) {
   program = player_input;
@@ -248,7 +232,7 @@ function update_player_memory(player_memory, memory_updates) {
   program += memory_updates;
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var intermediate = filter_answer_set(answer_set, ["plan","new_memory"]);
+    var intermediate = filter_answer_set(answer_set, ["new_memory"]);
     intermediate = answer_set_to_facts(intermediate);
   } else {
     return player_memory;
@@ -257,7 +241,7 @@ function update_player_memory(player_memory, memory_updates) {
   program += intermediate;
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["plan","memory"]);
+    var output = filter_answer_set(answer_set, ["memory"]);
     output = answer_set_to_facts(output);
   } else {
     return player_memory;

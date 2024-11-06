@@ -84,7 +84,6 @@ function do_play() {
     visibility_program.setReadOnly(true);
     nature_program.setReadOnly(true);
     goal_program.setReadOnly(true);
-    player_plan_program.setReadOnly(true);
     player_move_program.setReadOnly(true);
     clearGameOutput();
   }
@@ -104,7 +103,6 @@ function end_playing() {
   visibility_program.setReadOnly(false);
   nature_program.setReadOnly(false);
   goal_program.setReadOnly(false);
-  player_plan_program.setReadOnly(false);
   player_move_program.setReadOnly(false);
   if (stop_playing) {
     update_interface();
@@ -152,7 +150,6 @@ function load_game_from_path(path) {
       game = JSON.parse(request.responseText.trim())
       level_gen_program.setValue(game['level_gen_program'], 1);
       visibility_program.setValue(game['visibility_program'], 1);
-      player_plan_program.setValue(game['player_plan_program'], 1);
       player_move_program.setValue(game['player_move_program'], 1);
       nature_program.setValue(game['nature_program'], 1);
       goal_program.setValue(game['goal_program'], 1);
@@ -174,7 +171,6 @@ example_games = document.getElementById('example_games');
 function change_tabs() {
   level_gen_program.resize();
   visibility_program.resize();
-  player_plan_program.resize();
   player_move_program.resize();
   nature_program.resize();
   goal_program.resize();
@@ -191,7 +187,6 @@ async function load_game_from_file(event) {
   game = JSON.parse(text);
   level_gen_program.setValue(game['level_gen_program'], 1);
   visibility_program.setValue(game['visibility_program'], 1);
-  player_plan_program.setValue(game['player_plan_program'], 1);
   player_move_program.setValue(game['player_move_program'], 1);
   nature_program.setValue(game['nature_program'], 1);
   goal_program.setValue(game['goal_program'], 1);
@@ -207,7 +202,6 @@ function download_game() {
   var game = {}
   game['level_gen_program'] = level_gen_program.getValue();
   game['visibility_program'] = visibility_program.getValue();
-  game['player_plan_program'] = player_plan_program.getValue();
   game['player_move_program'] = player_move_program.getValue();
   game['nature_program'] = nature_program.getValue();
   game['goal_program'] = goal_program.getValue();
