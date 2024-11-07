@@ -188,8 +188,10 @@ function change_tabs() {
   player_move_program.resize();
   nature_program.resize();
   goal_program.resize();
-  upload_status.innerText = ""
-  load_status.innerText = ""
+  level_state.resize();
+  level_settings.resize();
+  upload_status.innerText = "";
+  load_status.innerText = "";
 }
 
 // Loading games from upload
