@@ -20,6 +20,11 @@ if (getQueryVariable("editor") != "true") {
   document.getElementById('level-editor').style.display = "none";
 }
 
+// Only show solutions if called for in URL
+if (getQueryVariable("solutions") != "true") {
+  document.querySelector('#example-games optgroup[label="Solutions"]').remove();
+}
+//
 // Select a particular tab if specified in the URL
 if (getQueryVariable("tab") == "1") {
   document.getElementById('tab1').checked = true;
