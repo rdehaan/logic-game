@@ -50,12 +50,12 @@ function unlock_level_generation() {
   reset_debugging();
 }
 function clear_level() {
-  level_state = "";
-  level_settings = "";
+  level_state.setValue("", 1);
+  level_settings.setValue("", 1);
   update_interface();
 }
 function update_interface() {
-  if (level_state) {
+  if (level_state.getValue()) {
     clear_button.disabled = false;
     clear_button.title = "";
     reset_button.disabled = true;
@@ -63,8 +63,8 @@ function update_interface() {
     play_button.disabled = false;
     play_button.title = "";
     var partial_game = {};
-    partial_game['level_state'] = level_state;
-    partial_game['level_settings'] = level_settings;
+    partial_game['level_state'] = level_state.getValue();
+    partial_game['level_settings'] = level_settings.getValue();
     partial_game['visibility_program'] = visibility_program.getValue();
     var game_state = generate_initial_game_state(partial_game);
     var player_input = generate_player_input(partial_game, game_state);
@@ -148,10 +148,6 @@ function reset_level() {
   reset_debugging();
 }
 
-// Variables for generated level
-var level_state = "";
-var level_settings = "";
-
 // Loading games from file
 function load_game() {
   do_stop();
@@ -170,8 +166,8 @@ function load_game_from_path(path) {
       player_move_program.setValue(game['player_move_program'], 1);
       nature_program.setValue(game['nature_program'], 1);
       goal_program.setValue(game['goal_program'], 1);
-      level_state = game['level_state'];
-      level_settings = game['level_settings'];
+      level_state.setValue(game['level_state'], 1);
+      level_settings.setValue(game['level_settings'], 1);
       reset_debugging();
       update_interface();
     }
@@ -208,8 +204,8 @@ async function load_game_from_file(event) {
   player_move_program.setValue(game['player_move_program'], 1);
   nature_program.setValue(game['nature_program'], 1);
   goal_program.setValue(game['goal_program'], 1);
-  level_state = game['level_state'];
-  level_settings = game['level_settings'];
+  level_state.setValue(game['level_state'], 1);
+  level_settings.setValue(game['level_settings'], 1);
   upload_status.innerText = "Done loading.."
   reset_debugging();
   update_interface();
@@ -223,8 +219,8 @@ function download_game() {
   game['player_move_program'] = player_move_program.getValue();
   game['nature_program'] = nature_program.getValue();
   game['goal_program'] = goal_program.getValue();
-  game['level_state'] = level_state;
-  game['level_settings'] = level_settings;
+  game['level_state'] = level_state.getValue();
+  game['level_settings'] = level_settings.getValue();
   var text = JSON.stringify(game, null, 2);
   save('game.json', text)
 }
