@@ -181,6 +181,7 @@ function load_game_from_path(path) {
 }
 
 file_input = document.getElementById('file-input');
+load_status = document.getElementById('load-status');
 upload_status = document.getElementById('upload-status');
 example_games = document.getElementById('example-games');
 

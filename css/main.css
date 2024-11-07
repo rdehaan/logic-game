@@ -194,10 +194,6 @@ pre {
     padding-right: 0;
     padding-left: 0; }
 
-.load-status {
-
-}
-
 .game-controls {
   display: flex;
   justify-content: center;
@@ -269,4 +265,13 @@ a.modal-link:link {
   padding: 3px 6px;
   cursor: pointer;
   background: #fff;
+}
+
+#load-status {
+  margin-top: 5px;
+  color: #888;
+}
+#upload-status {
+  margin-top: 5px;
+  color: #888;
 }
