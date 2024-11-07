@@ -17,8 +17,8 @@ function play_game() {
     working_game['player_move_program'] = player_move_program.getValue();
     working_game['nature_program'] = nature_program.getValue();
     working_game['goal_program'] = goal_program.getValue();
-    working_game['level_state'] = level_state;
-    working_game['level_settings'] = level_settings;
+    working_game['level_state'] = level_state.getValue();
+    working_game['level_settings'] = level_settings.getValue();
     var verbose_checkbox = document.getElementById("verbose");
     var verbose = true;
     if(typeof verbose_checkbox !== 'undefined' && verbose_checkbox !== null) {
@@ -159,13 +159,15 @@ function generate_level() {
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
   if (answer_set) {
-    level_state = filter_answer_set(answer_set, ["at"]);
-    level_state = answer_set_to_facts(level_state);
-    level_settings = filter_answer_set(answer_set, ["setting","decorate"]);
-    level_settings = answer_set_to_facts(level_settings);
+    var generated_state = filter_answer_set(answer_set, ["at"]);
+    generated_state = answer_set_to_facts(generated_state);
+    level_state.setValue(generated_state, 1);
+    generated_settings = filter_answer_set(answer_set, ["setting","decorate"]);
+    generated_settings = answer_set_to_facts(generated_settings);
+    level_settings.setValue(generated_settings, 1);
   } else {
-    level_state = "";
-    level_settings = "";
+    level_state.setValue("", 1);
+    level_settings.setValue("", 1);
   }
 
   reset_debugging();

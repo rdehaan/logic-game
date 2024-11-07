@@ -53,6 +53,28 @@ player_move_program.setOptions({
   autoScrollEditorIntoView: true
 });
 
+var level_settings = ace.edit("level_settings");
+level_settings.setTheme("ace/theme/textmate");
+level_settings.$blockScrolling = Infinity;
+level_settings.setOptions({
+  useSoftTabs: true,
+  tabSize: 2,
+  maxLines: Infinity,
+  mode: "ace/mode/gringo",
+  autoScrollEditorIntoView: true
+});
+
+var level_state = ace.edit("level_state");
+level_state.setTheme("ace/theme/textmate");
+level_state.$blockScrolling = Infinity;
+level_state.setOptions({
+  useSoftTabs: true,
+  tabSize: 2,
+  maxLines: Infinity,
+  mode: "ace/mode/gringo",
+  autoScrollEditorIntoView: true
+});
+
 var example_editors = document.querySelectorAll(".example-code");
 var example_editor;
 example_editors.forEach((elem) => {
