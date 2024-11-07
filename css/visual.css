@@ -30,7 +30,5 @@
 .grid-visual span {
   display: table-cell;
   vertical-align: middle;
-  font-size: calc(var(--font-size, 1em) + 10pt);
+  font-size: calc(var(--font-size, 1em) + 5pt);
 }
-
-/* TODO: https://codepen.io/havardob/pen/yLbVrzM */

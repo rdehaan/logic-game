@@ -101,7 +101,7 @@ function visualize_grid(grid_ds) {
       div.style.setProperty("background-color", "#ddd");
     }
 
-    div.style.setProperty("--font-size", "2vw");
+    div.style.setProperty("--font-size", "2.5vw");
     var items = grid_ds[num].toSorted();
     var html = '<span>';
     for (const item of items) {
