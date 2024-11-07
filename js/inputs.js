@@ -52,3 +52,21 @@ player_move_program.setOptions({
   mode: "ace/mode/gringo",
   autoScrollEditorIntoView: true
 });
+
+var example_editors = document.querySelectorAll(".example-code");
+var example_editor;
+example_editors.forEach((elem) => {
+  console.log(elem);
+  ace.edit(elem);
+  example_editor = ace.edit(elem);
+  example_editor.setTheme("ace/theme/textmate");
+  example_editor.getSession().$blockScrolling = Infinity;
+  example_editor.getSession().setOptions({
+    useSoftTabs: true,
+    tabSize: 2,
+    maxLines: Infinity,
+    mode: "ace/mode/gringo",
+    autoScrollEditorIntoView: true
+  });
+  example_editor.setReadOnly(true);
+});

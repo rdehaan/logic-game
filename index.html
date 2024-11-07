@@ -71,13 +71,12 @@
       </p>
 
       <p>
-
+        Navigate to the next tabs to read the instructions for how to play,
+        to view and edit the game rules,
+        and to enter your strategy.
       </p>
 
       <h3>Load game</h3>
-      <p>
-        You can select from the following example games.
-      </p>
       <select id="example-games">
         <optgroup label="Find the flag">
           <option value="examples/flag1.json">Find the flag 1</option>
@@ -116,7 +115,7 @@
     </section>
 
     <section id="section-game-rules">
-      <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-generation">&#xf05a;</a></h3>
+      <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
         This program expresses how levels are generated.
       </p>
@@ -127,7 +126,7 @@
       </div>
       <pre id="level_gen_program"></pre>
 
-      <h3>Visibility</h3>
+      <h3>Visibility <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
         This program expresses what the player can observe.
       </p>
@@ -138,7 +137,7 @@
       </div>
       <pre id="visibility_program"></pre>
 
-      <h3>Nature's moves</h3>
+      <h3>Nature's moves <a href="javascript:void()" class="modal-link" data-open="modal-natures-moves">&#xf05a;</a></h3>
       <p>
         This program expresses <i>Nature</i>'s moves, i.e.,
         how the state of the board changes as a result of
@@ -146,7 +145,7 @@
       </p>
       <pre id="nature_program"></pre>
 
-      <h3>Winning conditions</h3>
+      <h3>Winning conditions <a href="javascript:void()" class="modal-link" data-open="modal-winning-conditions">&#xf05a;</a></h3>
       <p>
         This program expresses when the game is won or lost.
       </p>
@@ -174,14 +173,46 @@
 
   </main>
 
-  <div class="modal" id="modal-level-generation">
+  <div class="modal" id="modal-level-programs">
     <div class="modal-dialog">
       <header class="modal-header">
         <button class="close-modal" aria-label="close modal" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Level generation</h3>
+        <h3>Level generation &amp; visibility programs</h3>
         <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <p>asdf</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-natures-moves">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+      </header>
+      <div class="modal-content">
+        <h3>Nature's moves</h3>
+        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <pre class="example-code">a :- not b.</pre>
+        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <p>asdf</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-winning-conditions">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+      </header>
+      <div class="modal-content">
+        <h3>Winning conditions</h3>
+        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
+        <pre class="example-code">a :- b.</pre>
         <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
         <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
         <p>asdf</p>
