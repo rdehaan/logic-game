@@ -19,7 +19,11 @@ function play_game() {
     working_game['goal_program'] = goal_program.getValue();
     working_game['level_state'] = level_state;
     working_game['level_settings'] = level_settings;
-    var verbose = document.getElementById("verbose").checked;
+    var verbose_checkbox = document.getElementById("verbose");
+    var verbose = true;
+    if(typeof verbose_checkbox !== 'undefined' && verbose_checkbox !== null) {
+      verbose = verbose_checkbox.checked;
+    }
 
     game_state = generate_initial_game_state(working_game);
     player_input = generate_player_input(working_game, game_state);
@@ -257,7 +261,7 @@ function generate_next_state(working_game, game_state, player_moves) {
   program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
   program += game_state;
   program += player_moves;
-  program += working_game['nature_program'];
+  program += preprocess_program(working_game['nature_program']);
   program += working_game['level_settings'];
   answer_set = get_answer_set(program);
   var nexts = null;

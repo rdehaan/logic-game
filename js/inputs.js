@@ -56,7 +56,6 @@ player_move_program.setOptions({
 var example_editors = document.querySelectorAll(".example-code");
 var example_editor;
 example_editors.forEach((elem) => {
-  console.log(elem);
   ace.edit(elem);
   example_editor = ace.edit(elem);
   example_editor.setTheme("ace/theme/textmate");
