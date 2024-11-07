@@ -140,7 +140,7 @@ function preprocess_program(program) {
   for (let i = 0; i < parts.length; i++) {
     if (i % 2 == 1) {
       nums = parts[i].split(",");
-      random_int = randint(Number(nums[0]),Number(nums[1]));
+      random_int = randint(Number(nums[0]),Number(nums[1])+1);
       parts[i] = random_int.toString();
     }
   }
