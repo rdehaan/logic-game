@@ -161,9 +161,11 @@ function generate_level() {
   if (answer_set) {
     var generated_state = filter_answer_set(answer_set, ["at"]);
     generated_state = answer_set_to_facts(generated_state);
+    generated_state = generated_state.replace(". ", ".\n");
     level_state.setValue(generated_state, 1);
     var generated_settings = filter_answer_set(answer_set, ["setting","decorate"]);
     generated_settings = answer_set_to_facts(generated_settings);
+    generated_settings = generated_settings.replace(". ", ".\n");
     level_settings.setValue(generated_settings, 1);
   } else {
     level_state.setValue("", 1);
