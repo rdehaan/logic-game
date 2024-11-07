@@ -64,35 +64,42 @@
 
     <section id="section-control">
       <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; 5multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+        Here you can load files, from one of the examples listed
+        or from a file on your device.
+        You can also download the current game to a file
+        on your device.
+      </p>
+
+      <p>
+
       </p>
 
       <h3>Load game</h3>
       <p>
-        Select a game from the list.
+        You can select from the following example games.
       </p>
-      <select id="example_games">
+      <select id="example-games">
         <optgroup label="Find the flag">
-          <option value="examples/flag1.json">Flag 1</option>
-          <option value="examples/flag2.json">Flag 2</option>
-          <option value="examples/flag3.json">Flag 3</option>
-          <option value="examples/flag4.json">Flag 4</option>
-          <option value="examples/flag5.json">Flag 5</option>
-          <option value="examples/flag6.json">Flag 6</option>
-          <option value="examples/flag7.json">Flag 7</option>
-          <option value="examples/flag8.json">Flag 8</option>
+          <option value="examples/flag1.json">Find the flag 1</option>
+          <option value="examples/flag2.json">Find the flag 2</option>
+          <option value="examples/flag3.json">Find the flag 3</option>
+          <option value="examples/flag4.json">Find the flag 4</option>
+          <option value="examples/flag5.json">Find the flag 5</option>
+          <option value="examples/flag6.json">Find the flag 6</option>
+          <option value="examples/flag7.json">Find the flag 7</option>
+          <option value="examples/flag8.json">Find the flag 8</option>
         </optgroup>
       </select>
       &nbsp;
       <button onclick="load_game()" class="control-button">Load</button>
-      <p id="load_status"></p>
+      <p id="load-status"></p>
 
-      <h3>Load game from file</h3>
-      <form id="upload_form" enctype="multipart/form-data">
-        <label for="file_input" class="control-button">Select file</label>
-        <input type="file" id="file_input" onchange="load_game_from_file(event)" required>
+      <h3>Upload game from file</h3>
+      <form id="upload-form" enctype="multipart/form-data">
+        <label for="file-input" class="control-button">Select file</label>
+        <input type="file" id="file-input" onchange="load_game_from_file(event)" required>
       </form>
-      <p id="upload_status"></p>
+      <p id="upload-status"></p>
 
       <h3>Download current game</h3>
       <button onclick="download_game()" class="control-button">Download</button>

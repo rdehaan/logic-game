@@ -194,6 +194,10 @@ pre {
     padding-right: 0;
     padding-left: 0; }
 
+.load-status {
+
+}
+
 .game-controls {
   display: flex;
   justify-content: center;

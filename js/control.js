@@ -180,9 +180,9 @@ function load_game_from_path(path) {
   request.send();
 }
 
-file_input = document.getElementById('file_input');
-upload_status = document.getElementById('upload_status');
-example_games = document.getElementById('example_games');
+file_input = document.getElementById('file-input');
+upload_status = document.getElementById('upload-status');
+example_games = document.getElementById('example-games');
 
 // Refreshing after changing tabs
 function change_tabs() {
