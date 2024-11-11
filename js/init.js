@@ -24,7 +24,7 @@ if (getQueryVariable("editor") != "true") {
 if (getQueryVariable("solutions") != "true") {
   document.querySelector('#example-games optgroup[label="Solutions"]').remove();
 }
-//
+
 // Select a particular tab if specified in the URL
 if (getQueryVariable("tab") == "1") {
   document.getElementById('tab1').checked = true;
@@ -45,4 +45,9 @@ if (getQueryVariable("tab") == "4") {
 if (getQueryVariable("tab") == "5") {
   document.getElementById('tab5').checked = true;
   reset_tab_color();
+}
+
+if (getQueryVariable("file")) {
+  filename = getQueryVariable("file");
+  load_game_from_path(filename);
 }
