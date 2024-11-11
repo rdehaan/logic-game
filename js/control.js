@@ -183,6 +183,7 @@ example_games = document.getElementById('example-games');
 
 // Refreshing after changing tabs
 function change_tabs() {
+  document.querySelector('label[for="tab2"]').style.color = "#bbb";
   level_gen_program.resize();
   visibility_program.resize();
   player_move_program.resize();

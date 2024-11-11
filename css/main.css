@@ -120,6 +120,10 @@ input[name="tabs"]:checked + label {
   border-bottom: 1px solid #fff;
 }
 
+label[for="tab2"] {
+  color: orange;
+}
+
 #tab1:checked ~ #section-control,
 #tab2:checked ~ #section-instructions,
 #tab3:checked ~ #section-game-rules,
