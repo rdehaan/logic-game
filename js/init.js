@@ -1,6 +1,11 @@
 function initalize_after_clingo_loaded() {
-  load_game_from_path('examples/flag1-with-solutions.json');
   lock_level_generation();
+  if (getQueryVariable("file")) {
+    filename = getQueryVariable("file");
+    load_game_from_path("examples/" + filename + ".json");
+  } else {
+    load_game_from_path('examples/flag1-with-solutions.json');
+  }
 };
 
 function getQueryVariable(variable) {
@@ -45,9 +50,4 @@ if (getQueryVariable("tab") == "4") {
 if (getQueryVariable("tab") == "5") {
   document.getElementById('tab5').checked = true;
   reset_tab_color();
-}
-
-if (getQueryVariable("file")) {
-  filename = getQueryVariable("file");
-  load_game_from_path("examples/" + filename + ".json");
 }
