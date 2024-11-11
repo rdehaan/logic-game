@@ -192,7 +192,7 @@ function generate_initial_game_state(working_game) {
 function generate_player_input(working_game, game_state) {
   program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
   program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
-  program += "observe(at(R,C,O)) :- at(R,C,O), observe(at(R,C,O)).\n"
+  // program += "observe(at(R,C,O)) :- at(R,C,O), observe(at(R,C,O)).\n"
   program += game_state;
   program += working_game['visibility_program'];
   program += working_game['level_settings'];

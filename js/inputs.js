@@ -75,14 +75,17 @@ level_state.setOptions({
   autoScrollEditorIntoView: true
 });
 
-var example_editors = document.querySelectorAll(".example-code");
+var example_code_elems = document.querySelectorAll(".example-code");
+var example_code_num = 0;
 var example_editor;
-example_editors.forEach((elem) => {
-  ace.edit(elem);
-  example_editor = ace.edit(elem);
+example_code_elems.forEach((elem) => {
+  var id = "example" + example_code_num;
+  elem.id = id;
+  example_code_num += 1;
+  example_editor = ace.edit(id);
   example_editor.setTheme("ace/theme/textmate");
-  example_editor.getSession().$blockScrolling = Infinity;
-  example_editor.getSession().setOptions({
+  example_editor.$blockScrolling = Infinity;
+  example_editor.setOptions({
     useSoftTabs: true,
     tabSize: 2,
     maxLines: Infinity,
@@ -90,4 +93,4 @@ example_editors.forEach((elem) => {
     autoScrollEditorIntoView: true
   });
   example_editor.setReadOnly(true);
-});
+})
