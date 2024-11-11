@@ -49,5 +49,5 @@ if (getQueryVariable("tab") == "5") {
 
 if (getQueryVariable("file")) {
   filename = getQueryVariable("file");
-  load_game_from_path(filename);
+  load_game_from_path("examples/" + filename + ".json");
 }
