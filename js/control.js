@@ -181,9 +181,13 @@ load_status = document.getElementById('load-status');
 upload_status = document.getElementById('upload-status');
 example_games = document.getElementById('example-games');
 
+function reset_tab_color() {
+  document.querySelector('label[for="tab2"]').style.color = "#bbb";
+}
+
 // Refreshing after changing tabs
 function change_tabs() {
-  document.querySelector('label[for="tab2"]').style.color = "#bbb";
+  reset_tab_color();
   level_gen_program.resize();
   visibility_program.resize();
   player_move_program.resize();

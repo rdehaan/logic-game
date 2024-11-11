@@ -28,16 +28,21 @@ if (getQueryVariable("solutions") != "true") {
 // Select a particular tab if specified in the URL
 if (getQueryVariable("tab") == "1") {
   document.getElementById('tab1').checked = true;
+  reset_tab_color();
 }
 if (getQueryVariable("tab") == "2") {
   document.getElementById('tab2').checked = true;
+  reset_tab_color();
 }
 if (getQueryVariable("tab") == "3") {
   document.getElementById('tab3').checked = true;
+  reset_tab_color();
 }
 if (getQueryVariable("tab") == "4") {
   document.getElementById('tab4').checked = true;
+  reset_tab_color();
 }
 if (getQueryVariable("tab") == "5") {
   document.getElementById('tab5').checked = true;
+  reset_tab_color();
 }
