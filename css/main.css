@@ -239,9 +239,11 @@ a.modal-link:link {
   visibility: visible;
   opacity: 1;
 }
+.modal.is-visible .modal-dialog {
+  width: 100%;
+}
 .modal-dialog {
   position: relative;
-  width: 100%;
   min-width: 320px;
   max-width: 1300px;
   max-height: 80vh;

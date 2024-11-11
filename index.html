@@ -189,9 +189,6 @@ decorate(game_type,grid).
 decorate(label,flag,font_f024).
 decorate(label,player,font_f007).</pre>
 
-<!-- # visibility
-- expresses what parts of the level the player can observe at each time step
-- uses predicate observe -->
       <h3>What can the player observe?</h3>
       <p>
         The logic program labeled <i>visibility</i> encodes what parts of the
@@ -213,28 +210,72 @@ decorate(label,player,font_f007).</pre>
 % Everything is observable
 observe(at(R,C,O)) :- at(R,C,O).</pre>
 
-      <!-- # nature program
-      - gets as input the state of the game (with at)
-      - and the level settings that don't change (with setting)
-      - and the player's move (with do)
-      - and determines the next state of the world (with next, which will be renamed to at in next time step)
-      - RANDINT(x,y) may be used, to express randomness
-      - if there is no answer set, the state of the world doesn't change (give example) -->
       <h3>How does the game progress?</h3>
       <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+        The logic program labeled <i>nature's moves</i> expresses how the game
+        progresses from one state to the next.
+        To this program are added the current state of the game
+        (in the form of atoms over <tt>at</tt>),
+        the move(s) of the player
+        (in the form of atoms over <tt>do</tt>),
+        and the level settings
+        (in the form of atoms over <tt>setting</tt>).
+        An answer set of the resulting program,
+        restricted to atoms over the predicate <tt>next</tt>,
+        constitute the next state of the game,
+        where these atoms are translated to use the predicate
+        <tt>at</tt> instead of <tt>next</tt>.
       </p>
+      <p>
+        This program may contain substrings of the form
+        <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
+        integers. In the preprocessing of the program, these
+        are replaced by a random integer between (and including)
+        <tt>l</tt> and <tt>u</tt>.
+        This gives an easy way to include randomness in the level generation.
+      </p>
+      <p>
+        If the combined program has no answer sets,
+        the state of the game does not change.
+      </p>
+      <p>
+        For example, the following program expresses that
+        the flag moves to a randomly selected location that is in the same
+        column as where it was in the previous state.
+      </p>
+      <pre class="example-code">
+% The flag moves randomly inside its column
+next(RANDINT(1,3),C,flag) :- at(R,C,flag).</pre>
 
-      <!-- # winning conditions
-      - gets as input the state of the game
-      - and level settings
-      - determines whether the game is won (with win)
-      - or whether the game is lost (with lose)
-      - or whether the game is neither won nor lost yet. -->
       <h3>When is a game won or lost?</h3>
       <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+        At each time step, the logic program labeled <i>winning conditions</i>
+        determines whether the player wins or loses the game, or whether it
+        continues.
+        To this program are added the current state of the game
+        (in the form of atoms over <tt>at</tt>),
+        the level settings
+        (in the form of atoms over <tt>setting</tt>),
+        and an atom <tt>current_time(t)</tt>,
+        where <tt>t</tt> is replaced by the integer value specifying
+        the number of time steps that have passed.
+        An answer set of the resulting program is taken.
+        If this answer set contains any atoms over <tt>win</tt>,
+        the player wins the game.
+        Otherwise, if this answer set contains any atoms over <tt>lose</tt>,
+        the player loses.
+        Otherwise, the game continues.
       </p>
+      <p>
+        For example, the following program expresses that
+        the player wins if it reaches the flag,
+        and that it loses if time runs out.
+      </p>
+      <pre class="example-code">
+% Goal: reach the flag
+win :- at(R,C,player), at(R,C,flag).
+% You lose if time runs out..
+lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
 
       <!-- # player program
       - gets as input the state of the game, observable to the player (with observe)
@@ -245,18 +286,88 @@ observe(at(R,C,O)) :- at(R,C,O).</pre>
       - RANDINT(x,y) may be used, to express randomness -->
       <h3>How to instruct the player?</h3>
       <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+        At each time step, the logic program labeled <i>player strategy</i>
+        specifies what move(s) the player performs at that time step,
+        and how the player's memory is updated.
+        To this program are added the current state of the game
+        (in the form of atoms over <tt>at</tt>),
+        the level settings
+        (in the form of atoms over <tt>setting</tt>),
+        and the player's memory
+        (in the form of atoms over <tt>memory</tt>).
+        An answer set <i>A</i> of the resulting program is taken.
+        This answer set restricted to atoms over <tt>do</tt>
+        constitutes the moves that the player performs.
+        This answer set restricted to atoms over <tt>remember</tt>
+        and <tt>forget</tt> specifies how the player's memory changes.
       </p>
+      <p>
+        The player's memory in the next time step consists
+        of (i) all atoms <tt>memory(M)</tt> such that <tt>forget(M)</tt>
+        does not occur in <i>A</i>,
+        and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
+        occurs in <i>A</i>.
+      </p>
+      <p>
+        The player strategy program may contain substrings of the form
+        <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
+        integers. In the preprocessing of the program, these
+        are replaced by a random integer between (and including)
+        <tt>l</tt> and <tt>u</tt>.
+        This gives an easy way to include randomness in the level generation.
+      </p>
+      <p>
+        For example, the following program expresses that
+        the player performs the action <tt>wait</tt>,
+        and that the memory counter <tt>counter(T)</tt> is increased by one.
+      </p>
+      <pre class="example-code">
+% Wait
+do(wait).
+
+% Increase counter in memory
+forget(counter(T)) :- memory(counter(T)).
+remember(counter(T+1)) :- memory(counter(T)).</pre>
 
       <h3>Creating your own games</h3>
       <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+        You can either load and play an existing game.
+        Loading games can be done in the <i>Control</i> tab.
+        Or you can design your own game.
+        In order to do so, specify the four respective programs
+        under the <i>Game rules</i> tab.
+      </p>
+      <p>
+        Note: in order to edit the <i>level generation</i> and <i>visibility</i>
+        programs, you need to unlock these for editing.
+        This will remove the level that is currently in memory,
+        to ensure that the level in memory is based on the
+        <i>level generation</i> and <i>visibility</i> programs.
       </p>
 
       <h3>How is the game visualized?</h3>
       <p>
-        Arma virumque cano, Troiae qui primus ab oris Italiam, fato profugus, Laviniaque venit litora, multum ille et terris iactatus et alto vi superum saevae memorem Iunonis ob iram; multa quoque et bello passus, dum conderet urbem, inferretque deos Latio, genus unde Latinum, Albanique patres, atque altae moenia Romae.
+        Currently, only games played on a rectangular grid can be visualized.
+        In order for this to work,
+        the level settings must include facts <tt>setting(grid_width(w))</tt>
+        and <tt>setting(grid_height(h))</tt> for some positive integers
+        <tt>w</tt> and <tt>h</tt>.
       </p>
+      <p>
+        Items on the grid may be visualized with an icon in the
+        <a href="https://fontawesome.com/v4/icons/">Font Awesome</a>
+        font as follows.
+        To depict an item named <tt>obj</tt> in the logic programs
+        by an icon with unicode representation <tt>fXXX</tt>,
+        add the following fact to the level generation program:
+        <tt>decorate(label,obj,font_fXXX).</tt>
+      </p>
+      <p>
+        For example, the following line expresses that
+        the item named <tt>bug</tt> is depicted with a bug icon.
+      </p>
+      <pre class="example-code">
+decorate(label,bug,font_f188).</pre>
 
     </section>
 

@@ -93,4 +93,5 @@ example_code_elems.forEach((elem) => {
     autoScrollEditorIntoView: true
   });
   example_editor.setReadOnly(true);
+  example_editor.resize();
 })
