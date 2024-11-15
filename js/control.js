@@ -176,7 +176,7 @@ function load_game_from_path(path) {
         if (!game[field]) {
           game[field] = "";
         }
-      }
+      });
       aux_program.setValue(game['aux_program'], 1);
       level_gen_program.setValue(game['level_gen_program'], 1);
       visibility_program.setValue(game['visibility_program'], 1);
