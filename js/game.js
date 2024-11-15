@@ -12,6 +12,7 @@ function play_game() {
 
   if (!game_paused) {
     // Store the current level/game
+    working_game['aux_program'] = aux_program.getValue();
     working_game['level_gen_program'] = level_gen_program.getValue();
     working_game['visibility_program'] = visibility_program.getValue();
     working_game['player_move_program'] = player_move_program.getValue();

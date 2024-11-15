@@ -374,12 +374,22 @@ decorate(label,bug,font_f188).</pre>
     <section id="section-game-rules">
       <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
-        This program expresses how levels are generated.
+        This is an auxiliary program that is added to all programs.
       </p>
       <div class="inline-controls" >
         <button onclick="lock_level_generation()" class="control-button" id="lock-button">&#x25CF; Lock</button>
         &nbsp;
         <button onclick="unlock_level_generation()" class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
+      </div>
+      <pre id="aux_program"></pre>
+      <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
+      <p>
+        This program expresses how levels are generated.
+      </p>
+      <div class="inline-controls" >
+        <button onclick="lock_level_generation()" class="control-button" id="lock-button2">&#x25CF; Lock</button>
+        &nbsp;
+        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="level_gen_program"></pre>
 
@@ -388,9 +398,9 @@ decorate(label,bug,font_f188).</pre>
         This program expresses what the player can observe.
       </p>
       <div class="inline-controls" >
-        <button onclick="lock_level_generation()" class="control-button" id="lock-button2">&#x25CF; Lock</button>
+        <button onclick="lock_level_generation()" class="control-button" id="lock-button3">&#x25CF; Lock</button>
         &nbsp;
-        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
+        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button3" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="visibility_program"></pre>
 

@@ -3,6 +3,8 @@ var lock_button = document.getElementById('lock-button');
 var unlock_button = document.getElementById('unlock-button');
 var lock_button2 = document.getElementById('lock-button2');
 var unlock_button2 = document.getElementById('unlock-button2');
+var lock_button3 = document.getElementById('lock-button3');
+var unlock_button3 = document.getElementById('unlock-button3');
 var generate_button = document.getElementById('generate-button');
 var clear_button = document.getElementById('clear-button');
 var reset_button = document.getElementById('reset-button');
@@ -24,8 +26,11 @@ function lock_level_generation() {
   unlock_button.disabled = false;
   lock_button2.disabled = true;
   unlock_button2.disabled = false;
+  lock_button3.disabled = true;
+  unlock_button3.disabled = false;
   generate_button.disabled = false;
   generate_button.title = "";
+  aux_program.setReadOnly(true);
   level_gen_program.setReadOnly(true);
   visibility_program.setReadOnly(true);
 }
@@ -34,8 +39,10 @@ function unlock_level_generation() {
   unlock_button.disabled = true;
   lock_button2.disabled = false;
   unlock_button2.disabled = true;
+  lock_button3.disabled = true;
+  unlock_button3.disabled = false;
   generate_button.disabled = true;
-  generate_button.title = "Level generation and visibility programs need to be locked to generate a level."
+  generate_button.title = "Auxiliary, level generation and visibility programs need to be locked to generate a level."
   clear_button.disabled = true;
   clear_button.title = "There is no level to be cleared.";
   reset_button.disabled = true;
@@ -44,6 +51,7 @@ function unlock_level_generation() {
   play_button.title = "There is no level to play.";
   pause_button.disabled = true;
   stop_button.disabled = true;
+  aux_program.setReadOnly(false);
   level_gen_program.setReadOnly(false);
   visibility_program.setReadOnly(false);
   clear_level();
@@ -161,6 +169,7 @@ function load_game_from_path(path) {
   request.onreadystatechange = function() {
     if (request.readyState == 4 && request.status == 200) {
       game = JSON.parse(request.responseText.trim())
+      aux_program.setValue(game['aux_program'], 1);
       level_gen_program.setValue(game['level_gen_program'], 1);
       visibility_program.setValue(game['visibility_program'], 1);
       player_move_program.setValue(game['player_move_program'], 1);
@@ -188,6 +197,7 @@ function reset_tab_color() {
 // Refreshing after changing tabs
 function change_tabs() {
   reset_tab_color();
+  aux_program.resize();
   level_gen_program.resize();
   visibility_program.resize();
   player_move_program.resize();
@@ -206,6 +216,7 @@ async function load_game_from_file(event) {
   const file = event.target.files.item(0)
   const text = await file.text();
   game = JSON.parse(text);
+  aux_program.setValue(game['aux_program'], 1);
   level_gen_program.setValue(game['level_gen_program'], 1);
   visibility_program.setValue(game['visibility_program'], 1);
   player_move_program.setValue(game['player_move_program'], 1);
@@ -221,6 +232,7 @@ async function load_game_from_file(event) {
 // Downloading game currently in memory
 function download_game() {
   var game = {}
+  game['aux_program'] = aux_program.getValue();
   game['level_gen_program'] = level_gen_program.getValue();
   game['visibility_program'] = visibility_program.getValue();
   game['player_move_program'] = player_move_program.getValue();

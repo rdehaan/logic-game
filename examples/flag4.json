@@ -1,4 +1,5 @@
 {
+  "aux_program": "",
   "level_gen_program": "% The game is played on an 8x6 grid\nsetting(grid_width(8)).\nsetting(grid_height(6)).\nsetting(row(1..H)) :- setting(grid_height(H)).\nsetting(col(1..W)) :- setting(grid_width(W)).\n\n% Time bound: 15 steps\nsetting(time_bound(15)).\n\n% The player is randomly placed in the top half\nat(RANDINT(1,3),RANDINT(1,8),player).\n% The flag is randomly placed in the bottom half\nat(RANDINT(4,6),RANDINT(1,8),flag).\n\n% Visualization instructions\ndecorate(game_type,grid).\ndecorate(label,flag,font_f024).\ndecorate(label,player,font_f007).",
   "visibility_program": "% Only a ring of one around the player is visible\nobserve(fog(R1,C1)) :-\n    setting(row(R1)), setting(col(C1)),\n    at(R2,C2,player), |C1-C2| >= 2.\nobserve(fog(R1,C1)) :-\n    setting(row(R1)), setting(col(C1)),\n    at(R2,C2,player), |R1-R2| >= 2.\nobserve(at(R,C,O)) :- at(R,C,O), not observe(fog(R,C)).",
   "player_move_program": "% Hints:\n% - once you see the flag, go towards it\n% - otherwise, follow a fixed path that ensures that you observe all cells eventually",

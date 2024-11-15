@@ -1,3 +1,14 @@
+var aux_program = ace.edit("aux_program");
+aux_program.setTheme("ace/theme/textmate");
+aux_program.$blockScrolling = Infinity;
+aux_program.setOptions({
+  useSoftTabs: true,
+  tabSize: 2,
+  maxLines: Infinity,
+  mode: "ace/mode/gringo",
+  autoScrollEditorIntoView: true
+});
+
 var level_gen_program = ace.edit("level_gen_program");
 level_gen_program.setTheme("ace/theme/textmate");
 level_gen_program.$blockScrolling = Infinity;
