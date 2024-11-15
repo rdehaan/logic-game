@@ -171,7 +171,13 @@ function load_game_from_path(path) {
   request.onreadystatechange = function() {
     if (request.readyState == 4 && request.status == 200) {
       game = JSON.parse(request.responseText.trim())
-      // aux_program.setValue(game['aux_program'], 1);
+      const fields = ['aux_program', 'level_gen_program', 'visibility_program', 'player_move_program', 'nature_program', 'goal_program', 'level_state', 'level_settings'];
+      fields.forEach(function (field, index) {
+        if (!game[field]) {
+          game[field] = "";
+        }
+      }
+      aux_program.setValue(game['aux_program'], 1);
       level_gen_program.setValue(game['level_gen_program'], 1);
       visibility_program.setValue(game['visibility_program'], 1);
       player_move_program.setValue(game['player_move_program'], 1);
