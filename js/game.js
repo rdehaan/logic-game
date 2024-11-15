@@ -157,10 +157,7 @@ function generate_level() {
   // Preprocess it
   program = preprocess_program(program);
 
-  program += working_game['aux_program'];
-
-  console.log("generate_level():");
-  console.log(program);
+  program += aux_program.getValue();
 
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
