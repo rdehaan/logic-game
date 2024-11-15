@@ -39,8 +39,8 @@ function unlock_level_generation() {
   unlock_button.disabled = true;
   lock_button2.disabled = false;
   unlock_button2.disabled = true;
-  lock_button3.disabled = true;
-  unlock_button3.disabled = false;
+  lock_button3.disabled = false;
+  unlock_button3.disabled = true;
   generate_button.disabled = true;
   generate_button.title = "Auxiliary, level generation and visibility programs need to be locked to generate a level."
   clear_button.disabled = true;
@@ -95,6 +95,7 @@ function do_play() {
   if (!game_paused) {
     unlock_button.disabled = true;
     unlock_button2.disabled = true;
+    unlock_button3.disabled = true;
     clear_button.disabled = true;
     clear_button.title = "The level cannot be cleared while the game is ongoing.";
     reset_button.disabled = true;
@@ -117,6 +118,7 @@ function do_play() {
 function end_playing() {
   unlock_button.disabled = false;
   unlock_button2.disabled = false;
+  unlock_button3.disabled = false;
   clear_button.disabled = false;
   clear_button.title = "";
   generate_button.disabled = false;
