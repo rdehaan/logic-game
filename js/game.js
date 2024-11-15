@@ -159,6 +159,8 @@ function generate_level() {
 
   program += working_game['aux_program'];
 
+  console.log(program);
+
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
   if (answer_set) {
