@@ -71,6 +71,7 @@ function update_interface() {
     play_button.disabled = false;
     play_button.title = "";
     var partial_game = {};
+    partial_game['aux_program'] = aux_program.getValue();
     partial_game['level_state'] = level_state.getValue();
     partial_game['level_settings'] = level_settings.getValue();
     partial_game['visibility_program'] = visibility_program.getValue();
