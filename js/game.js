@@ -157,6 +157,8 @@ function generate_level() {
   // Preprocess it
   program = preprocess_program(program);
 
+  program += working_game['aux_program'];
+
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
   if (answer_set) {
@@ -197,6 +199,7 @@ function generate_player_input(working_game, game_state) {
   program += game_state;
   program += working_game['visibility_program'];
   program += working_game['level_settings'];
+  program += working_game['aux_program'];
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["observe","setting"]);
@@ -211,6 +214,7 @@ function generate_player_input(working_game, game_state) {
 function generate_player_move(working_game, player_input, player_memory) {
   program = player_input;
   program += player_memory;
+  program += working_game['aux_program'];
   program += preprocess_program(working_game['player_move_program']);
   answer_set = get_answer_set(program);
   if (answer_set) {
@@ -268,6 +272,7 @@ function generate_next_state(working_game, game_state, player_moves) {
   program += player_moves;
   program += preprocess_program(working_game['nature_program']);
   program += working_game['level_settings'];
+  program += working_game['aux_program'];
   answer_set = get_answer_set(program);
   var nexts = null;
   if (answer_set) {
@@ -307,6 +312,7 @@ function analyze_state(working_game, game_state) {
   program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
   program += game_state;
   program += working_game['level_settings'];
+  program += working_game['aux_program'];
   program += working_game['goal_program'];
   answer_set = get_answer_set(program);
   if (answer_set) {
