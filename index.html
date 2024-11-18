@@ -344,10 +344,12 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         under the <i>Game rules</i> tab.
       </p>
       <p>
-        Note: in order to edit the <i>level generation</i> and <i>visibility</i>
+        Note: in order to edit the <i>auxiliary</i>,
+        <i>level generation</i> and <i>visibility</i>
         programs, you need to unlock these for editing.
         This will remove the level that is currently in memory,
         to ensure that the level in memory is based on the
+        <i>auxiliary</i>,
         <i>level generation</i> and <i>visibility</i> programs.
       </p>
 
@@ -378,7 +380,7 @@ decorate(label,bug,font_f188).</pre>
     </section>
 
     <section id="section-game-rules">
-      <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
+      <h3>Auxiliary <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
         This is an auxiliary program that is added to all programs.
       </p>
@@ -467,11 +469,31 @@ decorate(label,bug,font_f188).</pre>
         <button class="close-modal" aria-label="close modal" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Level generation &amp; visibility programs</h3>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf</p>
+        <h3>Auxiliary, level generation &amp; visibility programs</h3>
+        <p>
+          The auxiliary program can be used to define helping predicates
+          that are used in the other programs. This program is added to the
+          other programs when they are used.
+        </p>
+        <p>
+          The level generation program specifies how levels are generated.
+          An answer set for this program encodes the level
+          using atoms with predicate names <tt>at</tt>,
+          <tt>setting</tt>, and <tt>decorate</tt>.
+        </p>
+        <p>
+          The visibility program defines what parts of the game are
+          observable to the player.
+          The predicate name <tt>observe</tt> is used for this.
+        </p>
+        <p>
+          To generate a level, these three programs need to be locked.
+          Unlocking these programs will clear the level that is
+          currently loaded.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
       </div>
     </div>
   </div>
