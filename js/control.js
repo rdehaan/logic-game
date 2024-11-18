@@ -33,7 +33,9 @@ function lock_level_generation() {
   aux_program.setReadOnly(true);
   level_gen_program.setReadOnly(true);
   visibility_program.setReadOnly(true);
-  level_gen_program.container.style.background="blue";
+  aux_program.container.style.background="#bbb";
+  level_gen_program.container.style.background="#bbb";
+  visibility_program.container.style.background="#bbb";
 }
 function unlock_level_generation() {
   lock_button.disabled = false;
@@ -55,6 +57,9 @@ function unlock_level_generation() {
   aux_program.setReadOnly(false);
   level_gen_program.setReadOnly(false);
   visibility_program.setReadOnly(false);
+  aux_program.container.style.background="#fff";
+  level_gen_program.container.style.background="#fff";
+  visibility_program.container.style.background="#fff";
   clear_level();
   reset_debugging();
 }
