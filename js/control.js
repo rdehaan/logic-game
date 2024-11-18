@@ -33,6 +33,7 @@ function lock_level_generation() {
   aux_program.setReadOnly(true);
   level_gen_program.setReadOnly(true);
   visibility_program.setReadOnly(true);
+  level_gen_program.container.style.background="blue";
 }
 function unlock_level_generation() {
   lock_button.disabled = false;
