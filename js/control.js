@@ -33,9 +33,9 @@ function lock_level_generation() {
   aux_program.setReadOnly(true);
   level_gen_program.setReadOnly(true);
   visibility_program.setReadOnly(true);
-  aux_program.container.style.background = "#ddd";
-  level_gen_program.container.style.background = "#ddd";
-  visibility_program.container.style.background = "#ddd";
+  aux_program.container.style.background = "#eee";
+  level_gen_program.container.style.background = "#eee";
+  visibility_program.container.style.background = "#eee";
 }
 function unlock_level_generation() {
   lock_button.disabled = false;

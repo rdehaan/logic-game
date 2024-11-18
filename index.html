@@ -206,7 +206,7 @@ decorate(label,player,font_f007).</pre>
         (in the form of atoms over <tt>setting</tt>).
         An answer set of the resulting program,
         restricted to atoms over the predicate <tt>observe</tt>,
-        constitute what is observable to the player.
+        constitutes what is observable to the player.
       </p>
       <p>
         For example, the following visibility program captures that
@@ -228,7 +228,7 @@ observe(at(R,C,O)) :- at(R,C,O).</pre>
         (in the form of atoms over <tt>setting</tt>).
         An answer set of the resulting program,
         restricted to atoms over the predicate <tt>next</tt>,
-        constitute the next state of the game,
+        constitutes the next state of the game,
         where these atoms are translated to use the predicate
         <tt>at</tt> instead of <tt>next</tt>.
       </p>
@@ -283,13 +283,6 @@ win :- at(R,C,player), at(R,C,flag).
 % You lose if time runs out..
 lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
 
-      <!-- # player program
-      - gets as input the state of the game, observable to the player (with observe)
-      - and the level settings that don't change (with setting)
-      - and the player's memory (with memory)
-      - determines the move(s) made in this game
-      - determines the updates to the player's memory (with remember and forget; give example)
-      - RANDINT(x,y) may be used, to express randomness -->
       <h3>How to instruct the player?</h3>
       <p>
         At each time step, the logic program labeled <i>player strategy</i>
@@ -505,12 +498,18 @@ decorate(label,bug,font_f188).</pre>
       </header>
       <div class="modal-content">
         <h3>Nature's moves</h3>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <pre class="example-code">a :- not b.
-b :- not a.</pre>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf</p>
+        <p>
+          This program expresses how the game
+          progresses from one state to the next.
+          An answer set of this program,
+          restricted to atoms over the predicate <tt>next</tt>,
+          constitutes the next state of the game,
+          where these atoms are translated to use the predicate
+          <tt>at</tt> instead of <tt>next</tt>.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
       </div>
     </div>
   </div>
@@ -522,11 +521,21 @@ b :- not a.</pre>
       </header>
       <div class="modal-content">
         <h3>Winning conditions</h3>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <pre class="example-code">a :- b.</pre>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf</p>
+        <p>
+          This program determines whether the player wins or loses the game,
+          at each time step,
+          or whether it continues.
+        </p>
+        <p>
+          If an answer set of the program contains any atoms over <tt>win</tt>,
+          the player wins the game.
+          Otherwise, if this answer set contains any atoms over <tt>lose</tt>,
+          the player loses.
+          Otherwise, the game continues.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
       </div>
     </div>
   </div>
@@ -538,11 +547,25 @@ b :- not a.</pre>
       </header>
       <div class="modal-content">
         <h3>Player strategy</h3>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <pre class="example-code">woo :- foo, not bar.</pre>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf asdf asdf asdf asdf asdf asdf asdf asdf asdf</p>
-        <p>asdf</p>
+        <p>
+          This program specifies what move(s) the player performs at each
+          time steps, and how the player's memory is updated.
+          An answer set <i>A</i> of the resulting program is taken.
+          This answer set restricted to atoms over <tt>do</tt>
+          constitutes the moves that the player performs.
+          This answer set restricted to atoms over <tt>remember</tt>
+          and <tt>forget</tt> specifies how the player's memory changes.
+        </p>
+        <p>
+          The player's memory in the next time step consists
+          of (i) all atoms <tt>memory(M)</tt> such that <tt>forget(M)</tt>
+          does not occur in <i>A</i>,
+          and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
+          occurs in <i>A</i>.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
       </div>
     </div>
   </div>
