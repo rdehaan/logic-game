@@ -27,6 +27,7 @@
   display: table;
   border: 1px solid #000;
 }
+.grid-visual span,
 .grid-visual span span {
   display: table-cell;
   vertical-align: middle;
