@@ -22,7 +22,7 @@ function compute_grid_ds(answer_set) {
   var width = Number(match[1]);
 
   var grid_ds = {};
-
+  var fog = {};
   grid_ds["height"] = height;
   grid_ds["width"] = width;
   for (let row=1; row <= height; row++) {
@@ -42,7 +42,6 @@ function compute_grid_ds(answer_set) {
     grid_ds[num].push(item);
   }
 
-  var fog = {};
   matches = answer_set.matchAll(/observe\(fog\((\w+),(\w+)\)\)/g);
   for (const match of matches) {
     row = Number(match[1]);
