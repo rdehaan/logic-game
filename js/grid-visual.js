@@ -175,6 +175,7 @@ function display_lose() {
 
 // Wrapper
 function show_grid(answer_set) {
+  console.log(answer_set);
   visualize_grid(compute_grid_ds(answer_set));
 }
 function clear_grid() {
