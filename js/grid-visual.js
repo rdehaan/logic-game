@@ -127,6 +127,7 @@ function visualize_grid(grid_ds) {
           (bgcolor.length == 3 || bgcolor.length == 6)) {
         bgcolor = "#" + bgcolor;
       }
+      console.log("setting bgcolor " + num + " " + bgcolor);
       div.style.setProperty("background-color", bgcolor);
     }
 
