@@ -60,6 +60,24 @@ function compute_grid_ds(answer_set) {
   }
   grid_ds["labels"] = labels;
 
+  var colors = {};
+  matches = answer_set.matchAll(/decorate\(color,(\w+),(\w+)\)/g);
+  for (const match of matches) {
+    item = match[1];
+    color = match[2];
+    colors[item] = color;
+  }
+  grid_ds["colors"] = colors;
+
+  var bgcolors = {};
+  matches = answer_set.matchAll(/decorate\(bgcolor,(\w+),(\w+)\)/g);
+  for (const match of matches) {
+    item = match[1];
+    bgcolor = match[2];
+    bgcolors[item] = bgcolor;
+  }
+  grid_ds["bgcolors"] = bgcolors;
+
   return grid_ds;
 }
 
@@ -105,15 +123,28 @@ function visualize_grid(grid_ds) {
     var items = grid_ds[num].toSorted();
     var html = '<span>';
     for (const item of items) {
-      label = grid_ds["labels"][item]
+      label = grid_ds["labels"][item];
+      color = grid_ds["colors"][item];
+      bgcolor = grid_ds["bgcolors"][item];
+      var label_html = "?"
       if (label) {
         if (label.match(/font_(\w+)/)) {
           label = label.replace(/font_(\w+)/, "$1");
           label = String.fromCharCode(parseInt(label,16))
         }
-        html += label;
+        label_html = label;
+      }
+      if (!color && !bgcolor) {
+        html += label_html;
       } else {
-        html += "?";
+        html += "<span style='";
+        if (color) {
+          html += "color: " + color + "; ";
+        }
+        if (bgcolor) {
+          html += "background-color: " + bgcolor + "; ";
+        }
+        html += ">" + label_html + "</span>";
       }
     }
     html += '</span>';
