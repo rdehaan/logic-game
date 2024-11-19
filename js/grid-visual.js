@@ -52,7 +52,7 @@ function compute_grid_ds(answer_set) {
   grid_ds["fog"] = fog;
 
   var bg = {};
-  matches = answer_set.matchAll(/decorate\(bgcolor,(\w+),(\w+),(\w+)\)\)/g);
+  matches = answer_set.matchAll(/decorate\(bgcolor,(\w+),(\w+),(\w+)\)/g);
   for (const match of matches) {
     row = Number(match[1]);
     col = Number(match[2]);
