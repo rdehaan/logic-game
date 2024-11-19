@@ -133,7 +133,7 @@ function visualize_grid(grid_ds) {
 
     div.style.setProperty("--font-size", "2.5vw");
     var items = grid_ds[num].toSorted();
-    var html = "<span>";
+    var html = "<div>";
     for (const item of items) {
       label = grid_ds["labels"][item];
       color = grid_ds["colors"][item];
@@ -159,7 +159,7 @@ function visualize_grid(grid_ds) {
         html += "'>" + label_html + "</span>";
       }
     }
-    html += '</span>';
+    html += '</div>';
     div.innerHTML = html;
   }
 }
