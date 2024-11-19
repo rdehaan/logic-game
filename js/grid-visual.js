@@ -144,7 +144,7 @@ function visualize_grid(grid_ds) {
         if (bgcolor) {
           html += "background-color: " + bgcolor + "; ";
         }
-        html += ">" + label_html + "</span>";
+        html += "'>" + label_html + "</span>";
       }
     }
     html += '</span>';
