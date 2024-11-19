@@ -130,7 +130,9 @@ function visualize_grid(grid_ds) {
       div.style.setProperty("background-color", bgcolor);
     }
 
-    div.style.setProperty("--font-size", "2.5vw");
+    // 12: 2.5
+    //
+    div.style.setProperty("--font-size", "1.5vw");
     var items = grid_ds[num].toSorted();
     var html = "<div>";
     for (const item of items) {
