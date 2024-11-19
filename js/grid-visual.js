@@ -123,7 +123,7 @@ function visualize_grid(grid_ds) {
     }
     var bgcolor = grid_ds["bg"][num];
     if (bgcolor) {
-      if (bgcolor.match(/^hex[0-9a-fA-F]+$/)) {
+      if (bgcolor.match(/^hex_[0-9a-fA-F]+$/)) {
         bgcolor = "#" + bgcolor;
       }
       div.style.setProperty("background-color", bgcolor);
@@ -155,7 +155,7 @@ function visualize_grid(grid_ds) {
       } else {
         html += "<span style='";
         if (color) {
-          if (color.match(/^hex[0-9a-fA-F]+$/)) {
+          if (color.match(/^hex_[0-9a-fA-F]+$/)) {
             color = "#" + color;
           }
           html += "color: " + color + "; ";
