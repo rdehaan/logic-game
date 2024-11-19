@@ -27,7 +27,8 @@
   display: table;
   border: 1px solid #000;
 }
-.grid-visual span {
+.grid-visual span,
+.grid-visual span span {
   display: table-cell;
   vertical-align: middle;
   font-size: calc(var(--font-size, 1em) + 5pt);
