@@ -142,6 +142,9 @@ function visualize_grid(grid_ds) {
           label = label.replace(/font_(\w+)/, "$1");
           label = String.fromCharCode(parseInt(label,16))
         }
+        if (label == "empty") {
+          label_html = "";
+        }
         label_html = label;
       }
       if (!color) {
