@@ -202,7 +202,7 @@ function generate_player_input(working_game, game_state) {
   program += working_game['aux_program'];
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["observe","setting"]);
+    var output = filter_answer_set(answer_set, ["observe","setting","decorate"]);
     output = answer_set_to_facts(output);
     return output;
   } else {
