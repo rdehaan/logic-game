@@ -22,7 +22,7 @@ function compute_grid_ds(answer_set) {
   var width = Number(match[1]);
 
   var grid_ds = {};
-  var fog = {};
+
   grid_ds["height"] = height;
   grid_ds["width"] = width;
   for (let row=1; row <= height; row++) {
@@ -42,6 +42,7 @@ function compute_grid_ds(answer_set) {
     grid_ds[num].push(item);
   }
 
+  var fog = {};
   matches = answer_set.matchAll(/observe\(fog\((\w+),(\w+)\)\)/g);
   for (const match of matches) {
     row = Number(match[1]);
@@ -50,6 +51,17 @@ function compute_grid_ds(answer_set) {
     fog[num] = true;
   }
   grid_ds["fog"] = fog;
+
+  var bg = {};
+  matches = answer_set.matchAll(/decorate\(bgcolor,(\w+),(\w+),(\w+)\)\)/g);
+  for (const match of matches) {
+    row = Number(match[1]);
+    col = Number(match[2]);
+    color = match[3];
+    num = coord_to_num(height, width, row, col);
+    bg[num] = color;
+  }
+  grid_ds["bg"] = bg;
 
   var labels = {};
   matches = answer_set.matchAll(/decorate\(label,(\w+),(\w+)\)/g);
@@ -125,7 +137,7 @@ function visualize_grid(grid_ds) {
         label_html = label;
       }
       if (!color) {
-        html += label_html;
+        html += "<span>" + label_html + "</span>";
       } else {
         html += "<span style='";
         if (color) {
