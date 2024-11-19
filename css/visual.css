@@ -28,10 +28,13 @@
   border: 1px solid #000;
 }
 .grid-visual span {
-  display: table-cell;
+  display: table-row;
   text-align: center;
   vertical-align: middle;
   font-size: calc(var(--font-size, 1em) + 5pt);
 }
 .grid-visual span span {
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
 }
