@@ -29,11 +29,13 @@
   text-align: center;
   vertical-align: middle;
   font-size: calc(var(--font-size, 1em) + 5pt);
+  padding: 0;
+  margin: 0;
 }
 .grid-visual-cell div span {
   display: table-cell;
   text-align: center;
   vertical-align: middle;
   padding: 0;
-  margin: 1px;
+  margin: 0;
 }
