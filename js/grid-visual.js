@@ -120,6 +120,10 @@ function visualize_grid(grid_ds) {
     if (grid_ds["fog"][num]) {
       div.style.setProperty("background-color", "#ddd");
     }
+    var bgcolor = grid_ds["bg"][num];
+    if (bgcolor) {
+      div.style.setProperty("background-color", bgcolor);
+    }
 
     div.style.setProperty("--font-size", "2.5vw");
     var items = grid_ds[num].toSorted();
