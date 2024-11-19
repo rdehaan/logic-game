@@ -131,7 +131,7 @@ function visualize_grid(grid_ds) {
     }
 
     var font_size = (20 / height);
-    if (font_size < 2.5) {
+    if (font_size > 2.5) {
       font_size = 2.5;
     }
     div.style.setProperty("--font-size", font_size + "vw");
