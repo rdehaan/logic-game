@@ -124,6 +124,7 @@ function visualize_grid(grid_ds) {
     var bgcolor = grid_ds["bg"][num];
     if (bgcolor) {
       if (bgcolor.match(/^hex_[0-9a-fA-F]+$/)) {
+        bgcolor = bgcolor.replace(/hex_(\w+)/, "$1");
         bgcolor = "#" + bgcolor;
       }
       div.style.setProperty("background-color", bgcolor);
@@ -156,6 +157,7 @@ function visualize_grid(grid_ds) {
         html += "<span style='";
         if (color) {
           if (color.match(/^hex_[0-9a-fA-F]+$/)) {
+            color = color.replace(/hex_(\w+)/, "$1");
             color = "#" + color;
           }
           html += "color: " + color + "; ";
