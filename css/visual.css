@@ -29,10 +29,12 @@
 }
 .grid-visual span {
   display: table-cell;
+  text-align: center;
   vertical-align: middle;
 }
 .grid-visual span span {
   display: inherit;
+  text-align: center;
   vertical-align: middle;
   font-size: calc(var(--font-size, 1em) + 5pt);
 }
