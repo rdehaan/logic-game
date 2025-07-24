@@ -90,6 +90,7 @@ function get_atoms_beginning_with(answer_set, prefix) {
 function compute_grid_ds(answer_set) {
 
   var matches;
+  var atoms;
   // match = answer_set.match(/setting\(grid_height\((\d+)\)\)/);
   // var height = Number(match[1]);
   // match = answer_set.match(/setting\(grid_width\((\d+)\)\)/);
@@ -111,8 +112,10 @@ function compute_grid_ds(answer_set) {
     }
   }
 
-  matches = answer_set.matchAll(/observe\(at\((\d+),(\d+),(\w+)\)\)/g);
-  for (const match of matches) {
+  // matches = answer_set.matchAll(/observe\(at\((\d+),(\d+),(\w+)\)\)/g);
+  atoms = get_atoms_beginning_with(answer_set, "observe(at(");
+  for (const atom of atoms) {
+    match = flatparse_atom(flatparse_atom(atom)[1])
     row = Number(match[1]);
     col = Number(match[2]);
     num = coord_to_num(height, width, row, col);
