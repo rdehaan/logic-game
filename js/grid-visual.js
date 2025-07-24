@@ -134,7 +134,7 @@ function compute_grid_ds(answer_set) {
   var bg = {};
   atoms = get_atoms_beginning_with(answer_set, "decorate(bgcolor,");
   for (const atom of atoms) {
-    match = flatparse_atom(atom));
+    match = flatparse_atom(atom);
     row = Number(match[2]);
     col = Number(match[3]);
     color = match[4];
@@ -146,7 +146,7 @@ function compute_grid_ds(answer_set) {
   var labels = {};
   atoms = get_atoms_beginning_with(answer_set, "decorate(label,");
   for (const atom of atoms) {
-    match = flatparse_atom(atom));
+    match = flatparse_atom(atom);
     item = match[2];
     label = match[3];
     labels[item] = label;
