@@ -152,6 +152,7 @@ function compute_grid_ds(answer_set) {
     label = match[2];
     labels[item] = label;
   }
+  console.log(labels);
   grid_ds["labels"] = labels;
 
   var colors = {};
