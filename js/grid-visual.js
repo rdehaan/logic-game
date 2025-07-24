@@ -132,36 +132,33 @@ function compute_grid_ds(answer_set) {
   grid_ds["fog"] = fog;
 
   var bg = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(bgcolor(");
+  atoms = get_atoms_beginning_with(answer_set, "decorate(bgcolor,");
   for (const atom of atoms) {
-    match = flatparse_atom(flatparse_atom(atom)[1]);
-    row = Number(match[1]);
-    col = Number(match[2]);
-    color = match[3];
+    match = flatparse_atom(atom));
+    row = Number(match[2]);
+    col = Number(match[3]);
+    color = match[4];
     num = coord_to_num(height, width, row, col);
     bg[num] = color;
   }
   grid_ds["bg"] = bg;
 
   var labels = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(label(");
+  atoms = get_atoms_beginning_with(answer_set, "decorate(label,");
   for (const atom of atoms) {
-    match = flatparse_atom(flatparse_atom(atom)[1]);
-    item = match[1];
-    label = match[2];
-    console.log(match);
-    console.log(item);
-    console.log(label);
+    match = flatparse_atom(atom));
+    item = match[2];
+    label = match[3];
     labels[item] = label;
   }
   grid_ds["labels"] = labels;
 
   var colors = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(color(");
+  atoms = get_atoms_beginning_with(answer_set, "decorate(color,");
   for (const atom of atoms) {
-    match = flatparse_atom(flatparse_atom(atom)[1]);
-    item = match[1];
-    color = match[2];
+    match = flatparse_atom(atom);
+    item = match[2];
+    color = match[3];
     colors[item] = color;
   }
   grid_ds["colors"] = colors;
