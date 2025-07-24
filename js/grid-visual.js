@@ -34,7 +34,6 @@ function flatparse_atom(atom) {
         bracket_count -= 1;
       }
     } else if (atom[i] == ",") {
-      console.log(i)
       if (bracket_count == 1) {
         elements.push(atom.substring(cur_substr_init, i));
         cur_substr_init = i+1;
@@ -150,9 +149,11 @@ function compute_grid_ds(answer_set) {
     match = flatparse_atom(flatparse_atom(atom)[1]);
     item = match[1];
     label = match[2];
+    console.log(match);
+    console.log(item);
+    console.log(label);
     labels[item] = label;
   }
-  console.log(labels);
   grid_ds["labels"] = labels;
 
   var colors = {};
