@@ -162,7 +162,7 @@ function generate_level() {
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var generated_state = filter_answer_set(answer_set, ["at"]);
+    var generated_state = filter_answer_set(answer_set, ["at", "debug"]);
     generated_state = answer_set_to_facts(generated_state);
     generated_state = generated_state.replace(/\. /g, ".\n");
     level_state.setValue(generated_state, 1);
