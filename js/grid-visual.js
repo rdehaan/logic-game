@@ -112,10 +112,9 @@ function compute_grid_ds(answer_set) {
     }
   }
 
-  // matches = answer_set.matchAll(/observe\(at\((\d+),(\d+),(\w+)\)\)/g);
   atoms = get_atoms_beginning_with(answer_set, "observe(at(");
   for (const atom of atoms) {
-    match = flatparse_atom(flatparse_atom(atom)[1])
+    match = flatparse_atom(flatparse_atom(atom)[1]);
     row = Number(match[1]);
     col = Number(match[2]);
     num = coord_to_num(height, width, row, col);
@@ -123,8 +122,9 @@ function compute_grid_ds(answer_set) {
     grid_ds[num].push(item);
   }
 
-  matches = answer_set.matchAll(/observe\(fog\((\w+),(\w+)\)\)/g);
-  for (const match of matches) {
+  atoms = get_atoms_beginning_with(answer_set, "observe(fog(");
+  for (const atom of atoms) {
+    match = flatparse_atom(flatparse_atom(atom)[1]);
     row = Number(match[1]);
     col = Number(match[2]);
     num = coord_to_num(height, width, row, col);
@@ -133,8 +133,9 @@ function compute_grid_ds(answer_set) {
   grid_ds["fog"] = fog;
 
   var bg = {};
-  matches = answer_set.matchAll(/decorate\(bgcolor,(\w+),(\w+),(\w+)\)/g);
-  for (const match of matches) {
+  atoms = get_atoms_beginning_with(answer_set, "decorate(bgcolor(");
+  for (const atom of atoms) {
+    match = flatparse_atom(flatparse_atom(atom)[1]);
     row = Number(match[1]);
     col = Number(match[2]);
     color = match[3];
@@ -144,8 +145,9 @@ function compute_grid_ds(answer_set) {
   grid_ds["bg"] = bg;
 
   var labels = {};
-  matches = answer_set.matchAll(/decorate\(label,(\w+),(\w+)\)/g);
-  for (const match of matches) {
+  atoms = get_atoms_beginning_with(answer_set, "decorate(label(");
+  for (const atom of atoms) {
+    match = flatparse_atom(flatparse_atom(atom)[1]);
     item = match[1];
     label = match[2];
     labels[item] = label;
@@ -153,8 +155,9 @@ function compute_grid_ds(answer_set) {
   grid_ds["labels"] = labels;
 
   var colors = {};
-  matches = answer_set.matchAll(/decorate\(color,(\w+),(\w+)\)/g);
-  for (const match of matches) {
+  atoms = get_atoms_beginning_with(answer_set, "decorate(color(");
+  for (const atom of atoms) {
+    match = flatparse_atom(flatparse_atom(atom)[1]);
     item = match[1];
     color = match[2];
     colors[item] = color;
