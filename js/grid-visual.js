@@ -12,14 +12,92 @@ function init_grid_ds(height, width) {
   return grid_ds;
 }
 
+// Auxiliary function to parse an atom into its elements
+function flatparse_atom(atom) {
+
+  var bracket_count = 0;
+  var cur_substr_init = 0;
+  var elements = Array();
+  for (let i = 0; i < atom.length; i++) {
+    if (atom[i] == "(") {
+      if (bracket_count == 0) {
+        elements.push(atom.substring(cur_substr_init, i));
+        cur_substr_init = i+1;
+      }
+      bracket_count += 1;
+    } else if (atom[i] == ")") {
+      if (bracket_count == 1) {
+        elements.push(atom.substring(cur_substr_init, i));
+        cur_substr_init = i+1;
+      }
+      if (bracket_count != 0) {
+        bracket_count -= 1;
+      }
+    } else if (atom[i] == ",") {
+      console.log(i)
+      if (bracket_count == 1) {
+        elements.push(atom.substring(cur_substr_init, i));
+        cur_substr_init = i+1;
+      }
+    }
+  }
+  return elements;
+}
+
+// Auxiliary function to split an answer set (string) into its atoms
+function split_answer_set(answer_set) {
+
+  var bracket_count = 0;
+  var cur_substr_init = 0;
+  var elements = Array();
+  for (let i = 0; i < answer_set.length; i++) {
+    if (answer_set[i] == "(") {
+      bracket_count += 1;
+    } else if (answer_set[i] == ")") {
+      if (bracket_count != 0) {
+        bracket_count -= 1;
+      }
+    } else if (answer_set[i] == ".") {
+      elements.push(answer_set.substring(cur_substr_init, i));
+      cur_substr_init = i+1;
+    } else if (answer_set[i] == " ") {
+      if (i > cur_substr_init) {
+        elements.push(answer_set.substring(cur_substr_init, i));
+      }
+      cur_substr_init = i+1;
+    }
+  }
+  if (answer_set.length > cur_substr_init) {
+    elements.push(answer_set.substring(cur_substr_init, answer_set.length));
+  }
+  return elements;
+}
+
+// Auxiliary function to filter atoms from answer set
+function get_atoms_beginning_with(answer_set, prefix) {
+
+  var selected_atoms = Array();
+  var atoms = split_answer_set(answer_set)
+  for (index in atoms) {
+    if (atoms[index].startsWith(prefix)) {
+      selected_atoms.push(atoms[index]);
+    }
+  }
+  return selected_atoms;
+}
+
 // Compute a grid data structure from an answer set
 function compute_grid_ds(answer_set) {
 
-  var match;
-  match = answer_set.match(/setting\(grid_height\((\d+)\)\)/);
-  var height = Number(match[1]);
-  match = answer_set.match(/setting\(grid_width\((\d+)\)\)/);
-  var width = Number(match[1]);
+  var matches;
+  // match = answer_set.match(/setting\(grid_height\((\d+)\)\)/);
+  // var height = Number(match[1]);
+  // match = answer_set.match(/setting\(grid_width\((\d+)\)\)/);
+  // var width = Number(match[1]);
+  matches = get_atoms_beginning_with(answer_set, "setting(grid_height(");
+  var height = Number(flatparse_atom(flatparse_atom(matches[0])[1])[1]);
+  matches = get_atoms_beginning_with(answer_set, "setting(grid_width(");
+  var width = Number(flatparse_atom(flatparse_atom(matches[0])[1])[1]);
 
   var grid_ds = {};
   var fog = {};
