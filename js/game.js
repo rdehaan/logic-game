@@ -222,8 +222,6 @@ function generate_player_move(working_game, player_input, player_memory) {
     player_moves = answer_set_to_facts(player_moves);
     var memory_updates = filter_answer_set(answer_set, ["remember","forget"]);
     memory_updates = answer_set_to_facts(memory_updates);
-    console.log("MEM UPDATES")
-    console.log(memory_updates)
     return {
       player_moves: player_moves,
       memory_updates: memory_updates
@@ -261,8 +259,6 @@ function update_player_memory(player_memory, memory_updates) {
   } else {
     return player_memory;
   }
-  console.log("NEW MEM")
-  console.log(output)
   return output;
 }
 
