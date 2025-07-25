@@ -261,6 +261,8 @@ function update_player_memory(player_memory, memory_updates) {
   } else {
     return player_memory;
   }
+  console.log("NEW MEM")
+  console.log(output)
   return output;
 }
 
