@@ -146,7 +146,7 @@ function compute_grid_ds(answer_set) {
   var hidden = {};
   atoms = get_atoms_beginning_with(answer_set, "decorate(item,");
   for (const atom of atoms) {
-    match = flatparsgrid_ds["bg"] = bg;e_atom(atom);
+    match = flatparse_atom(atom);
     row = Number(match[2]);
     col = Number(match[3]);
     item = match[4];
