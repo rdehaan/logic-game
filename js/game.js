@@ -5,6 +5,7 @@ var time_step = 0;
 var max_time = 500;
 var game_state = null;
 var player_input = "";
+var player_decorations = "";
 var player_memory = "";
 
 // Run the game
@@ -27,7 +28,9 @@ function play_game() {
     }
 
     game_state = generate_initial_game_state(working_game);
-    player_input = generate_player_input(working_game, game_state);
+    var visibility_output = generate_player_input(working_game, game_state);
+    player_input = visibility_output.player_input;
+    player_decorations = visibility_output.decorations;
     player_memory = "";
 
     // Initialize variables for main loop
@@ -51,7 +54,7 @@ function play_game() {
         report += "- Player input:\n" + player_input + "\n";
         report += "- Player memory:\n" + player_memory + "\n";
       }
-      show_grid(player_input + working_game["level_settings"]);
+      show_grid(player_input + player_decorations + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("WIN!\n");
       display_win();
@@ -64,7 +67,7 @@ function play_game() {
         report += "- Player input:\n" + player_input + "\n";
         report += "- Player memory:\n" + player_memory + "\n";
       }
-      show_grid(player_input + working_game["level_settings"]);
+      show_grid(player_input + player_decorations + working_game["level_settings"]);
       addToGameOutput(report);
       addToGameOutput("LOSE!\n");
       display_lose();
@@ -77,7 +80,7 @@ function play_game() {
       report += "- Player input:\n" + player_input + "\n";
       report += "- Player memory:\n" + player_memory + "\n";
     }
-    show_grid(player_input + working_game["level_settings"]);
+    show_grid(player_input + player_decorations + working_game["level_settings"]);
 
     // // Check if player's program is stratified and simple
     // var program_to_check = player_input + player_memory;
@@ -103,7 +106,9 @@ function play_game() {
     // Generate next state
     game_state = generate_next_state(working_game, game_state, player_moves);
     // Generate player input for next move
-    player_input = generate_player_input(working_game, game_state);
+    var visibility_output = generate_player_input(working_game, game_state);
+    player_input = visibility_output.player_input;
+    player_decorations = visibility_output.decorations;
 
     // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
     if (time_step > max_time) {
@@ -202,11 +207,21 @@ function generate_player_input(working_game, game_state) {
   program += working_game['aux_program'];
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["observe","setting","decorate"]);
+    // What the player gets to see (passed on to the player's program)
+    var output = filter_answer_set(answer_set, ["observe","setting"]);
     output = answer_set_to_facts(output);
-    return output;
+    // What is only used for visualization (never passed on to the player)
+    var decorations = filter_answer_set(answer_set, ["decorate"]);
+    decorations = answer_set_to_facts(decorations);
+    return {
+      player_input: output,
+      decorations: decorations
+    };
   } else {
-    return "";
+    return {
+      player_input: "",
+      decorations: ""
+    };
   }
 }
 

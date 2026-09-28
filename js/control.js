@@ -82,8 +82,8 @@ function update_interface() {
     partial_game['level_settings'] = level_settings.getValue();
     partial_game['visibility_program'] = visibility_program.getValue();
     var game_state = generate_initial_game_state(partial_game);
-    var player_input = generate_player_input(partial_game, game_state);
-    show_grid(player_input + level_settings.getValue());
+    var visibility_output = generate_player_input(partial_game, game_state);
+    show_grid(visibility_output.player_input + visibility_output.decorations + level_settings.getValue());
   } else {
     clear_button.disabled = true;
     clear_button.title = "There is no level to be cleared.";
