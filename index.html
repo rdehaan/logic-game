@@ -244,6 +244,17 @@ observe(at(R,C,O)) :- at(R,C,O).</pre>
         <tt>at</tt> instead of <tt>next</tt>.
       </p>
       <p>
+        Nature can also wipe the player's memory.
+        If the answer set contains the atom <tt>wipe_player_memory</tt>,
+        the player starts the next time step with an empty memory.
+        This also erases anything that the player chose to remember
+        in the current time step.
+        For example, the following rule expresses that the player's memory
+        is wiped when the player steps onto an item <tt>amnesia</tt>.
+      </p>
+      <pre class="example-code">
+wipe_player_memory :- next(R,C,player), at(R,C,amnesia).</pre>
+      <p>
         This program may contain substrings of the form
         <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
         integers. In the preprocessing of the program, these
@@ -317,6 +328,9 @@ lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
         does not occur in <i>A</i>,
         and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
         occurs in <i>A</i>.
+        The only exception is when nature wipes the player's memory
+        (see <i>How does the game progress?</i> above):
+        then the player's memory in the next time step is empty.
       </p>
       <p>
         The player strategy program may contain substrings of the form
@@ -582,6 +596,11 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
           <tt>at</tt> instead of <tt>next</tt>.
         </p>
         <p>
+          If the answer set contains the atom <tt>wipe_player_memory</tt>,
+          the player's memory is wiped:
+          the player starts the next time step with an empty memory.
+        </p>
+        <p>
           For more details, see the instructions tab.
         </p>
       </div>
@@ -635,7 +654,9 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
           of (i) all atoms <tt>memory(M)</tt> such that <tt>forget(M)</tt>
           does not occur in <i>A</i>,
           and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
-          occurs in <i>A</i>.
+          occurs in <i>A</i>,
+          unless nature wipes the player's memory,
+          in which case the player's memory in the next time step is empty.
         </p>
         <p>
           For more details, see the instructions tab.

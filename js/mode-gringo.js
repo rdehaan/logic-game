@@ -484,7 +484,7 @@ var GringoHighlightRules = function() {
       ],
       '#operator':
       [ { token: 'keyword.operator.gringo',
-          regex: '\\bnext\\b|\\bmemory\\b|\\bremember\\b|\\bforget\\b|\\bat\\b|\\bcurrent_time\\b|\\bdo\\b|\\bwin\\b|\\blose\\b|\\bsetting\\b|\\bfog\\b|\\bdecorate\\b|\\bobserve\\b|\\bnot\\b|[><]=?|[!]?=|\\.\\.|\\+|-|\\*|/|\\|\\?|\\^|~|@|&|\\|'
+          regex: '\\bnext\\b|\\bmemory\\b|\\bremember\\b|\\bforget\\b|\\bat\\b|\\bcurrent_time\\b|\\bdo\\b|\\bwin\\b|\\blose\\b|\\bsetting\\b|\\bfog\\b|\\bdecorate\\b|\\bobserve\\b|\\bwipe_player_memory\\b|\\bnot\\b|[><]=?|[!]?=|\\.\\.|\\+|-|\\*|/|\\|\\?|\\^|~|@|&|\\|'
         },
       ],
       '#punctuation':

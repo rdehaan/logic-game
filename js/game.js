@@ -104,7 +104,15 @@ function play_game() {
     // Update player memory
     player_memory = update_player_memory(player_memory, memory_updates);
     // Generate next state
-    game_state = generate_next_state(working_game, game_state, player_moves);
+    var {next_state, wipe_memory} = generate_next_state(working_game, game_state, player_moves);
+    game_state = next_state;
+    // Wipe the player's memory if nature says so
+    if (wipe_memory) {
+      player_memory = "";
+      if (verbose) {
+        addToGameOutput("- Player memory wiped by nature\n");
+      }
+    }
     // Generate player input for next move
     var visibility_output = generate_player_input(working_game, game_state);
     player_input = visibility_output.player_input;
@@ -290,9 +298,12 @@ function generate_next_state(working_game, game_state, player_moves) {
   program += working_game['aux_program'];
   answer_set = get_answer_set(program);
   var nexts = null;
+  var wipe_memory = false;
   if (answer_set) {
     nexts = filter_answer_set(answer_set, ["next","current_time"]);
     nexts = answer_set_to_facts(nexts);
+    // Check whether nature wipes the player's memory
+    wipe_memory = filter_answer_set(answer_set, ["wipe_player_memory"]).length > 0;
   }
 
   // Generate trivial 'nexts' if needed
@@ -318,7 +329,10 @@ function generate_next_state(working_game, game_state, player_moves) {
     output = answer_set_to_facts(output);
   }
 
-  return output;
+  return {
+    next_state: output,
+    wipe_memory: wipe_memory
+  };
 }
 
 // Analyze state for win/lose conditions
