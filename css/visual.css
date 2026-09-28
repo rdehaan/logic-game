@@ -35,3 +35,7 @@
   text-align: center;
   vertical-align: middle;
 }
+
+.grid-visual-cell div span.grid-visual-hidden {
+  opacity: 0.35;
+}

@@ -143,6 +143,21 @@ function compute_grid_ds(answer_set) {
   }
   grid_ds["bg"] = bg;
 
+  var hidden = {};
+  atoms = get_atoms_beginning_with(answer_set, "decorate(item,");
+  for (const atom of atoms) {
+    match = flatparse_atom(atom);
+    row = Number(match[2]);
+    col = Number(match[3]);
+    item = match[4];
+    num = coord_to_num(height, width, row, col);
+    if (!hidden[num]) {
+      hidden[num] = [];
+    }
+    hidden[num].push(item);
+  }
+  grid_ds["hidden"] = hidden;
+
   var labels = {};
   atoms = get_atoms_beginning_with(answer_set, "decorate(label,");
   for (const atom of atoms) {

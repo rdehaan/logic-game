@@ -378,6 +378,27 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
       </p>
       <pre class="example-code">
 decorate(label,bug,font_f188).</pre>
+      <p>
+        Items that are not observable to the player can also be shown on the
+        grid, for example to see what the player is missing, or to help debug
+        a game.
+        For this, the visibility program can use atoms of the form
+        <tt>decorate(item,R,C,O)</tt>, which lead to item <tt>O</tt>
+        being shown in the cell <tt>R,C</tt>.
+        Such items use the same icons and colors as other items,
+        but are drawn faded, to distinguish them from what the player observes.
+      </p>
+      <p>
+        Atoms over <tt>decorate</tt> derived by the visibility program are only
+        used for the visualization: they are <b>*not*</b> passed on to the
+        player's program. So they cannot reveal anything to the player.
+      </p>
+      <p>
+        For example, the following rule in the visibility program shows
+        every item that the player cannot observe.
+      </p>
+      <pre class="example-code">
+decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
 
     </section>
 
@@ -487,6 +508,8 @@ decorate(label,bug,font_f188).</pre>
           The visibility program defines what parts of the game are
           observable to the player.
           The predicate name <tt>observe</tt> is used for this.
+          It may also derive atoms over <tt>decorate</tt>, which are only
+          used to visualize the game and are not passed on to the player.
         </p>
         <p>
           To generate a level, these three programs need to be locked.
