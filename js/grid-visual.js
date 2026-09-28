@@ -146,7 +146,7 @@ function compute_grid_ds(answer_set) {
   var hidden = {};
   atoms = get_atoms_beginning_with(answer_set, "decorate(item,");
   for (const atom of atoms) {
-    match = flatparse_atom(atom);
+    match = flatparsgrid_ds["bg"] = bg;e_atom(atom);
     row = Number(match[2]);
     col = Number(match[3]);
     item = match[4];
@@ -193,6 +193,35 @@ function num_to_col(height, width, num) {
   return (num-1) % width + 1;
 }
 
+// Auxiliary function to produce the HTML for a single item in a cell
+function item_to_html(grid_ds, item, css_class) {
+  var label = grid_ds["labels"][item];
+  var color = grid_ds["colors"][item];
+  var label_html = "?";
+  if (label) {
+    if (label.match(/font_(\w+)/)) {
+      label = label.replace(/font_(\w+)/, "$1");
+      label = String.fromCharCode(parseInt(label,16));
+    }
+    label_html = label;
+    if (label == "empty") {
+      label_html = "";
+    }
+  }
+  var attributes = "";
+  if (css_class) {
+    attributes += " class='" + css_class + "'";
+  }
+  if (color) {
+    if (color.match(/^hex_[0-9a-fA-F]+$/)) {
+      color = color.replace(/hex_(\w+)/, "$1");
+      color = "#" + color;
+    }
+    attributes += " style='color: " + color + "; '";
+  }
+  return "<span" + attributes + ">" + label_html + "</span>";
+}
+
 // Visualize the grid
 function visualize_grid(grid_ds) {
   var visual_elem = document.getElementById("visual");
@@ -234,34 +263,13 @@ function visualize_grid(grid_ds) {
     }
     div.style.setProperty("--font-size", font_size + "vw");
     var items = grid_ds[num].toSorted();
+    var hidden_items = (grid_ds["hidden"][num] || []).toSorted();
     var html = "<div>";
     for (const item of items) {
-      label = grid_ds["labels"][item];
-      color = grid_ds["colors"][item];
-      var label_html = "?"
-      if (label) {
-        if (label.match(/font_(\w+)/)) {
-          label = label.replace(/font_(\w+)/, "$1");
-          label = String.fromCharCode(parseInt(label,16))
-        }
-        label_html = label;
-        if (label == "empty") {
-          label_html = "";
-        }
-      }
-      if (!color) {
-        html += "<span>" + label_html + "</span>";
-      } else {
-        html += "<span style='";
-        if (color) {
-          if (color.match(/^hex_[0-9a-fA-F]+$/)) {
-            color = color.replace(/hex_(\w+)/, "$1");
-            color = "#" + color;
-          }
-          html += "color: " + color + "; ";
-        }
-        html += "'>" + label_html + "</span>";
-      }
+      html += item_to_html(grid_ds, item, "");
+    }
+    for (const item of hidden_items) {
+      html += item_to_html(grid_ds, item, "grid-visual-hidden");
     }
     html += '</div>';
     div.innerHTML = html;
