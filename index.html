@@ -164,7 +164,9 @@
         Atoms over the predicate <tt>setting</tt> specify features of the level
         that remain fixed over the course of the game.
         Atoms over the predicate <tt>decorate</tt> specify how the level
-        is visualized.
+        is visualized (for example, which icons are used for items, and
+        the background colors of cells).
+        See <i>How is the game visualized?</i> below.
       </p>
       <p>
         The level generation program may contain substrings of the form
@@ -378,6 +380,46 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
       </p>
       <pre class="example-code">
 decorate(label,bug,font_f188).</pre>
+      <p>
+        The background color of cells can be set with atoms of the form
+        <tt>decorate(bgcolor,R,C,Color)</tt>, which color the cell
+        <tt>R,C</tt>.
+        The color <tt>Color</tt> can be a
+        <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/named-color">CSS color name</a>
+        written in lowercase (such as <tt>lightgreen</tt>),
+        or a hexadecimal color code prefixed by <tt>hex_</tt>
+        (such as <tt>hex_ff8800</tt> for <tt>#ff8800</tt>,
+        or <tt>hex_aac</tt> for <tt>#aac</tt>).
+        Each cell should get at most one background color.
+      </p>
+      <p>
+        Background colors given in the level generation program stay the same
+        throughout the game.
+        For example, the following line colors the bottom row
+        of a 3x3 grid light green.
+      </p>
+      <pre class="example-code">
+decorate(bgcolor,3,1..3,lightgreen).</pre>
+      <p>
+        Background colors can also be derived in the visibility program.
+        There, they are computed anew at every step, based on the current
+        state of the game, and they can depend on what the player observes.
+        A background color takes precedence over the gray color of cells
+        that are covered by fog (<tt>observe(fog(R,C))</tt>).
+        Like all atoms over <tt>decorate</tt> in the visibility program,
+        these atoms are not passed on to the player.
+        For example, the following rules highlight the cell of the player,
+        and color water differently depending on whether it is covered by fog.
+        The condition <tt>not at(R,C,player)</tt> makes sure that a cell
+        with the player on it (for instance, on a bridge over water)
+        gets only one background color.
+      </p>
+      <pre class="example-code">
+decorate(bgcolor,R,C,hex_ffd) :- at(R,C,player).
+decorate(bgcolor,R,C,hex_aac) :- at(R,C,water), observe(fog(R,C)),
+    not at(R,C,player).
+decorate(bgcolor,R,C,hex_ddf) :- at(R,C,water), not observe(fog(R,C)),
+    not at(R,C,player).</pre>
       <p>
         Items that are not observable to the player can also be shown on the
         grid, for example to see what the player is missing, or to help debug
