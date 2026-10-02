@@ -60,6 +60,42 @@ pre {
   margin: 0 0 10px;
 }
 
+#section-instructions ul,
+#section-internals ul,
+#section-internals ol {
+  margin: 0 0 10px;
+  padding-left: 25px;
+  line-height: 1.5;
+}
+
+#section-instructions li,
+#section-internals li {
+  margin-bottom: 4px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  margin: 0 0 10px;
+}
+
+table.internals-table {
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+table.internals-table th,
+table.internals-table td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.internals-table th {
+  background-color: #f5f5f5;
+}
+
 input[name="tabs"] {
   display: none;
 }
@@ -108,6 +144,10 @@ label[for*='5']:before {
   content: '\f11c';
 }
 
+label[for*='6']:before {
+  content: '\f0e8';
+}
+
 label:hover {
   color: #888;
   cursor: pointer;
@@ -128,7 +168,8 @@ label[for="tab2"] {
 #tab2:checked ~ #section-instructions,
 #tab3:checked ~ #section-game-rules,
 #tab4:checked ~ #section-player-strategy,
-#tab5:checked ~ #section-debug {
+#tab5:checked ~ #section-debug,
+#tab6:checked ~ #section-internals {
   display: block;
 }
 

@@ -62,6 +62,9 @@
     <input id="tab5" type="radio" name="tabs" onChange="change_tabs()">
     <label for="tab5" name="tabs">Debug</label>
 
+    <input id="tab6" type="radio" name="tabs" onChange="change_tabs()">
+    <label for="tab6" name="tabs">Internals</label>
+
     <section id="section-control">
       <p>
         Here you can load files, from one of the examples listed
@@ -167,11 +170,16 @@
         is visualized (for example, which icons are used for items, and
         the background colors of cells).
         See <i>How is the game visualized?</i> below.
+        Atoms over <tt>debug</tt> are also shown in the level state
+        (in the level editor), but they are not part of the game.
+        Other atoms in the answer set are ignored.
       </p>
       <p>
         The level generation program may contain substrings of the form
         <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
-        integers. In the preprocessing of the program, these
+        integers (possibly negative, and possibly with spaces around them,
+        as in <tt>RANDINT(-2, 2)</tt>).
+        In the preprocessing of the program, these
         are replaced by a random integer between (and including)
         <tt>l</tt> and <tt>u</tt>.
         This gives an easy way to include randomness in the level generation.
@@ -218,6 +226,10 @@ decorate(label,player,font_f007).</pre>
         An answer set of the resulting program,
         restricted to atoms over the predicate <tt>observe</tt>,
         constitutes what is observable to the player.
+        These atoms, together with the level settings, are passed on to the
+        player's program.
+        Atoms over <tt>at</tt> are never passed on to the player directly:
+        the player only knows what is made observable here.
       </p>
       <p>
         For example, the following visibility program captures that
@@ -257,14 +269,31 @@ wipe_player_memory :- next(R,C,player), at(R,C,amnesia).</pre>
       <p>
         This program may contain substrings of the form
         <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
-        integers. In the preprocessing of the program, these
+        integers (possibly negative, and possibly with spaces around them,
+        as in <tt>RANDINT(-2, 2)</tt>).
+        In the preprocessing of the program, these
         are replaced by a random integer between (and including)
         <tt>l</tt> and <tt>u</tt>.
-        This gives an easy way to include randomness in the level generation.
+        This happens anew at every time step.
+        This gives an easy way to include randomness in nature's moves.
+      </p>
+      <p>
+        Only atoms over <tt>next</tt> carry over to the next state of the
+        game; any other atoms derived by this program are not kept
+        (except <tt>wipe_player_memory</tt>).
+        In particular, an object for which no <tt>next</tt> atom is derived
+        disappears from the game.
+        So objects that stay where they are need a rule such as
+        <tt>next(R,C,flag) :- at(R,C,flag).</tt>
+        If the answer set contains no atoms over <tt>next</tt> at all,
+        the next state of the game is empty (all objects disappear),
+        and time still advances.
       </p>
       <p>
         If the combined program has no answer sets,
-        the state of the game does not change.
+        the state of the game does not change
+        (but time does advance),
+        and the player's memory is not wiped.
       </p>
       <p>
         For example, the following program expresses that
@@ -288,11 +317,19 @@ next(RANDINT(1,3),C,flag) :- at(R,C,flag).</pre>
         where <tt>t</tt> is replaced by the integer value specifying
         the number of time steps that have passed.
         An answer set of the resulting program is taken.
-        If this answer set contains any atoms over <tt>win</tt>,
-        the player wins the game.
-        Otherwise, if this answer set contains any atoms over <tt>lose</tt>,
-        the player loses.
+        If this answer set contains any atoms over <tt>lose</tt>,
+        the player loses the game.
+        Otherwise, if this answer set contains any atoms over <tt>win</tt>,
+        the player wins.
         Otherwise, the game continues.
+        So if both <tt>win</tt> and <tt>lose</tt> are derived,
+        the player loses.
+      </p>
+      <p>
+        This check is done at the start of each time step,
+        before the player moves.
+        So the initial state of the level is checked as well.
+        If the program has no answer sets, the game continues.
       </p>
       <p>
         For example, the following program expresses that
@@ -310,12 +347,19 @@ lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
         At each time step, the logic program labeled <i>player strategy</i>
         specifies what move(s) the player performs at that time step,
         and how the player's memory is updated.
-        To this program are added the current state of the game
-        (in the form of atoms over <tt>at</tt>),
+        To this program are added what the player can observe
+        (in the form of atoms over <tt>observe</tt>,
+        as computed by the visibility program; see
+        <i>What can the player observe?</i> above),
         the level settings
         (in the form of atoms over <tt>setting</tt>),
-        and the player's memory
-        (in the form of atoms over <tt>memory</tt>).
+        the player's memory
+        (in the form of atoms over <tt>memory</tt>),
+        an atom <tt>current_time(t)</tt>,
+        where <tt>t</tt> is the number of time steps that have passed,
+        and the auxiliary program.
+        The player does not get the state of the game itself
+        (the atoms over <tt>at</tt>).
         An answer set <i>A</i> of the resulting program is taken.
         This answer set restricted to atoms over <tt>do</tt>
         constitutes the moves that the player performs.
@@ -328,17 +372,34 @@ lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
         does not occur in <i>A</i>,
         and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
         occurs in <i>A</i>.
+        So if both <tt>remember(M)</tt> and <tt>forget(M)</tt> occur
+        in <i>A</i>, the atom <tt>memory(M)</tt> is kept.
+        Atoms <tt>memory(M)</tt> that the program derives itself
+        are not stored; only <tt>remember</tt> stores things.
         The only exception is when nature wipes the player's memory
         (see <i>How does the game progress?</i> above):
         then the player's memory in the next time step is empty.
       </p>
       <p>
+        If the combined program has no answer sets,
+        the player performs no moves and its memory does not change.
+      </p>
+      <p>
         The player strategy program may contain substrings of the form
         <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
-        integers. In the preprocessing of the program, these
+        integers (possibly negative, and possibly with spaces around them,
+        as in <tt>RANDINT(-2, 2)</tt>).
+        In the preprocessing of the program, these
         are replaced by a random integer between (and including)
         <tt>l</tt> and <tt>u</tt>.
-        This gives an easy way to include randomness in the level generation.
+        This happens anew at every time step.
+        This gives an easy way to include randomness in the player's strategy.
+      </p>
+      <p>
+        <tt>RANDINT</tt> can only be used in the level generation,
+        nature's moves and player strategy programs.
+        It is not replaced in the auxiliary, visibility and
+        winning conditions programs.
       </p>
       <p>
         For example, the following program expresses that
@@ -358,7 +419,7 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         You can either load and play an existing game.
         Loading games can be done in the <i>Control</i> tab.
         Or you can design your own game.
-        In order to do so, specify the four respective programs
+        In order to do so, specify the programs
         under the <i>Game rules</i> tab.
       </p>
       <p>
@@ -370,6 +431,42 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         <i>auxiliary</i>,
         <i>level generation</i> and <i>visibility</i> programs.
       </p>
+
+      <h3>Tips for writing programs</h3>
+      <ul>
+        <li>
+          Only the first answer set that is found is used.
+          Randomness comes from <tt>RANDINT</tt>
+          (or from <tt>#heuristic</tt> statements that use it),
+          not from the choice of answer set.
+        </li>
+        <li>
+          The visibility, nature's moves and winning conditions programs
+          also get the whole history of the game, in the form of atoms
+          <tt>at_time(T,R,C,O)</tt>
+          (object <tt>O</tt> was in cell <tt>R,C</tt> at time <tt>T</tt>),
+          together with atoms <tt>state_time(T)</tt> for every time
+          <tt>T</tt> so far.
+          The atoms over <tt>at</tt> are the ones for the latest time.
+        </li>
+        <li>
+          The atom <tt>current_time(T)</tt> is available in the visibility,
+          nature's moves, winning conditions and player strategy programs
+          (and so also in the auxiliary program, when it is used together
+          with one of these).
+        </li>
+        <li>
+          After 500 time steps, the game is stopped with a timeout,
+          to avoid games that go on forever. This counts as a loss.
+        </li>
+        <li>
+          If a program has no answer sets, or contains an error
+          (such as a syntax error), this is reported in the game output
+          in the <i>Debug</i> tab, together with what the game does instead.
+          Line numbers in error messages refer to the programs as glued
+          together, not to the program on its own.
+        </li>
+      </ul>
 
       <h3>How is the game visualized?</h3>
       <p>
@@ -527,10 +624,15 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
 
       <h3>Game output</h3>
       <p>
-        Below you will find, for each time step,
+        Below you will find, for each time step (most recent step at the top),
         what facts were fed into the player program,
         based on (i) the state of the game that is observable to the player,
         and (ii) the player's memory.
+        It also shows what came out of the step:
+        the player's moves, the updates to the player's memory,
+        and the next state of the game computed by nature.
+        If a program had no answer sets or contained an error,
+        this is reported as well.
       </p>
       <!-- <input type="checkbox" id="verbose" name="verbose" value="Verbose" checked>
       <label for="verbose"> Verbose</label><br> -->
@@ -539,6 +641,673 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
       <pre id="clingo-output" class="code"></pre> -->
       <!-- <h3>Reset</h3>
       <button onclick="reset_debugging()" class="control-button">Reset</button> -->
+    </section>
+
+    <section id="section-internals">
+      <p>
+        This tab explains how the different logic programs of a game
+        talk to each other: what each program gets as input, which parts
+        of its answer set are kept, and where those parts go next.
+        It describes what the game engine (<tt>js/game.js</tt>) actually does.
+        The Instructions tab gives the same picture in less detail.
+      </p>
+
+      <h3>The basic mechanism</h3>
+      <p>
+        The programs never call each other directly. All communication
+        goes through plain text, handled by the game engine.
+        Every time a program is used, the engine does the following:
+      </p>
+      <ol>
+        <li>
+          It <b>glues together</b> a number of pieces of text: some rules
+          added by the engine itself, facts computed earlier
+          (such as the current state of the game), and one or more of
+          the programs from the <i>Game rules</i> and
+          <i>Strategy</i> tabs.
+          The pieces are concatenated in a fixed order, separated by
+          newlines.
+        </li>
+        <li>
+          It runs clingo on the result, with the options
+          <tt>-n1 -Wnone --heuristic=Domain</tt>.
+          Only the <b>first answer set</b> that clingo finds is used.
+          (So a game is only random through <tt>RANDINT</tt> or
+          <tt>#heuristic</tt> statements, not because clingo picks an
+          answer set at random.)
+        </li>
+        <li>
+          It <b>filters</b> the answer set: only atoms with certain
+          predicate names are kept. For example, from the player's answer
+          set only atoms over <tt>do</tt>, <tt>remember</tt> and
+          <tt>forget</tt> are kept. Everything else (helper predicates
+          and so on) is thrown away.
+        </li>
+        <li>
+          It <b>writes the kept atoms back as facts</b>
+          (<tt>a. b. c.</tt>), which become input text for the next
+          program.
+        </li>
+      </ol>
+      <p>
+        Between programs, the engine keeps the following pieces of text:
+      </p>
+      <ul>
+        <li>
+          <b>Level state</b>: the <tt>at(R,C,O)</tt> facts of the initial
+          state of the level (shown under <i>Level state</i> in the level
+          editor).
+        </li>
+        <li>
+          <b>Level settings</b>: the <tt>setting(...)</tt> and
+          <tt>decorate(...)</tt> facts of the level, which stay the same
+          during the whole game.
+        </li>
+        <li>
+          <b>Game state</b>: the <i>whole history</i> of the game, as
+          facts <tt>at_time(T,R,C,O)</tt>, meaning that object
+          <tt>O</tt> is in cell <tt>(R,C)</tt> at time <tt>T</tt>,
+          and facts <tt>state_time(T)</tt>, one for every time
+          <tt>T</tt> so far.
+          A new time slice is added at each step; old slices are
+          never removed.
+          The <tt>state_time</tt> facts make it possible for a time
+          slice to be empty (when there are no objects left).
+        </li>
+        <li>
+          <b>Player input</b>: the <tt>observe(...)</tt> and
+          <tt>setting(...)</tt> facts that the player gets to see at the
+          current step, and the fact <tt>current_time(T)</tt>.
+        </li>
+        <li>
+          <b>Decorations</b>: the <tt>decorate(...)</tt> facts that are
+          used to draw the grid at the current step.
+        </li>
+        <li>
+          <b>Player memory</b>: the <tt>memory(...)</tt> facts the player
+          carries from one step to the next. It starts out empty.
+        </li>
+      </ul>
+      <p>
+        Most programs do not work with <tt>at_time</tt> directly.
+        Instead, the engine adds the following two rules, which pick out
+        the latest time and present it as <tt>current_time(T)</tt>,
+        and the objects at that time as plain <tt>at(R,C,O)</tt> facts:
+      </p>
+      <pre class="example-code">
+current_time(T) :- T = #max { S : state_time(S) }.
+at(R,C,O) :- at_time(T,R,C,O), current_time(T).</pre>
+      <p>
+        Below, these two rules are called the <i>current-state rules</i>.
+      </p>
+
+      <h3>Before the game: generating the level</h3>
+      <p>
+        When <i>Generate level</i> is pressed, the engine takes the
+        <b>level generation</b> program, replaces every
+        <tt>RANDINT(l,u)</tt> by a random number, and adds the
+        <b>auxiliary</b> program. From the first answer set:
+      </p>
+      <ul>
+        <li>
+          atoms over <tt>at</tt> (and <tt>debug</tt>) become the
+          <b>level state</b>;
+        </li>
+        <li>
+          atoms over <tt>setting</tt> and <tt>decorate</tt> become the
+          <b>level settings</b>.
+        </li>
+      </ul>
+      <p>
+        If there is no answer set, both are left empty and there is no
+        level to play.
+      </p>
+      <p>
+        When the game starts, the level state is turned into the initial
+        game state by this small program:
+      </p>
+      <pre class="example-code">
+at_time(0,R,C,O) :- at(R,C,O).
+state_time(0).
+% ... followed by the level state</pre>
+      <p>
+        Only the <tt>at_time</tt> and <tt>state_time</tt> atoms are kept. So everything in the
+        state of the game is a triple <tt>(R,C,O)</tt> at some time
+        <tt>T</tt>; other atoms in the level state (such as
+        <tt>debug</tt>) are dropped here.
+      </p>
+
+      <h3>One time step, in order</h3>
+      <p>
+        Right before the first step, the engine runs the visibility
+        program once on the initial state, to get the first player input.
+        Then every time step consists of the following, in this order:
+      </p>
+      <ol>
+        <li>
+          <b>Winning conditions.</b> The goal program is run on the
+          current state. If it derives <tt>lose</tt> or <tt>win</tt>,
+          the game ends here. This happens before the player moves,
+          so in step 1 the initial state is checked as well.
+        </li>
+        <li>
+          <b>Engine timeout.</b> If 500 steps have already been played,
+          the engine stops the game with <tt>TIMEOUT!</tt>, which counts as
+          a loss. This catches games that would otherwise go on forever.
+        </li>
+        <li>
+          <b>Drawing the grid.</b> The grid is drawn from the player
+          input, the decorations and the level settings. So the grid
+          shows what the <i>player</i> sees, plus the decorations,
+          not the true state of the game.
+        </li>
+        <li>
+          <b>Player strategy.</b> The player program is run on the
+          player input and the player's memory. This gives the moves
+          (<tt>do</tt>) and the memory updates (<tt>remember</tt>,
+          <tt>forget</tt>).
+        </li>
+        <li>
+          <b>Memory update.</b> The memory updates are applied to the
+          player's memory.
+        </li>
+        <li>
+          <b>Nature.</b> The nature program is run on the current state
+          and the player's moves. Its <tt>next</tt> atoms become the next
+          time slice of the game state.
+        </li>
+        <li>
+          <b>Memory wipe.</b> If nature derived
+          <tt>wipe_player_memory</tt>, the player's memory is emptied.
+          This happens after step 4, so whatever the player remembered
+          in this step is lost too.
+        </li>
+        <li>
+          <b>Visibility.</b> The visibility program is run on the new
+          state, giving the player input and decorations for the
+          next step.
+        </li>
+      </ol>
+      <p>
+        The <i>Game output</i> in the Debug tab follows this order.
+        For each step it shows the player input, the player's memory, the
+        player's moves, the memory updates and the next state from nature.
+        Whenever a program has no answer set or contains an error, the
+        engine uses one of the fallbacks described below, and the game
+        output says so (for example
+        <tt>- Nature program: no answer set (state unchanged)</tt>).
+      </p>
+
+      <h3>Overview per program</h3>
+      <p>
+        The table below lists, for every program run by the engine,
+        what text is glued together (in this order), which atoms are kept
+        from the answer set, and where they go.
+      </p>
+      <div class="table-wrapper">
+      <table class="internals-table">
+        <tr>
+          <th>Program</th>
+          <th>Input (in this order)</th>
+          <th>Atoms kept</th>
+          <th>Where they go</th>
+          <th><tt>RANDINT</tt>?</th>
+          <th>If there is no answer set</th>
+        </tr>
+        <tr>
+          <td>Level generation</td>
+          <td>level generation program, auxiliary program</td>
+          <td><tt>at</tt>, <tt>debug</tt><br><tt>setting</tt>, <tt>decorate</tt></td>
+          <td>level state<br>level settings</td>
+          <td>yes</td>
+          <td>no level</td>
+        </tr>
+        <tr>
+          <td>Initial state (built in)</td>
+          <td><tt>at_time(0,R,C,O) :- at(R,C,O).</tt> <tt>state_time(0).</tt>, level state</td>
+          <td><tt>at_time</tt>, <tt>state_time</tt></td>
+          <td>game state</td>
+          <td>&ndash;</td>
+          <td>empty game state</td>
+        </tr>
+        <tr>
+          <td>Visibility</td>
+          <td>current-state rules, game state, visibility program, level settings, auxiliary program</td>
+          <td><tt>observe</tt>, <tt>setting</tt>, <tt>current_time</tt><br><tt>decorate</tt></td>
+          <td>player input (and the grid)<br>the grid only</td>
+          <td>no</td>
+          <td>empty player input and no decorations</td>
+        </tr>
+        <tr>
+          <td>Player strategy</td>
+          <td>player input, player memory, auxiliary program, player strategy program</td>
+          <td><tt>do</tt><br><tt>remember</tt>, <tt>forget</tt></td>
+          <td>nature program<br>memory update</td>
+          <td>yes, anew every step</td>
+          <td>no moves, memory unchanged</td>
+        </tr>
+        <tr>
+          <td>Memory update (built in)</td>
+          <td>two rules (see below), player memory, memory updates</td>
+          <td><tt>memory</tt></td>
+          <td>player memory</td>
+          <td>&ndash;</td>
+          <td>memory unchanged</td>
+        </tr>
+        <tr>
+          <td>Nature</td>
+          <td>current-state rules, game state, player moves, nature program, level settings, auxiliary program</td>
+          <td><tt>next</tt><br><tt>wipe_player_memory</tt></td>
+          <td>next time slice of the game state<br>memory wipe</td>
+          <td>yes, anew every step</td>
+          <td>everything stays where it is (and no wipe)</td>
+        </tr>
+        <tr>
+          <td>Winning conditions</td>
+          <td>current-state rules, game state, level settings, auxiliary program, winning conditions program</td>
+          <td><tt>lose</tt>, <tt>win</tt></td>
+          <td>ends the game (<tt>lose</tt> is checked first)</td>
+          <td>no</td>
+          <td>the game continues</td>
+        </tr>
+        <tr>
+          <td>Drawing the grid (not a logic program)</td>
+          <td>player input, decorations, level settings</td>
+          <td><tt>setting(grid_height(..))</tt>, <tt>setting(grid_width(..))</tt>, <tt>observe(at(..))</tt>, <tt>observe(fog(..))</tt>, <tt>decorate(..)</tt></td>
+          <td>the picture</td>
+          <td>&ndash;</td>
+          <td>&ndash;</td>
+        </tr>
+      </table>
+      </div>
+
+      <h4>Visibility</h4>
+      <p>
+        The visibility program sees the true state of the game, as
+        <tt>at(R,C,O)</tt> (and, if it wants to, the full
+        <tt>at_time</tt> history), plus the level settings.
+        It decides what the player is allowed to know by deriving
+        atoms over <tt>observe</tt>.
+        The player input consists of these <tt>observe</tt> atoms
+        together with all <tt>setting</tt> atoms (the latter come straight
+        from the level settings, which are part of this program),
+        and <tt>current_time(T)</tt> (from the current-state rules).
+        So the player never gets raw <tt>at(R,C,O)</tt> facts: only
+        <tt>observe(...)</tt>, <tt>setting(...)</tt> and
+        <tt>current_time(...)</tt>.
+      </p>
+      <p>
+        The <tt>decorate</tt> atoms of this answer set are used only for
+        drawing the grid. They include the <tt>decorate</tt> atoms from
+        the level settings, because those are part of the program too.
+        None of them are passed to the player.
+      </p>
+
+      <h4>Player strategy</h4>
+      <p>
+        The player program gets exactly four things: the player input
+        (<tt>observe</tt>, <tt>setting</tt> and <tt>current_time</tt>
+        facts), the player's
+        memory (<tt>memory</tt> facts), the auxiliary program, and the
+        player's own program (with <tt>RANDINT</tt> replaced anew in
+        every step).
+        It does not see the game state, the decorations, or the other
+        programs.
+        From its answer set, <tt>do</tt> atoms are passed to nature
+        as facts, and <tt>remember</tt>/<tt>forget</tt> atoms are passed
+        to the memory update.
+      </p>
+
+      <h4>Memory update</h4>
+      <p>
+        If the player derived at least one <tt>remember</tt> or
+        <tt>forget</tt> atom, the engine runs the following program,
+        followed by the current memory and the memory updates:
+      </p>
+      <pre class="example-code">
+new_memory(X) :- memory(X), not forget(X).
+new_memory(X) :- remember(X).</pre>
+      <p>
+        The <tt>new_memory</tt> atoms are then renamed to
+        <tt>memory</tt>, and these form the player's new memory.
+        So <tt>remember</tt> wins over <tt>forget</tt>: an atom that is
+        both remembered and forgotten in the same step is kept.
+        A <tt>memory(...)</tt> atom that the player program derives itself
+        (rather than gets as input) is not stored: only
+        <tt>remember</tt> stores things.
+      </p>
+
+      <h4>Nature</h4>
+      <p>
+        Nature sees the true state, the player's moves as
+        <tt>do(...)</tt> facts, and the level settings.
+        From its answer set the engine keeps the <tt>next(R,C,O)</tt>
+        atoms (and <tt>current_time(T)</tt>), and turns them into the
+        next time slice with this program:
+      </p>
+      <pre class="example-code">
+at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).
+state_time(T+1) :- current_time(T).
+% ... followed by the game state and the next atoms</pre>
+      <p>
+        Note that only <tt>next</tt> atoms survive: an object that
+        has no <tt>next</tt> atom simply disappears from the game.
+        This is why nature programs usually contain rules like
+        <tt>next(R,C,flag) :- at(R,C,flag).</tt>
+        If there are no <tt>next</tt> atoms at all, the new time slice
+        is empty, but time still advances
+        (thanks to the <tt>state_time</tt> rule).
+      </p>
+      <p>
+        If the nature program has no answer set (for instance because a
+        constraint like <tt>:- do(X), do(Y), X != Y.</tt> is violated),
+        the engine falls back to <tt>next(R,C,O) :- at(R,C,O).</tt>:
+        time moves on but nothing changes.
+        In that case the memory is not wiped.
+      </p>
+
+      <h4>Winning conditions</h4>
+      <p>
+        The goal program sees the current state, the level settings,
+        and <tt>current_time(T)</tt>, which is the number of steps taken
+        so far (0 at the start).
+        If its answer set contains any atom over <tt>lose</tt>, the game is
+        lost. Otherwise, if it contains any atom over <tt>win</tt>, the game
+        is won. Otherwise the game continues.
+      </p>
+
+      <h3>Worked example 1: Find the flag 1</h3>
+      <p>
+        Let's follow the first step of <i>Find the flag 1 (with solution)</i>
+        on an 8x6 grid. The player starts in the top-left cell and the
+        flag is at row 5, column 7.
+        (The facts are shown one per line here. The engine writes them
+        on one line, and their order may differ, but order does not
+        matter.)
+      </p>
+      <p>
+        <b>Level generation.</b> The answer set of the level
+        generation program gives the following level state and level
+        settings:
+      </p>
+      <pre class="example-code">
+% Level state (atoms over at)
+at(1,1,player).
+at(5,7,flag).
+
+% Level settings (atoms over setting and decorate)
+setting(grid_width(8)).
+setting(grid_height(6)).
+setting(time_bound(15)).
+setting(row(1)). setting(row(2)). ... setting(row(6)).
+setting(col(1)). setting(col(2)). ... setting(col(8)).
+decorate(game_type,grid).
+decorate(label,flag,font_f024).
+decorate(label,player,font_f007).</pre>
+      <p>
+        <b>Initial state.</b> The level state becomes time slice 0:
+      </p>
+      <pre class="example-code">
+at_time(0,1,1,player).
+at_time(0,5,7,flag).
+state_time(0).</pre>
+      <p>
+        <b>Visibility.</b> The visibility program
+        (<tt>observe(at(R,C,O)) :- at(R,C,O).</tt>) is run on the
+        current-state rules, the game state above, the level settings and
+        the auxiliary program. The current-state rules derive
+        <tt>current_time(0)</tt>, <tt>at(1,1,player)</tt> and
+        <tt>at(5,7,flag)</tt>, and from there the visibility program
+        derives the <tt>observe</tt> atoms. The player input is:
+      </p>
+      <pre class="example-code">
+observe(at(1,1,player)).
+observe(at(5,7,flag)).
+current_time(0).
+setting(grid_width(8)).
+setting(grid_height(6)).
+setting(time_bound(15)).
+setting(row(1)). ... setting(row(6)).
+setting(col(1)). ... setting(col(8)).</pre>
+      <p>
+        and the decorations are the three <tt>decorate</tt> facts of the
+        level settings.
+      </p>
+      <p>
+        <b>Step 1, winning conditions.</b> The goal program sees
+        <tt>current_time(0)</tt>, <tt>at(1,1,player)</tt> and
+        <tt>at(5,7,flag)</tt>. Neither <tt>win</tt> nor
+        <tt>lose(timeout)</tt> is derived, so the game continues.
+      </p>
+      <p>
+        <b>Step 1, player strategy.</b> The player program is run on the
+        player input above, the (empty) memory, the auxiliary program and
+        the player strategy:
+      </p>
+      <pre class="example-code">
+do(move(down)) :- observe(at(R1,C1,player)), observe(at(R2,C2,flag)), R1 &lt; R2.
+do(move(right)) :- observe(at(R,C1,player)), observe(at(R,C2,flag)), C1 &lt; C2.</pre>
+      <p>
+        Since the player is in row 1 and the flag in row 5, the answer set
+        contains <tt>do(move(down))</tt>. This is the only atom that is
+        kept. There are no <tt>remember</tt> or <tt>forget</tt> atoms, so
+        the memory stays empty. The player's moves are:
+      </p>
+      <pre class="example-code">
+do(move(down)).</pre>
+      <p>
+        <b>Step 1, nature.</b> The nature program is run on the
+        current-state rules, the game state, the fact
+        <tt>do(move(down)).</tt>, the level settings and the auxiliary
+        program. The kept atoms are:
+      </p>
+      <pre class="example-code">
+current_time(0).
+next(2,1,player).
+next(5,7,flag).</pre>
+      <p>
+        These are turned into time slice 1 and added to the game state,
+        which now reads:
+      </p>
+      <pre class="example-code">
+at_time(0,1,1,player).
+at_time(0,5,7,flag).
+at_time(1,2,1,player).
+at_time(1,5,7,flag).
+state_time(0).
+state_time(1).</pre>
+      <p>
+        <b>Step 1, visibility.</b> The current-state rules now derive
+        <tt>current_time(1)</tt>, <tt>at(2,1,player)</tt> and
+        <tt>at(5,7,flag)</tt>; the old slice 0 is still in the game state
+        but no longer counts as <tt>at</tt>. The player input for step 2
+        is:
+      </p>
+      <pre class="example-code">
+observe(at(2,1,player)).
+observe(at(5,7,flag)).
+current_time(1).
+setting(grid_width(8)).
+% ... and the other setting facts, as before</pre>
+      <p>
+        <b>The rest of the game.</b> The same cycle repeats.
+        The player moves down until it reaches row 5 (after step 4),
+        and then moves right.
+        After step 10 the game state has slices 0 to 10, with
+        <tt>at_time(10,5,7,player)</tt> and
+        <tt>at_time(10,5,7,flag)</tt> in the last one.
+        At the start of step 11, the goal program sees
+        <tt>current_time(10)</tt>, <tt>at(5,7,player)</tt> and
+        <tt>at(5,7,flag)</tt>, so it derives <tt>win</tt>, and the game
+        is won. (The time bound of 15 is not reached, so
+        <tt>lose(timeout)</tt> is not derived.)
+      </p>
+
+      <h3>Worked example 2: fog and memory</h3>
+      <p>
+        The first example has no hidden information and no memory.
+        This second example is a small made-up game on a 1x4 grid:
+        the player starts in cell (1,1), there is an item
+        <tt>amnesia</tt> in cell (1,3), and the flag is in cell (1,4).
+        The auxiliary, nature and winning conditions programs are those
+        of <i>Find the flag 1</i>, with two extra rules in the nature
+        program:
+      </p>
+      <pre class="example-code">
+next(R,C,amnesia) :- at(R,C,amnesia).
+% Stepping onto amnesia wipes the player's memory
+wipe_player_memory :- next(R,C,player), at(R,C,amnesia).</pre>
+      <p>
+        The visibility program only lets the player see its own cell and
+        the cells next to it:
+      </p>
+      <pre class="example-code">
+observe(fog(R,C)) :- cell(R,C), at(R2,C2,player), |C-C2| &gt;= 2.
+observe(at(R,C,O)) :- at(R,C,O), not observe(fog(R,C)).</pre>
+      <p>
+        The player always moves right, counts its steps in memory, and
+        remembers where the flag is once it has seen it:
+      </p>
+      <pre class="example-code">
+remember(steps(1)) :- not memory(steps(_)).
+forget(steps(N)) :- memory(steps(N)).
+remember(steps(N+1)) :- memory(steps(N)).
+remember(flag_at(R,C)) :- observe(at(R,C,flag)).
+do(move(right)).</pre>
+      <p>
+        <b>Step 1.</b> The player is in (1,1), so cells (1,3) and (1,4)
+        are covered by fog. The amnesia item and the flag are not
+        observed. The player input is:
+      </p>
+      <pre class="example-code">
+observe(at(1,1,player)).
+observe(fog(1,3)).
+observe(fog(1,4)).
+current_time(0).
+% ... plus the setting facts</pre>
+      <p>
+        The memory is empty, so the player derives
+        <tt>remember(steps(1))</tt> (and <tt>do(move(right))</tt>).
+        The memory update turns this into the new memory
+        <tt>memory(steps(1)).</tt>
+        Nature moves the player to (1,2).
+      </p>
+      <p>
+        <b>Step 2.</b> From (1,2), the amnesia item in (1,3) can be seen,
+        but the flag in (1,4) is still covered by fog. The player gets:
+      </p>
+      <pre class="example-code">
+observe(at(1,2,player)).
+observe(at(1,3,amnesia)).
+observe(fog(1,4)).
+current_time(1).
+% ... plus the setting facts
+
+memory(steps(1)).</pre>
+      <p>
+        The memory updates are
+        <tt>forget(steps(1))</tt> and <tt>remember(steps(2))</tt>,
+        which gives the new memory <tt>memory(steps(2)).</tt>
+        But nature moves the player onto the amnesia item, so its answer
+        set contains <tt>wipe_player_memory</tt>, and the memory is
+        emptied. The <tt>steps(2)</tt> that was just remembered is lost too.
+      </p>
+      <p>
+        <b>Step 3.</b> The player is in (1,3) and can now see the flag.
+        Its memory is empty, so it starts counting again from 1:
+      </p>
+      <pre class="example-code">
+% Player input
+observe(at(1,3,player)).
+observe(at(1,3,amnesia)).
+observe(at(1,4,flag)).
+observe(fog(1,1)).
+current_time(2).
+% ... plus the setting facts
+
+% Memory updates derived by the player
+remember(steps(1)).
+remember(flag_at(1,4)).
+
+% New memory
+memory(steps(1)).
+memory(flag_at(1,4)).</pre>
+      <p>
+        Nature moves the player to (1,4). At the start of step 4, the goal
+        program derives <tt>win</tt>.
+      </p>
+
+      <h3>Appendix: notes</h3>
+      <p>
+        Some behaviour of the engine that is easy to miss.
+        Most of these points are also mentioned in the Instructions tab.
+      </p>
+      <ul>
+        <li>
+          <b>The player gets <tt>observe</tt>, not <tt>at</tt>.</b>
+          The player gets the <tt>observe(...)</tt> atoms from the
+          visibility program, the <tt>setting(...)</tt> atoms,
+          <tt>current_time(...)</tt>, its <tt>memory(...)</tt>, and the
+          auxiliary program, but never the state of the game itself.
+        </li>
+        <li>
+          <b><tt>lose</tt> takes precedence over <tt>win</tt>.</b>
+          The engine checks <tt>lose</tt> first, so if both are derived,
+          the game is lost.
+        </li>
+        <li>
+          <b>The full history is available.</b> The game state contains
+          all <tt>at_time</tt> facts since time 0, and this is passed to the
+          visibility, nature and goal programs. These programs could use
+          <tt>at_time</tt> directly to look at earlier states.
+          The history also grows with every step, so each step's
+          programs get a little larger.
+        </li>
+        <li>
+          <b>Only <tt>at/3</tt> is game state.</b> Anything nature derives
+          other than <tt>next</tt> (and <tt>wipe_player_memory</tt>) is lost.
+          Any information that should last has to be encoded as an
+          object in a cell.
+        </li>
+        <li>
+          <b><tt>RANDINT</tt> is only replaced in some programs</b>:
+          level generation, player strategy and nature. It is not replaced
+          in the visibility, winning conditions or auxiliary programs.
+        </li>
+        <li>
+          <b>Nature without <tt>next</tt> atoms empties the board.</b>
+          If the nature program has an answer set but derives no
+          <tt>next</tt> atoms, the fallback is not used, and the new time
+          slice is empty. Time still advances, because the game state also
+          records <tt>state_time(T)</tt> for every time <tt>T</tt>.
+          (The fallback that keeps everything in place is only used when
+          the nature program has no answer set.)
+        </li>
+        <li>
+          <b>Level generation leftovers.</b> <tt>debug</tt> atoms from level
+          generation end up in the level state, but are dropped when the
+          initial state is made. The <tt>decorate</tt> atoms from level
+          generation are part of the level settings, so the visibility,
+          nature and goal programs can see them (the player cannot).
+        </li>
+        <li>
+          <b>Memory details.</b> If an atom is both remembered and forgotten
+          in the same step, it is kept. If the player derives no
+          <tt>remember</tt> or <tt>forget</tt> atoms at all, the memory
+          update is skipped and the memory stays as it is.
+        </li>
+        <li>
+          <b>Win/lose timing.</b> Win and lose are checked at the start of
+          each step, before the player moves, so an initial state that
+          already satisfies the winning conditions is won in step 1.
+        </li>
+        <li>
+          <b>Stratification check.</b> There is code to check that the
+          player program is stratified and "simple" (using
+          <tt>stored/stratified.lp</tt>), but the call to it is commented
+          out, so player programs are currently not restricted.
+        </li>
+      </ul>
     </section>
 
   </main>
@@ -621,11 +1390,13 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
           or whether it continues.
         </p>
         <p>
-          If an answer set of the program contains any atoms over <tt>win</tt>,
-          the player wins the game.
-          Otherwise, if this answer set contains any atoms over <tt>lose</tt>,
-          the player loses.
+          If an answer set of the program contains any atoms over <tt>lose</tt>,
+          the player loses the game.
+          Otherwise, if this answer set contains any atoms over <tt>win</tt>,
+          the player wins.
           Otherwise, the game continues.
+          This is checked at the start of each time step,
+          before the player moves.
         </p>
         <p>
           For more details, see the instructions tab.
@@ -644,6 +1415,11 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         <p>
           This program specifies what move(s) the player performs at each
           time steps, and how the player's memory is updated.
+          The program gets what the player can observe
+          (atoms over <tt>observe</tt>), the level settings
+          (atoms over <tt>setting</tt>), the player's memory
+          (atoms over <tt>memory</tt>), the current time
+          (<tt>current_time(t)</tt>), and the auxiliary program.
           An answer set <i>A</i> of the resulting program is taken.
           This answer set restricted to atoms over <tt>do</tt>
           constitutes the moves that the player performs.

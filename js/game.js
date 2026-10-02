@@ -7,6 +7,20 @@ var game_state = null;
 var player_input = "";
 var player_decorations = "";
 var player_memory = "";
+var verbose = true;
+var player_problems = "";
+
+// Rules that give the current time and the current state of the game
+// (as atoms over 'at') from the game state
+var CURRENT_STATE_RULES =
+  "current_time(T) :- T = #max { S : state_time(S) }.\n" +
+  "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n";
+
+// Glue programs together, separated by newlines (so that a comment on the
+// last line of one program does not swallow the start of the next one)
+function join_programs(...parts) {
+  return parts.join("\n");
+}
 
 // Run the game
 function play_game() {
@@ -22,15 +36,21 @@ function play_game() {
     working_game['level_state'] = level_state.getValue();
     working_game['level_settings'] = level_settings.getValue();
     var verbose_checkbox = document.getElementById("verbose");
-    var verbose = true;
+    verbose = true;
     if(typeof verbose_checkbox !== 'undefined' && verbose_checkbox !== null) {
       verbose = verbose_checkbox.checked;
     }
 
-    game_state = generate_initial_game_state(working_game);
+    var initial = generate_initial_game_state(working_game);
+    game_state = initial.game_state;
+    if (initial.problem) {
+      addToGameOutput("- Level state: " + initial.problem + "\n");
+    }
     var visibility_output = generate_player_input(working_game, game_state);
     player_input = visibility_output.player_input;
     player_decorations = visibility_output.decorations;
+    player_problems = problem_line("Visibility program", visibility_output.problem,
+      "player observes nothing");
     player_memory = "";
 
     // Initialize variables for main loop
@@ -43,44 +63,48 @@ function play_game() {
   function main_loop() {
     time_step += 1;
 
+    // The report for this step: the regular lines are only shown when
+    // verbose, problems (fallbacks and errors) are always shown
     var report = "";
+    function report_line(label, facts) {
+      if (verbose) {
+        report += "- " + label + ":\n" + facts + "\n";
+      }
+    }
+    if (verbose) {
+      report += "## STEP " + time_step + " ##\n";
+    }
+    report_line("Player input", player_input);
+    report_line("Player memory", player_memory);
+    report += player_problems;
+
+    show_grid(player_input + player_decorations + working_game["level_settings"]);
 
     // Check if game won/lost already
-    game_condition = analyze_state(working_game, game_state);
-    if (game_condition == "win") {
+    var condition = analyze_state(working_game, game_state);
+    report += problem_line("Winning conditions", condition.problem, "game continues");
+    if (condition.verdict == "win" || condition.verdict == "lose") {
       keep_going = false;
-      if (verbose) {
-        report += "## STEP " + time_step + " ##\n";
-        report += "- Player input:\n" + player_input + "\n";
-        report += "- Player memory:\n" + player_memory + "\n";
-      }
-      show_grid(player_input + player_decorations + working_game["level_settings"]);
       addToGameOutput(report);
-      addToGameOutput("WIN!\n");
-      display_win();
+      addToGameOutput(condition.verdict.toUpperCase() + "! (" + condition.atoms.join(", ") + ")\n");
+      if (condition.verdict == "win") {
+        display_win();
+      } else {
+        display_lose();
+      }
       end_playing();
       return;
-    } else if (game_condition == "lose") {
+    }
+
+    // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
+    if (time_step > max_time) {
       keep_going = false;
-      if (verbose) {
-        report = "## STEP " + time_step + " ##\n";
-        report += "- Player input:\n" + player_input + "\n";
-        report += "- Player memory:\n" + player_memory + "\n";
-      }
-      show_grid(player_input + player_decorations + working_game["level_settings"]);
       addToGameOutput(report);
-      addToGameOutput("LOSE!\n");
+      addToGameOutput("TIMEOUT! (the engine stops games after " + max_time + " steps)\n");
       display_lose();
       end_playing();
       return;
     }
-
-    if (verbose) {
-      var report = "## STEP " + time_step + " ##\n";
-      report += "- Player input:\n" + player_input + "\n";
-      report += "- Player memory:\n" + player_memory + "\n";
-    }
-    show_grid(player_input + player_decorations + working_game["level_settings"]);
 
     // // Check if player's program is stratified and simple
     // var program_to_check = player_input + player_memory;
@@ -96,32 +120,32 @@ function play_game() {
     // }
 
     // Generate player moves and memory updates
-    var {player_moves, memory_updates} = generate_player_move(working_game, player_input, player_memory);
-    if (verbose) {
-      report += "- Player moves:\n" + player_moves + "\n";
-      addToGameOutput(report);
-    }
+    var move = generate_player_move(working_game, player_input, player_memory);
+    report_line("Player moves", move.player_moves);
+    report_line("Memory updates", move.memory_updates);
+    report += problem_line("Player program", move.problem,
+      "no moves, memory unchanged");
     // Update player memory
-    player_memory = update_player_memory(player_memory, memory_updates);
+    player_memory = update_player_memory(player_memory, move.memory_updates);
     // Generate next state
-    var {next_state, wipe_memory} = generate_next_state(working_game, game_state, player_moves);
-    game_state = next_state;
+    var nature = generate_next_state(working_game, game_state, move.player_moves);
+    game_state = nature.next_state;
+    report_line("Next state (from nature)", nature.nexts);
+    report += problem_line("Nature program", nature.problem, "state unchanged");
     // Wipe the player's memory if nature says so
-    if (wipe_memory) {
+    if (nature.wipe_memory) {
       player_memory = "";
-      if (verbose) {
-        addToGameOutput("- Player memory wiped by nature\n");
-      }
+      report += "- Player memory wiped by nature\n";
     }
     // Generate player input for next move
     var visibility_output = generate_player_input(working_game, game_state);
     player_input = visibility_output.player_input;
     player_decorations = visibility_output.decorations;
+    player_problems = problem_line("Visibility program", visibility_output.problem,
+      "player observes nothing");
 
-    // Stop after a fixed amount of steps, to avoid (accidental) infinite loops. :)
-    if (time_step > max_time) {
-      keep_going = false;
-      addToGameOutput("TIMEOUT!\n")
+    if (report) {
+      addToGameOutput(report);
     }
 
     // Keep going as needed, with a delay
@@ -141,6 +165,15 @@ function play_game() {
   main_loop();
 }
 
+// Line for the game output reporting that a program fell back
+// (no answer set or an error), or "" if there was no problem
+function problem_line(program_name, problem, consequence) {
+  if (!problem) {
+    return "";
+  }
+  return "- " + program_name + ": " + problem + "\n  (" + consequence + ")\n";
+}
+
 // Generate random integer in given range
 function randint(min, max) {
   return Math.floor(Math.random() * (max - min) ) + min;
@@ -148,18 +181,9 @@ function randint(min, max) {
 
 // Preprocess programs
 function preprocess_program(program) {
-  // Evaluate 'RANDINT(x,y)' commands in program
-  preprocessed = program.replace(/RANDINT\((\d+),(\d+)\)/g, "RANDOM$1,$2RANDOM");
-  parts = preprocessed.split("RANDOM");
-  for (let i = 0; i < parts.length; i++) {
-    if (i % 2 == 1) {
-      nums = parts[i].split(",");
-      random_int = randint(Number(nums[0]),Number(nums[1])+1);
-      parts[i] = random_int.toString();
-    }
-  }
-  output = parts.join('');
-  return output;
+  // Evaluate 'RANDINT(l,u)' commands in program
+  return program.replace(/RANDINT\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g,
+    (match, l, u) => randint(Number(l), Number(u) + 1).toString());
 }
 
 // Generate the level
@@ -170,7 +194,7 @@ function generate_level() {
   // Preprocess it
   program = preprocess_program(program);
 
-  program += aux_program.getValue();
+  program = join_programs(program, aux_program.getValue());
 
   // Find answer set, and split into two sets of facts
   answer_set = get_answer_set(program);
@@ -184,61 +208,78 @@ function generate_level() {
     generated_settings = generated_settings.replace(/\. /g, ".\n");
     level_settings.setValue(generated_settings, 1);
   } else {
+    var problem = describe_failure();
     level_state.setValue("", 1);
     level_settings.setValue("", 1);
   }
 
   reset_debugging();
+  if (!answer_set) {
+    addToGameOutput("Level generation: " + problem + "\n  (no level generated)\n");
+  }
 }
 
 // Generate initial game state from level state
 function generate_initial_game_state(working_game) {
-  program = "at_time(0,R,C,O) :- at(R,C,O).\n"
-  program += working_game['level_state'];
+  program = join_programs(
+    "at_time(0,R,C,O) :- at(R,C,O).",
+    "state_time(0).",
+    working_game['level_state']
+  );
   answer_set = get_answer_set(program);
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["at_time"]);
-    return answer_set_to_facts(output);
+    var output = filter_answer_set(answer_set, ["at_time","state_time"]);
+    return {
+      game_state: answer_set_to_facts(output),
+      problem: null
+    };
   } else {
-    return "";
+    return {
+      game_state: "",
+      problem: describe_failure()
+    };
   }
 }
 
 // Generate player input from game state
 function generate_player_input(working_game, game_state) {
-  program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
-  program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
-  // program += "observe(at(R,C,O)) :- at(R,C,O), observe(at(R,C,O)).\n"
-  program += game_state;
-  program += working_game['visibility_program'];
-  program += working_game['level_settings'];
-  program += working_game['aux_program'];
+  program = join_programs(
+    CURRENT_STATE_RULES,
+    game_state,
+    working_game['visibility_program'],
+    working_game['level_settings'],
+    working_game['aux_program']
+  );
   answer_set = get_answer_set(program);
   if (answer_set) {
     // What the player gets to see (passed on to the player's program)
-    var output = filter_answer_set(answer_set, ["observe","setting"]);
+    var output = filter_answer_set(answer_set, ["observe","setting","current_time"]);
     output = answer_set_to_facts(output);
     // What is only used for visualization (never passed on to the player)
     var decorations = filter_answer_set(answer_set, ["decorate"]);
     decorations = answer_set_to_facts(decorations);
     return {
       player_input: output,
-      decorations: decorations
+      decorations: decorations,
+      problem: null
     };
   } else {
     return {
       player_input: "",
-      decorations: ""
+      decorations: "",
+      problem: describe_failure()
     };
   }
 }
 
 // Generate player move
 function generate_player_move(working_game, player_input, player_memory) {
-  program = player_input;
-  program += player_memory;
-  program += working_game['aux_program'];
-  program += preprocess_program(working_game['player_move_program']);
+  program = join_programs(
+    player_input,
+    player_memory,
+    working_game['aux_program'],
+    preprocess_program(working_game['player_move_program'])
+  );
   answer_set = get_answer_set(program);
   if (answer_set) {
     var player_moves = filter_answer_set(answer_set, ["do"]);
@@ -247,12 +288,14 @@ function generate_player_move(working_game, player_input, player_memory) {
     memory_updates = answer_set_to_facts(memory_updates);
     return {
       player_moves: player_moves,
-      memory_updates: memory_updates
+      memory_updates: memory_updates,
+      problem: null
     };
   } else {
     return {
       player_moves: "",
-      memory_updates: ""
+      memory_updates: "",
+      problem: describe_failure()
     };
   }
 }
@@ -262,10 +305,12 @@ function update_player_memory(player_memory, memory_updates) {
   if (!memory_updates) {
     return player_memory;
   }
-  program = "new_memory(X) :- memory(X), not forget(X).\n"
-  program += "new_memory(X) :- remember(X).\n"
-  program += player_memory;
-  program += memory_updates;
+  program = join_programs(
+    "new_memory(X) :- memory(X), not forget(X).",
+    "new_memory(X) :- remember(X).",
+    player_memory,
+    memory_updates
+  );
   answer_set = get_answer_set(program);
   if (answer_set) {
     var intermediate = filter_answer_set(answer_set, ["new_memory"]);
@@ -273,8 +318,7 @@ function update_player_memory(player_memory, memory_updates) {
   } else {
     return player_memory;
   }
-  program = "memory(X) :- new_memory(X).\n";
-  program += intermediate;
+  program = join_programs("memory(X) :- new_memory(X).", intermediate);
   answer_set = get_answer_set(program);
   if (answer_set) {
     var output = filter_answer_set(answer_set, ["memory"]);
@@ -289,29 +333,34 @@ function update_player_memory(player_memory, memory_updates) {
 function generate_next_state(working_game, game_state, player_moves) {
 
   // Generate 'nexts'
-  program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
-  program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
-  program += game_state;
-  program += player_moves;
-  program += preprocess_program(working_game['nature_program']);
-  program += working_game['level_settings'];
-  program += working_game['aux_program'];
+  program = join_programs(
+    CURRENT_STATE_RULES,
+    game_state,
+    player_moves,
+    preprocess_program(working_game['nature_program']),
+    working_game['level_settings'],
+    working_game['aux_program']
+  );
   answer_set = get_answer_set(program);
   var nexts = null;
   var wipe_memory = false;
+  var problem = null;
   if (answer_set) {
     nexts = filter_answer_set(answer_set, ["next","current_time"]);
     nexts = answer_set_to_facts(nexts);
     // Check whether nature wipes the player's memory
     wipe_memory = filter_answer_set(answer_set, ["wipe_player_memory"]).length > 0;
+  } else {
+    problem = describe_failure();
   }
 
   // Generate trivial 'nexts' if needed
   if (!nexts) {
-    program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
-    program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
-    program += "next(R,C,O) :- at(R,C,O).\n"
-    program += game_state;
+    program = join_programs(
+      CURRENT_STATE_RULES,
+      "next(R,C,O) :- at(R,C,O).",
+      game_state
+    );
     answer_set = get_answer_set(program);
     if (answer_set) {
       nexts = filter_answer_set(answer_set, ["next","current_time"]);
@@ -320,39 +369,51 @@ function generate_next_state(working_game, game_state, player_moves) {
   }
 
   // Generate next state based on 'nexts'
-  program = "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).\n"
-  program += game_state;
-  program += nexts;
+  // (the time always advances, even if there are no 'nexts')
+  program = join_programs(
+    "at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).",
+    "state_time(T+1) :- current_time(T).",
+    game_state,
+    nexts
+  );
   answer_set = get_answer_set(program);
+  var output = "";
+  var next_atoms = "";
   if (answer_set) {
-    var output = filter_answer_set(answer_set, ["at_time","win","lose"]);
+    output = filter_answer_set(answer_set, ["at_time","state_time"]);
     output = answer_set_to_facts(output);
+    // The 'nexts' themselves (for the game output)
+    next_atoms = answer_set_to_facts(filter_answer_set(answer_set, ["next"]));
   }
 
   return {
     next_state: output,
-    wipe_memory: wipe_memory
+    nexts: next_atoms,
+    wipe_memory: wipe_memory,
+    problem: problem
   };
 }
 
 // Analyze state for win/lose conditions
 function analyze_state(working_game, game_state) {
-  program = "current_time(T) :- T = #max { S : at_time(S,_,_,_) }.\n"
-  program += "at(R,C,O) :- at_time(T,R,C,O), current_time(T).\n"
-  program += game_state;
-  program += working_game['level_settings'];
-  program += working_game['aux_program'];
-  program += working_game['goal_program'];
+  program = join_programs(
+    CURRENT_STATE_RULES,
+    game_state,
+    working_game['level_settings'],
+    working_game['aux_program'],
+    working_game['goal_program']
+  );
   answer_set = get_answer_set(program);
   if (answer_set) {
     var loses = filter_answer_set(answer_set, ["lose"]);
     if (loses.length > 0) {
-      return "lose";
+      return { verdict: "lose", atoms: loses, problem: null };
     }
     var wins = filter_answer_set(answer_set, ["win"]);
     if (wins.length > 0) {
-      return "win";
+      return { verdict: "win", atoms: wins, problem: null };
     }
+    return { verdict: "", atoms: [], problem: null };
   }
-  return "";
+  return { verdict: "", atoms: [], problem: describe_failure() };
 }

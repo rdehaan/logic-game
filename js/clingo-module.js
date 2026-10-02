@@ -62,12 +62,25 @@ function updateGameOutput() {
   }
 }
 
+// Error messages printed by clingo during the last call
+var clingo_errors = [];
+
 // Clingo solving (1)
 function get_answer_set(program) {
   clearOutput();
+  clingo_errors = [];
   options = "-n1 -Wnone --heuristic=Domain";
   constructed_answer_set = null;
-  ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
+  try {
+    ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
+  } catch (e) {
+    // Clingo throws on errors such as syntax errors (the messages are in
+    // clingo_errors); treat this as having no answer set
+    constructed_answer_set = null;
+    if (clingo_errors.length == 0) {
+      clingo_errors.push("clingo stopped with an exception");
+    }
+  }
   if (constructed_answer_set || constructed_answer_set === "") {
     return constructed_answer_set.split(" ");
   } else {
@@ -83,6 +96,14 @@ function get_reified_program(program) {
   ClingoModule.ccall('run', 'number', ['string', 'string'], [program, options])
   end_reifying();
   return reified_program;
+}
+
+// Describe why the last call to get_answer_set gave no answer set
+function describe_failure() {
+  if (clingo_errors.length > 0) {
+    return "error:\n  " + clingo_errors.join("\n  ");
+  }
+  return "no answer set";
 }
 
 // Keep only some predicate names in an answer set
@@ -189,7 +210,7 @@ function handleOutputLine(text) {
 function check_if_stratified_and_simple(program) {
   reified_program = get_reified_program(program);
   check_program = stored_programs["stratified"];
-  answer_set = get_answer_set(reified_program + check_program);
+  answer_set = get_answer_set(reified_program + "\n" + check_program);
   if (answer_set) {
     return true;
   } else {
@@ -206,6 +227,9 @@ d3.require(`wasm-clingo@${version}`).then(Clingo => {
             handleOutputLine(text);
         },
         printErr: function(err) {
+            if (err) {
+                clingo_errors.push(err);
+            }
             Module.setStatus('Error')
             console.error(err)
         },

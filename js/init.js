@@ -25,6 +25,12 @@ if (getQueryVariable("editor") != "true") {
   document.getElementById('level-editor').style.display = "none";
 }
 
+// Only show the internals tab if specified in the URL
+if (getQueryVariable("internals") != "true") {
+  document.getElementById('tab6').style.display = "none";
+  document.querySelector('label[for="tab6"]').style.display = "none";
+}
+
 // Only show solutions if called for in URL
 if (getQueryVariable("solutions") != "true") {
   document.querySelector('#example-games optgroup[label="Solutions"]').remove();
@@ -49,5 +55,9 @@ if (getQueryVariable("tab") == "4") {
 }
 if (getQueryVariable("tab") == "5") {
   document.getElementById('tab5').checked = true;
+  reset_tab_color();
+}
+if (getQueryVariable("tab") == "6" && getQueryVariable("internals") == "true") {
+  document.getElementById('tab6').checked = true;
   reset_tab_color();
 }

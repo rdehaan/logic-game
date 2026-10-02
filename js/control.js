@@ -81,7 +81,7 @@ function update_interface() {
     partial_game['level_state'] = level_state.getValue();
     partial_game['level_settings'] = level_settings.getValue();
     partial_game['visibility_program'] = visibility_program.getValue();
-    var game_state = generate_initial_game_state(partial_game);
+    var game_state = generate_initial_game_state(partial_game).game_state;
     var visibility_output = generate_player_input(partial_game, game_state);
     show_grid(visibility_output.player_input + visibility_output.decorations + level_settings.getValue());
   } else {

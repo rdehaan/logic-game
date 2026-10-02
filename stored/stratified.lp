@@ -30,4 +30,4 @@ has_negative_cycle :- dependency(A,B,minus), dependency(B,A,_).
 
 :- has_negative_cycle.
 :- has_proper_disjunction.
-:- has_choise.
+:- has_choice.
