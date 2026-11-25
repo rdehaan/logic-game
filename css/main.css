@@ -821,3 +821,173 @@ table.saved-games td.buttons {
     white-space: normal;
   }
 }
+
+/* The tutorial */
+.tutorial-invite {
+  margin: 0 10% 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  background: #fff4de;
+  border-left: 3px solid orange;
+}
+
+.tutorial-invite span {
+  flex: 1 1 260px;
+}
+
+.tutorial-card {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  box-sizing: border-box;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: 3px solid orange;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+  font-size: 0.95em;
+}
+
+.tutorial-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.tutorial-title {
+  font-weight: 600;
+  font-size: 1.1em;
+  flex: 1;
+}
+
+.tutorial-count {
+  color: #999;
+  font-size: 0.85em;
+}
+
+.tutorial-close {
+  border: 0;
+  background: none;
+  font-size: 1.1em;
+  color: #888;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.tutorial-body:focus {
+  outline: none;
+}
+
+.tutorial-body p,
+.tutorial-body ul {
+  margin: 8px 0;
+}
+
+.tutorial-body ul {
+  padding-left: 20px;
+}
+
+.tutorial-body tt {
+  font-size: 0.95em;
+  background: #f3f3f3;
+  padding: 0 2px;
+}
+
+pre.tutorial-code {
+  margin: 6px 0;
+  padding: 6px 8px;
+  background: #f5f5f5;
+  border: 1px solid #e3e3e3;
+  font: 12px/1.4 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+  user-select: all;
+}
+
+.tutorial-after {
+  padding: 2px 8px;
+  margin: 8px 0;
+  background: #e8f5e9;
+  border-left: 3px solid #4caf50;
+}
+
+.tutorial-warn {
+  padding: 2px 8px;
+  background: #fff4de;
+  border-left: 3px solid #E69500;
+}
+
+.tutorial-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tutorial-buttons .tutorial-back {
+  margin-right: auto;
+}
+
+.tutorial-target {
+  outline: 3px solid orange !important;
+  outline-offset: 3px;
+  animation: tutorial-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tutorial-pulse {
+  0%, 100% { outline-color: orange; }
+  50% { outline-color: rgba(255, 165, 0, 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-target {
+    animation: none;
+  }
+}
+
+@media screen and (max-width: 650px) {
+  .tutorial-invite {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .tutorial-card {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-width: none;
+    max-height: 45vh;
+  }
+}
+
+ul.tutorial-games {
+  list-style: none;
+  padding: 0 !important;
+  margin: 6px 0;
+}
+
+ul.tutorial-games li {
+  margin: 4px 0;
+}
+
+ul.tutorial-games .control-button {
+  padding: 3px 8px;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+ul.tutorial-games span {
+  color: #666;
+  font-size: 0.9em;
+}

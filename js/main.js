@@ -8,6 +8,7 @@ import { board_problems } from './hints.js';
 import { WorkStore, encode_game, decode_game, game_id, same_game } from './storage.js';
 import { VersionStore, read_file, file_stem } from './versions.js';
 import { VersionsTab } from './versions-tab.js';
+import { Tutorial, first_games_html } from './tutorial.js';
 import './modal.js';
 
 const solver = create_solver(clingo);
@@ -257,8 +258,13 @@ function start_playing_interface() {
   editors.set_read_only(PLAY_PROGRAMS, true);
 }
 
+// The number of games played until the end, and the last verdict (for the tutorial)
+const results = { games: 0, verdict: null };
+
 function end_playing() {
   const stopped = stop_requested;
+  results.games++;
+  results.verdict = stopped ? 'stopped' : final_verdict || 'lose';
   single_step = false;
   playing = false;
   session = null;
@@ -510,6 +516,7 @@ function title_of(origin) {
   }
   if (origin.startsWith('file:')) return origin.slice(5);
   if (origin.startsWith('shared:')) return 'a shared game';
+  if (origin.startsWith('tutorial:')) return 'the tutorial game';
   return origin;
 }
 
@@ -810,6 +817,64 @@ function cancel_test() {
   solver.abort();
 }
 
+// ---- The tutorial ----------------------------------------------------------------------
+
+const TUTORIAL_ORIGIN = 'tutorial:flag1';
+const tutorial = new Tutorial({
+  storage,
+  app: {
+    // A fresh copy of Find the flag 1 (work from an earlier tutorial is forgotten)
+    open_game: async () => {
+      await stop_game_if_playing();
+      forget_link();
+      if (save_timer) save_work_now();
+      work.forget(TUTORIAL_ORIGIN);
+      versions.forget(TUTORIAL_ORIGIN);
+      const response = await fetch('examples/flag1.json');
+      if (!response.ok) throw new Error(`could not load the tutorial game (${response.status})`);
+      await open_game(await response.json(), TUTORIAL_ORIGIN, 'the tutorial game (Find the flag 1)');
+      lock_level_generation();
+    },
+    load_example,
+    results: () => results,
+    select_tab,
+    program: () => editors.value('player_move_program'),
+    set_program: async (text) => {
+      await stop_game_if_playing();
+      editors.set_value('player_move_program', text);
+    },
+    snapshots: () => (current ? versions.list(current.origin).length : 0),
+  },
+});
+
+// Load an example game (e.g. 'flag2'), and go to the strategy.
+async function load_example(name) {
+  await stop_game_if_playing();
+  forget_link();
+  const path = `examples/${name}.json`;
+  example_games.value = path;
+  await load_game_from_path(path, title_of('example:' + name));
+  lock_level_generation();
+  select_tab(4);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// The buttons for the first games in the Control tab
+$('first-games').innerHTML = first_games_html();      // (the page's own text)
+$('first-games').addEventListener('click', (e) => {
+  const game = e.target.closest('button[data-example]');
+  if (game) load_example(game.dataset.example);
+});
+
+async function start_tutorial() {
+  try {
+    await tutorial.start();
+  } catch (e) {
+    tutorial.stop();
+    set_engine_status('The tutorial could not be started: ' + e.message, true);
+  }
+}
+
 // ---- Wiring ------------------------------------------------------------------------
 
 const actions = {
@@ -819,6 +884,8 @@ const actions = {
   take_snapshot: () => versions_tab.take_snapshot(),
   download_project: () => versions_tab.download_project(),
   download_backup: () => versions_tab.download_backup(),
+  start_tutorial,
+  dismiss_tutorial: () => tutorial.dismiss_invite(),
 };
 document.querySelectorAll('[data-action]').forEach((elem) => {
   const action = actions[elem.dataset.action];
@@ -901,6 +968,9 @@ async function start() {
     load_status.innerText = 'Some texts could not be loaded: ' + e.message;
   }
   if (link_error) set_engine_status(link_error, true);
+  // The tutorial: with ?tutorial=true, or offered to new players (not to those who open a shared game)
+  if (params.get('tutorial') === 'true') start_tutorial();
+  else if (!window.location.hash && !work.origins().length && !versions.origins().length) tutorial.invite();
   // Keep the files of the game, so that it also works offline (see sw.js)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch((e) => console.warn('no offline use:', e));
@@ -920,4 +990,4 @@ window.addEventListener('hashchange', async () => {
 });
 
 // (for debugging in the browser console)
-window.logic_game = { solver, editors, clingo, work, versions, versions_tab };
+window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial };

@@ -755,3 +755,92 @@ test('everything in this browser: the list, a backup, and opening a game from th
   await other.locator('#saved-games tbody tr', { hasText: 'Find the flag 1' }).getByText('Forget').click();
   assert.equal(await other.locator('#saved-games tbody tr').count(), 1);
 });
+
+// ---- The tutorial ---------------------------------------------------------------------
+
+test('new players are invited to the tutorial, once', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  assert.equal(await page.isVisible('#tutorial-invite'), true);
+  await page.click('#tutorial-invite button[data-action=dismiss_tutorial]');
+  assert.equal(await page.isHidden('#tutorial-invite'), true);
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isHidden('#tutorial-invite'), true);
+  // Someone who opens a shared game is not invited
+  const other = await browser.newPage({ serviceWorkers: 'block' });
+  t.after(() => other.close());
+  await other.goto(base + '#game=' + await page.evaluate(async () => {
+    const { encode_game } = await import('./js/storage.js');
+    return encode_game(window.logic_game.editors.game());
+  }));
+  await other.waitForSelector('body[data-ready=true]');
+  assert.equal(await other.isHidden('#tutorial-invite'), true);
+});
+
+test('the tutorial: from the first move to a winning strategy', async (t) => {
+  const page = await open(t, '?file=flag3&tab=4');
+  if (!page) return;
+  // Work on another game is not touched
+  await set_program(page, 'player_move_program', 'my own work.');
+  await wait_saved(page, 'my own work.');
+  await page.selectOption('#speed-selector', '0');
+  await page.click('label[for=tab1]');
+  await page.click('#section-control button[data-action=start_tutorial]');
+  const count = () => page.textContent('.tutorial-count');
+  const next = () => page.click('.tutorial-next');
+  await page.waitForFunction(() => document.querySelector('.tutorial-count')?.textContent === '1 of 12');
+  assert.equal(await value(page, 'player_move_program'), '');
+  await next();
+  assert.match(await page.getAttribute('#visual-container', 'class'), /tutorial-target/);
+  await next();
+  // Steps that wait for the player
+  assert.equal(await page.isDisabled('.tutorial-next'), true);
+  await page.click('#play-button');
+  await page.waitForSelector('.tutorial-after');
+  await next();
+  await page.click('label[for=tab4]');
+  await page.waitForFunction(() => document.querySelector('.tutorial-count').textContent === '5 of 12');
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after');
+  await next();
+  await page.click('#play-button');
+  await page.waitForSelector('.tutorial-after');
+  await next();
+  await page.click('.tutorial-do-it');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  await next();
+  await page.click('#play-button');
+  await page.waitForSelector('.tutorial-after');
+  assert.match(await game_output(page), /^WIN!/);
+  await next();
+  await next();
+  await next();
+  // (a step that can be skipped)
+  assert.equal(await count(), '11 of 12');
+  assert.equal(await page.textContent('.tutorial-next'), 'Skip');
+  await page.click('label[for=tab7]');
+  await page.click('#snapshot-button');
+  await page.waitForSelector('.tutorial-after');
+  await next();
+  // The end: on to the next game
+  assert.equal(await page.locator('.tutorial-body button[data-example]').count(), 6);
+  await page.click('.tutorial-body button[data-example=flag2]');
+  await page.waitForSelector('#tutorial-card', { state: 'detached' });
+  await page.waitForFunction(() => /flag is randomly placed/.test(window.logic_game.editors.value('level_gen_program')));
+  assert.equal(await page.isChecked('#tab4'), true);
+  assert.equal(await page.locator('.tutorial-target').count(), 0);
+  assert.equal(await page.evaluate(() => window.logic_game.work.load('example:flag3').game.player_move_program), 'my own work.');
+  assert.deepEqual(page.errors, []);
+});
+
+test('the first games can be loaded from the Control tab, and the tutorial started from a link', async (t) => {
+  const page = await open(t, '?tutorial=true');
+  if (!page) return;
+  await page.waitForSelector('#tutorial-card');
+  await page.click('.tutorial-close');
+  await page.waitForSelector('#tutorial-card', { state: 'detached' });
+  await page.click('label[for=tab1]');
+  await page.click('#first-games button[data-example=flag6]');
+  await page.waitForFunction(() => /trees/.test(window.logic_game.editors.value('level_gen_program')));
+});

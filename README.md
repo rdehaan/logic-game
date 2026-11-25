@@ -28,6 +28,7 @@ shows how long clingo took for each program in each step.
 | `js/storage.js` | Saved work (in the browser) and share links (no DOM) |
 | `js/versions.js` | Snapshots, differences between versions, project and backup files (no DOM) |
 | `js/versions-tab.js` | The Versions tab |
+| `js/tutorial.js` | The tutorial for new players (a guided first game), and the list of the first games |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/mode-gringo.js` | Syntax highlighting for ASP in the Ace editor |
