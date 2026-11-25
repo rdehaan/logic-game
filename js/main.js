@@ -757,6 +757,10 @@ async function start() {
   }
   await loading;
   if (link_error) set_engine_status(link_error, true);
+  // Keep the files of the game, so that it also works offline (see sw.js)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('no offline use:', e));
+  }
   document.body.dataset.ready = 'true';   // (for the browser tests)
 }
 start();

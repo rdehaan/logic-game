@@ -5,7 +5,10 @@
 // The tests are skipped when no browser can be started.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { createServer } from '../tools/serve.mjs';
+import { ROOT } from './helpers.mjs';
 
 let chromium = null;
 try {
@@ -46,7 +49,8 @@ async function open(t, query = '') {
     t.skip(skip);
     return null;
   }
-  const page = await browser.newPage();
+  // (service workers are blocked: they would bypass page.route; see the offline test)
+  const page = await browser.newPage({ serviceWorkers: 'block' });
   page.errors = [];
   page.external = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -456,4 +460,57 @@ test('testing a strategy on many levels, and playing a level of the test again',
   await other.waitForSelector('body[data-ready=true]');
   await other.waitForSelector('#board-message:not([hidden])');
   assert.equal(await other.evaluate(() => window.logic_game.editors.value('level_state')), level_state);
+});
+
+test('the page works offline after the first visit', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const context = await browser.newContext();
+  t.after(() => context.close());
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(base);
+  await page.waitForSelector('body[data-ready=true]');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null || location.reload());
+  await page.waitForSelector('body[data-ready=true]');
+  // Offline: the page, clingo, the fonts and the examples still load
+  await context.setOffline(true);
+  await page.goto(base + '?file=flag2-with-solutions&tab=4');
+  await page.waitForSelector('body[data-ready=true]');
+  assert.match(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), /do\(move/);
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.match(await game_output(page), /^WIN!/);
+  assert.equal(await page.evaluate(() => document.fonts.check('16px FontAwesome', '\uf024')), true);
+  assert.deepEqual(errors, []);
+});
+
+test('the offline copy holds every file that the page loads', async (t) => {
+  const page = await open(t, '?editor=true&internals=true&solutions=true');
+  if (!page) return;
+  const loaded = new Set();
+  const record = (url) => {
+    if (url.startsWith(base)) loaded.add(url.slice(base.length).replace(/\?.*$/, '') || './');
+  };
+  page.on('request', (r) => record(r.url()));
+  page.on('worker', (w) => record(w.url()));
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.evaluate(() => document.fonts.ready);
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  for (const tab of [2, 3, 4, 5, 6]) await page.click(`label[for=tab${tab}]`);
+  await page.waitForTimeout(300);
+  const source = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  const precache = new Set(eval(/const PRECACHE = (\[[\s\S]*?\n\]);/.exec(source)[1]));
+  const missing = [...loaded].filter((f) => f !== 'sw.js' && f !== 'favicon.ico' && !precache.has(f));
+  assert.deepEqual(missing, [], 'add these files to PRECACHE in sw.js');
+  // and every file in the list exists
+  for (const f of precache) if (f !== './') assert.ok(fs.existsSync(path.join(ROOT, f)), f);
 });

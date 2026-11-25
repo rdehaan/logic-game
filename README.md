@@ -28,6 +28,7 @@ shows how long clingo took for each program in each step.
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/ace.js`, `js/mode-gringo.js` | The Ace editor, and syntax highlighting for ASP |
+| `sw.js` | Service worker: keeps the files of the game, so that it also works offline |
 | `vendor/clingo-wasm/` | An unmodified copy of the clingo-wasm npm package (see `VERSION`) |
 | `vendor/fonts/` | Open Sans and Font Awesome, from their npm packages (the page loads nothing from other sites) |
 | `examples/` | The example games |
@@ -62,6 +63,13 @@ Changes are saved in the browser automatically (localStorage), separately for ea
 button to go back to the original. *Share current game* in the Control tab makes a link that
 contains the whole game, compressed, after `#game=`; that part of a URL never reaches the
 server, so nothing is uploaded.
+
+## Offline use
+
+After the first visit, the game also works without a network connection (`sw.js`): the
+files it needs are stored in the browser. Online, the files still come from the network
+first, so a new version of the site is used right away. When the page loads a new file,
+add it to `PRECACHE` in `sw.js` (a test checks this).
 
 ## Development
 
