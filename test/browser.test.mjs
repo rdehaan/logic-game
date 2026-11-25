@@ -48,9 +48,13 @@ async function open(t, query = '') {
   }
   const page = await browser.newPage();
   page.errors = [];
+  page.external = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
-  // The page does not need anything from other sites (fonts are optional)
-  await page.route((url) => !url.href.startsWith(base), (route) => route.abort());
+  // The page does not need anything from other sites
+  await page.route((url) => !url.href.startsWith(base) && !url.href.startsWith('blob:'), (route) => {
+    page.external.push(route.request().url());
+    route.abort();
+  });
   await page.goto(base + query);
   await page.waitForSelector('body[data-ready=true]', { timeout: 30000 });
   t.after(() => page.close());
@@ -79,6 +83,23 @@ test('the page loads a level, and the example solution wins', async (t) => {
   assert.equal(await page.isDisabled('#stop-button'), true);
   assert.equal(await page.isEnabled('#reset-button'), true);
   assert.deepEqual(page.errors, []);
+  assert.deepEqual(page.external, []);
+});
+
+test('the fonts are loaded from the site itself', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  await page.evaluate(() => document.fonts.ready);
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.load('16px FontAwesome', '\uf024');
+    await document.fonts.load('600 14px "Open Sans"', 'A');
+    return [document.fonts.check('16px FontAwesome', '\uf024'), document.fonts.check('600 14px "Open Sans"', 'A'),
+      [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/"/g, ''))];
+  });
+  assert.equal(loaded[0], true);
+  assert.equal(loaded[1], true);
+  assert.ok(loaded[2].includes('FontAwesome') && loaded[2].includes('Open Sans'), loaded[2].join(', '));
+  assert.deepEqual(page.external, []);
 });
 
 test('generating a level', async (t) => {
@@ -153,9 +174,10 @@ test('the Stop button stops clingo, and the next game works', async (t) => {
   await page.click('#stop-button');
   await page.waitForFunction(() => document.getElementById('stop-button').disabled, null, { timeout: 5000 });
   assert.equal(await page.isEnabled('#play-button'), true);
-  // Back to the nature program of the example
-  await page.selectOption('#example-games', 'examples/flag1-with-solutions.json');
-  await page.click('button[data-action=load_game]');
+  // Back to the nature program of the example (the changed one was saved)
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.waitForSelector('#work-notice:not([hidden])');
+  await page.click('button[data-action=revert_to_original]');
   await page.waitForFunction(() => !/n\(0\)/.test(window.logic_game.editors.value('nature_program')));
   await page.selectOption('#speed-selector', '100');
   await page.click('#play-button');
@@ -251,4 +273,81 @@ test('problems with the board are shown under it', async (t) => {
   await page.click('button[data-action=update_interface]');
   await page.waitForSelector('#board-message:not([hidden])');
   assert.equal(await page.textContent('#board-message'), 'The board cannot be drawn: the level settings have no setting(grid_height(H)).');
+});
+
+test('changes are saved in the browser, and come back after a reload', async (t) => {
+  const page = await open(t, '?file=flag3&tab=4');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  assert.equal(await page.isHidden('#work-notice'), true);
+  await set_program(page, 'player_move_program', 'do(move(down)).');
+  await page.waitForFunction(() => window.logic_game.work.origins().length === 1);
+  // As soon as there are changes, there is a way back
+  await page.waitForSelector('#work-notice:not([hidden])');
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), 'do(move(down)).');
+  assert.match(await page.textContent('#work-notice'), /You are working on your own version of Find the flag 3 \(saved /);
+  // Other games are not affected
+  await page.click('label[for=tab1]');
+  await page.selectOption('#example-games', 'examples/flag2.json');
+  await page.click('button[data-action=load_game]');
+  await page.waitForFunction(() => /Done loading/.test(document.getElementById('load-status').textContent));
+  assert.notEqual(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), 'do(move(down)).');
+  assert.equal(await page.isHidden('#work-notice'), true);
+  // Back to flag 3: the changes are loaded, until going back to the original
+  await page.selectOption('#example-games', 'examples/flag3.json');
+  await page.click('button[data-action=load_game]');
+  await page.waitForSelector('#work-notice:not([hidden])');
+  assert.match(await page.textContent('#work-notice'), /your own version of Find the flag 3 \(saved /);
+  await page.click('button[data-action=revert_to_original]');
+  await page.waitForSelector('#work-notice', { state: 'hidden' });
+  assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), '');
+  assert.deepEqual(await page.evaluate(() => window.logic_game.work.origins()), []);
+});
+
+test('share links', async (t) => {
+  const page = await open(t, '?tab=4');
+  if (!page) return;
+  await set_program(page, 'player_move_program', '% shared strategy\ndo(move(down)).');
+  await page.click('label[for=tab1]');
+  await page.click('button[data-action=share_game]');
+  await page.waitForSelector('#share-box:not([hidden])');
+  const link = await page.inputValue('#share-link');
+  assert.match(link, /\?tab=4#game=[A-Za-z0-9_-]+$/);
+  assert.ok(link.length < 2500, `${link.length} characters`);
+  // Someone else opens the link
+  const other = await browser.newPage();
+  t.after(() => other.close());
+  await other.goto(link);
+  await other.waitForSelector('body[data-ready=true]');
+  assert.equal(await other.evaluate(() => window.logic_game.editors.value('player_move_program')), '% shared strategy\ndo(move(down)).');
+  assert.equal(await other.evaluate(() => window.logic_game.editors.value('level_state')),
+    await page.evaluate(() => window.logic_game.editors.value('level_state')));
+  // and plays it
+  await other.selectOption('#speed-selector', '100');
+  await other.click('#play-button');
+  await wait_for_verdict(other);
+  // A link that is broken
+  const broken = await browser.newPage();
+  t.after(() => broken.close());
+  await broken.goto(base + '#game=AAAA');
+  await broken.waitForSelector('body[data-ready=true]');
+  assert.match(await broken.textContent('#engine-status'), /The link could not be read/);
+  assert.match(await broken.evaluate(() => window.logic_game.editors.value('level_gen_program')), /grid/);
+});
+
+test('forgetting all saved work', async (t) => {
+  const page = await open(t, '?tab=4');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await set_program(page, 'player_move_program', 'do(move(up)).');
+  await page.waitForFunction(() => window.logic_game.work.origins().length === 1);
+  await page.click('label[for=tab1]');
+  assert.equal(await page.textContent('#saved-work-status'), 'There is saved work for 1 game.');
+  await page.click('#forget-button');
+  assert.equal(await page.textContent('#saved-work-status'), 'There is no saved work.');
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  assert.notEqual(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), 'do(move(up)).');
 });

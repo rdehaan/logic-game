@@ -5,6 +5,7 @@ import { GAME_FIELDS, GameSession, generate_level, normalize_game } from './engi
 import { Editors, make_example_editors } from './editors.js';
 import { show_grid, clear_grid, display_win, display_lose } from './grid-visual.js';
 import { board_problems } from './hints.js';
+import { WorkStore, encode_game, decode_game, game_id } from './storage.js';
 import './modal.js';
 
 const solver = create_solver(clingo);
@@ -272,10 +273,131 @@ function set_game(game) {
   return update_interface();
 }
 
-async function load_game_from_path(path) {
+// ---- The game being edited, saved work and share links --------------------------------
+
+let storage = null;
+try {
+  storage = window.localStorage;
+} catch {
+  // no storage (e.g. blocked by the browser): work is not saved
+}
+const work = new WorkStore(storage);
+const SAVE_DELAY_MS = 500;
+
+// Where the game being edited was loaded from: { origin, title, original }.
+// Changes are saved under `origin`.
+let current = null;
+let save_timer = null;
+
+function save_work_now() {
+  clearTimeout(save_timer);
+  save_timer = null;
+  if (current) {
+    work.save(current.origin, editors.game(), current.original);
+    update_saved_work_status();
+    const saved = work.load(current.origin);
+    show_work_notice(saved ? `You are working on your own version of ${current.title}` +
+      ` (saved ${new Date(saved.saved_at).toLocaleString()}), saved in this browser.` : null);
+  }
+}
+
+editors.on_change = () => {
+  if (!current || loading_game) return;
+  clearTimeout(save_timer);
+  save_timer = setTimeout(save_work_now, SAVE_DELAY_MS);
+};
+window.addEventListener('pagehide', () => { if (save_timer) save_work_now(); });
+
+let loading_game = false;
+
+// Load a game; if there is saved work for it, load that instead.
+async function open_game(game, origin, title) {
+  if (save_timer) save_work_now();
+  game = normalize_game(game);
+  current = { origin, title, original: game };
+  const saved = work.load(origin);
+  loading_game = true;
+  try {
+    if (saved) {
+      await set_game(saved.game);
+      const when = saved.saved_at ? ' (saved ' + new Date(saved.saved_at).toLocaleString() + ')' : '';
+      show_work_notice(`You are working on your own version of ${title}${when}, saved in this browser.`);
+    } else {
+      await set_game(game);
+      show_work_notice(null);
+    }
+  } finally {
+    loading_game = false;
+  }
+  update_saved_work_status();
+}
+
+function show_work_notice(text) {
+  $('work-notice-text').textContent = text || '';
+  $('work-notice').hidden = !text;
+}
+
+async function revert_to_original() {
+  if (!current) return;
+  if (!window.confirm(`Throw away your changes to ${current.title}, and go back to the original?`)) return;
+  await stop_game_if_playing();
+  clearTimeout(save_timer);
+  save_timer = null;
+  work.forget(current.origin);
+  await open_game(current.original, current.origin, current.title);
+}
+
+function update_saved_work_status() {
+  const n = work.origins().length;
+  $('saved-work-status').textContent = !storage ? 'This browser does not allow saving work.'
+    : n === 0 ? 'There is no saved work.' : `There is saved work for ${n} game${n > 1 ? 's' : ''}.`;
+  $('forget-button').disabled = n === 0;
+}
+
+async function forget_saved_work() {
+  if (!window.confirm('Forget all your saved work in this browser? (The games stay as they are on the page until you load them again.)')) return;
+  clearTimeout(save_timer);
+  save_timer = null;
+  work.forget_all();
+  show_work_notice(null);
+  update_saved_work_status();
+}
+
+async function load_game_from_path(path, title) {
   const response = await fetch(path);
   if (!response.ok) throw new Error(`could not load ${path} (${response.status})`);
-  await set_game(await response.json());
+  const name = path.replace(/^.*\//, '').replace(/\.json$/, '');
+  await open_game(await response.json(), 'example:' + name, title || name);
+}
+
+// Load the game in the link (#game=...), if there is one. Returns whether there was one.
+async function load_game_from_link() {
+  const m = /^#game=([A-Za-z0-9_-]+)$/.exec(window.location.hash);
+  if (!m) return false;
+  const game = await decode_game(m[1]);
+  await open_game(game, 'shared:' + await game_id(game), 'the shared game');
+  return true;
+}
+
+// The link points to an example or a file from now on, not to a shared game.
+function forget_link() {
+  if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+async function share_game() {
+  const code = await encode_game(editors.game());
+  const query = new URLSearchParams(window.location.search);
+  query.delete('file');
+  const link = window.location.origin + window.location.pathname + (query.size ? '?' + query : '') + '#game=' + code;
+  $('share-box').hidden = false;
+  $('share-link').value = link;
+  $('share-link').select();
+  try {
+    await navigator.clipboard.writeText(link);
+    $('share-status').textContent = 'The link is copied to the clipboard.';
+  } catch {
+    $('share-status').textContent = 'Copy the link above.';
+  }
 }
 
 async function stop_game_if_playing() {
@@ -289,7 +411,9 @@ async function load_game() {
   load_status.innerText = 'Loading..';
   await stop_game_if_playing();
   try {
-    await load_game_from_path(example_games.value);
+    forget_link();
+    const option = example_games.selectedOptions[0];
+    await load_game_from_path(example_games.value, option ? option.textContent : null);
     lock_level_generation();
     load_status.innerText = 'Done loading..';
   } catch (e) {
@@ -302,12 +426,15 @@ async function load_game_from_file(event) {
   if (!file) return;
   await stop_game_if_playing();
   try {
-    await set_game(JSON.parse(await file.text()));
+    const game = JSON.parse(await file.text());
+    forget_link();
+    await open_game(game, 'file:' + file.name, file.name);
     lock_level_generation();
     upload_status.innerText = 'Done loading..';
   } catch (e) {
     upload_status.innerText = 'Loading failed: ' + e.message;
   }
+  event.target.value = '';
 }
 
 function download_game() {
@@ -345,6 +472,7 @@ function change_tabs() {
 const actions = {
   do_generate, clear_level, reset_level, do_play, do_pause, do_stop,
   lock_level_generation, unlock_level_generation, update_interface, load_game, download_game,
+  share_game, revert_to_original, forget_saved_work,
 };
 document.querySelectorAll('[data-action]').forEach((elem) => {
   const action = actions[elem.dataset.action];
@@ -390,9 +518,17 @@ async function start() {
   const file = params.get('file');
   const path = file ? 'examples/' + file + '.json' : 'examples/flag1-with-solutions.json';
   set_engine_status('Loading clingo..');
-  const loading = load_game_from_path(path).catch((e) => {
-    load_status.innerText = 'Loading failed: ' + e.message;
-  });
+  let link_error = null;
+  const option = [...example_games.options].find((o) => o.value === path);
+  const loading = load_game_from_link()
+    .catch((e) => {
+      link_error = 'The link could not be read: ' + e.message;
+      return false;
+    })
+    .then((from_link) => from_link || load_game_from_path(path, option ? option.textContent : null))
+    .catch((e) => {
+      load_status.innerText = 'Loading failed: ' + e.message;
+    });
   try {
     await solver.init();
     set_engine_status('');
@@ -400,9 +536,20 @@ async function start() {
     set_engine_status('clingo could not be loaded: ' + e.message, true);
   }
   await loading;
+  if (link_error) set_engine_status(link_error, true);
   document.body.dataset.ready = 'true';   // (for the browser tests)
 }
 start();
 
+// Opening another share link in the same tab only changes the part after '#'
+window.addEventListener('hashchange', async () => {
+  await stop_game_if_playing();
+  try {
+    if (await load_game_from_link()) lock_level_generation();
+  } catch (e) {
+    load_status.innerText = 'The link could not be read: ' + e.message;
+  }
+});
+
 // (for debugging in the browser console)
-window.logic_game = { solver, editors, clingo };
+window.logic_game = { solver, editors, clingo, work };

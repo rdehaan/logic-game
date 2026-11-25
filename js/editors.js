@@ -80,6 +80,7 @@ export class Editors {
     this.markers = {};          // key -> Ace marker ids
     this.timers = {};
     this.hint_timer = null;
+    this.on_change = null;      // called with the key of an editor that changed
     for (const key of GAME_FIELDS) {
       const editor = make_editor(key);
       this.editors[key] = editor;
@@ -138,6 +139,7 @@ export class Editors {
 
   // An editor changed: its errors from runs are outdated, check it again soon.
   changed(key) {
+    if (this.on_change) this.on_change(key);
     this.run_errors[key] = [];
     this.show(key);
     clearTimeout(this.timers[key]);

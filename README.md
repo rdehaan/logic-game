@@ -20,10 +20,12 @@ web worker, so the page stays responsive; a call to clingo that takes longer tha
 | `js/asp.js` | Text helpers: composing programs, `RANDINT`, reading clingo's error messages (no DOM) |
 | `js/analysis.js` | A light-weight analysis of programs: which predicates they derive and use (no DOM) |
 | `js/hints.js` | Warnings about the special predicates of each program (`do/1`, `observe/1`, ...) (no DOM) |
+| `js/storage.js` | Saved work (in the browser) and share links (no DOM) |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/ace.js`, `js/mode-gringo.js` | The Ace editor, and syntax highlighting for ASP |
 | `vendor/clingo-wasm/` | An unmodified copy of the clingo-wasm npm package (see `VERSION`) |
+| `vendor/fonts/` | Open Sans and Font Awesome, from their npm packages (the page loads nothing from other sites) |
 | `examples/` | The example games |
 | `test/` | The tests |
 | `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm into `vendor/`) |
@@ -41,6 +43,14 @@ The page tries to explain what went wrong:
 
 The special predicates of each program are listed in `INTERFACES` in `js/hints.js`; they must
 match what `js/engine.js` passes between the programs.
+
+## Saving and sharing
+
+Changes are saved in the browser automatically (localStorage), separately for each game
+(example, uploaded file or shared link); loading that game again brings them back, with a
+button to go back to the original. *Share current game* in the Control tab makes a link that
+contains the whole game, compressed, after `#game=`; that part of a URL never reaches the
+server, so nothing is uploaded.
 
 ## Development
 
@@ -61,15 +71,17 @@ The tests (in `test/`, run with Node's built-in test runner) check:
 - `asp.test.mjs`: the text helpers and the board (no clingo needed);
 - `hints.test.mjs`: the analysis of programs and the warnings about special predicates
   (no clingo needed); the example games get no warnings;
+- `storage.test.mjs`: share links (every example survives the round trip) and saved work;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
   example is free of syntax errors, and every example solution wins (on fixed random levels);
 - `browser.test.mjs`: the page in Chromium: playing, generating levels, errors and warnings
-  shown in the editors, programs that do not terminate, Stop, Pause, URL options, uploading a game.
+  shown in the editors, programs that do not terminate, Stop, Pause, URL options, uploading a game,
+  saved work, share links, and that nothing is loaded from other sites (fonts included).
 
 The tests run on GitHub for every push (`.github/workflows/test.yml`).
 To use a Chromium that is already installed, set `CHROMIUM_PATH` to its executable.
 
-### Updating clingo
+### Updating clingo (or the fonts)
 
 ```
 npm install --save-exact clingo-wasm@latest
@@ -77,5 +89,6 @@ npm run vendor
 npm test
 ```
 
-and commit `package.json`, `package-lock.json` and `vendor/clingo-wasm/`.
+and commit `package.json`, `package-lock.json` and `vendor/`. (The same works for
+`@fortawesome/fontawesome-free` and `@fontsource/open-sans`.)
 A test fails if `vendor/clingo-wasm/` does not match the version in `package.json`.

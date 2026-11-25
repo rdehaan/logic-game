@@ -22,6 +22,10 @@
       <div id="visual"></div>
     </div>
     <p id="board-message" class="board-message" hidden></p>
+    <p id="work-notice" class="work-notice" hidden>
+      <span id="work-notice-text"></span>
+      <button data-action="revert_to_original" class="control-button">Back to the original</button>
+    </p>
 
     <div class="game-controls">
       <div>
@@ -126,6 +130,28 @@
 
       <h3>Download current game</h3>
       <button data-action="download_game" class="control-button">Download</button>
+
+      <h3>Share current game</h3>
+      <p>
+        This creates a link that contains the whole game (all programs,
+        including your strategy). Whoever opens the link gets their own copy
+        of the game. The game is not uploaded anywhere: it is stored in the
+        link itself.
+      </p>
+      <button data-action="share_game" class="control-button">Create link</button>
+      <p id="share-box" hidden>
+        <input type="text" id="share-link" class="share-link" readonly>
+        <span id="share-status"></span>
+      </p>
+
+      <h3>Saved work</h3>
+      <p>
+        Your changes are saved in this browser automatically, for each game
+        separately. When you load a game again (or reload the page), your
+        changes come back.
+      </p>
+      <p id="saved-work-status"></p>
+      <button data-action="forget_saved_work" class="control-button" id="forget-button">Forget all saved work</button>
 
     </section>
 
