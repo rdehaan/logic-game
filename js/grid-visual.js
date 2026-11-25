@@ -1,19 +1,8 @@
-// Initialize a grid data structure
-function init_grid_ds(height, width) {
-  grid_ds = {};
-  grid_ds["height"] = height;
-  grid_ds["width"] = width;
-  for (let row=1; row <= height; row++) {
-    for (let col=1; col <= width; col++) {
-      num = coord_to_num(height, width, row, col);
-      grid_ds[num] = [];
-    }
-  }
-  return grid_ds;
-}
+// Drawing the board from the facts that the player observes (and the decorations).
+// compute_grid_ds() does not use the DOM (the tests run it in Node).
 
 // Auxiliary function to parse an atom into its elements
-function flatparse_atom(atom) {
+export function flatparse_atom(atom) {
 
   var bracket_count = 0;
   var cur_substr_init = 0;
@@ -44,7 +33,7 @@ function flatparse_atom(atom) {
 }
 
 // Auxiliary function to split an answer set (string) into its atoms
-function split_answer_set(answer_set) {
+export function split_answer_set(answer_set) {
 
   var bracket_count = 0;
   var cur_substr_init = 0;
@@ -73,31 +62,41 @@ function split_answer_set(answer_set) {
 }
 
 // Auxiliary function to filter atoms from answer set
-function get_atoms_beginning_with(answer_set, prefix) {
+export function get_atoms_beginning_with(answer_set, prefix) {
 
   var selected_atoms = Array();
   var atoms = split_answer_set(answer_set)
-  for (index in atoms) {
-    if (atoms[index].startsWith(prefix)) {
-      selected_atoms.push(atoms[index]);
+  for (const atom of atoms) {
+    if (atom.startsWith(prefix)) {
+      selected_atoms.push(atom);
     }
   }
   return selected_atoms;
 }
 
 // Compute a grid data structure from an answer set
-function compute_grid_ds(answer_set) {
+export function compute_grid_ds(answer_set) {
 
   var matches;
   var atoms;
+  var match, row, col, num, item, color, label;
   // match = answer_set.match(/setting\(grid_height\((\d+)\)\)/);
   // var height = Number(match[1]);
   // match = answer_set.match(/setting\(grid_width\((\d+)\)\)/);
   // var width = Number(match[1]);
   matches = get_atoms_beginning_with(answer_set, "setting(grid_height(");
+  if (matches.length == 0) {
+    return null;
+  }
   var height = Number(flatparse_atom(flatparse_atom(matches[0])[1])[1]);
   matches = get_atoms_beginning_with(answer_set, "setting(grid_width(");
+  if (matches.length == 0) {
+    return null;
+  }
   var width = Number(flatparse_atom(flatparse_atom(matches[0])[1])[1]);
+  if (!(height > 0) || !(width > 0)) {
+    return null;
+  }
 
   var grid_ds = {};
   var fog = {};
@@ -105,7 +104,7 @@ function compute_grid_ds(answer_set) {
   grid_ds["width"] = width;
   for (let row=1; row <= height; row++) {
     for (let col=1; col <= width; col++) {
-      num = coord_to_num(height, width, row, col);
+      let num = coord_to_num(height, width, row, col);
       grid_ds[num] = [];
       fog[num] = false;
     }
@@ -118,7 +117,9 @@ function compute_grid_ds(answer_set) {
     col = Number(match[2]);
     num = coord_to_num(height, width, row, col);
     item = match[3];
-    grid_ds[num].push(item);
+    if (grid_ds[num]) {
+      grid_ds[num].push(item);
+    }
   }
 
   atoms = get_atoms_beginning_with(answer_set, "observe(fog(");
@@ -178,7 +179,6 @@ function compute_grid_ds(answer_set) {
   }
   grid_ds["colors"] = colors;
 
-  console.log(grid_ds);
   return grid_ds;
 }
 
@@ -237,7 +237,7 @@ function visualize_grid(grid_ds) {
   visual_elem.style.setProperty("border", "1px solid #000");
   visual_elem.style.setProperty("width", "80%");
 
-  ratio = width/height;
+  let ratio = width/height;
   visual_elem.style.setProperty("aspect-ratio", ratio);
 
   for (let num = 1; num <= num_cells ; num++) {
@@ -262,7 +262,7 @@ function visualize_grid(grid_ds) {
       font_size = 2.5;
     }
     div.style.setProperty("--font-size", font_size + "vw");
-    var items = grid_ds[num].toSorted();
+    var items = (grid_ds[num] || []).toSorted();
     var hidden_items = (grid_ds["hidden"][num] || []).toSorted();
     var html = "<div>";
     for (const item of items) {
@@ -277,21 +277,26 @@ function visualize_grid(grid_ds) {
 }
 
 // Visual effects for when a game is won
-function display_win() {
+export function display_win() {
   var visual_elem = document.getElementById("visual");
   visual_elem.style.setProperty("border", "3px solid #AADB1E");
 }
 // Visual effects for when a game is lost
-function display_lose() {
+export function display_lose() {
   var visual_elem = document.getElementById("visual");
   visual_elem.style.setProperty("border", "3px solid #E10600");
 }
 
 // Wrapper
-function show_grid(answer_set) {
-  visualize_grid(compute_grid_ds(answer_set));
+export function show_grid(answer_set) {
+  var grid_ds = compute_grid_ds(answer_set);
+  if (grid_ds) {
+    visualize_grid(grid_ds);
+  } else {
+    clear_grid();
+  }
 }
-function clear_grid() {
+export function clear_grid() {
   var visual_elem = document.getElementById("visual");
   visual_elem.innerHTML = '';
   visual_elem.className = '';

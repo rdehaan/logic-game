@@ -1,9 +1,11 @@
+// The info pop-ups (modals) that the (i) links open.
+
 const open_elems = document.querySelectorAll("[data-open]");
 const close_elems = document.querySelectorAll("[data-close]");
 
 for(const elem of open_elems) {
   elem.addEventListener("click", function() {
-    identifier = elem.getAttribute("data-open")
+    const identifier = elem.getAttribute("data-open");
     document.getElementById(identifier).classList.add("is-visible");
   });
 }

@@ -322,3 +322,57 @@ a.modal-link:link {
   margin-top: 5px;
   color: #888;
 }
+
+/* Errors in the editors (see js/editors.js) */
+.ace_editor.has-errors {
+  border-left: 3px solid #E10600;
+}
+
+.ace_editor.locked {
+  background: #eee !important;
+}
+
+.clingo-error-marker {
+  position: absolute;
+  border-bottom: 2px dotted #E10600;
+  background: rgba(225, 6, 0, 0.08);
+}
+
+ul.editor-problems {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #b00500;
+}
+
+ul.editor-problems:empty {
+  display: none;
+}
+
+ul.editor-problems li {
+  padding: 3px 8px;
+  background: #fdeceb;
+  border-left: 3px solid #E10600;
+  white-space: pre-wrap;
+  cursor: pointer;
+}
+
+label[name="tabs"].has-errors,
+input[name="tabs"]:checked + label.has-errors {
+  color: #E10600;
+}
+
+label[name="tabs"].has-errors:after {
+  content: ' \2022';
+}
+
+.engine-status {
+  margin-left: 10px;
+  color: #888;
+}
+
+.engine-status.error {
+  color: #E10600;
+}

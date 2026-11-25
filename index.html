@@ -11,7 +11,6 @@
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/visual.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/d3-require@1"></script>
 </head>
 
 <body>
@@ -25,44 +24,45 @@
 
     <div class="game-controls">
       <div>
-        <button onclick="do_generate()" class="control-button" id="generate-button" disabled>&#x239A; Generate level</button>
+        <button data-action="do_generate" class="control-button" id="generate-button" disabled>&#x239A; Generate level</button>
         &nbsp;
-        <button onclick="clear_level()" class="control-button" id="clear-button" disabled>&#x2717; Clear level</button>
+        <button data-action="clear_level" class="control-button" id="clear-button" disabled>&#x2717; Clear level</button>
         &nbsp;
-        <button onclick="reset_level()" class="control-button" id="reset-button" disabled>&#x21BA; Reset level</button>
+        <button data-action="reset_level" class="control-button" id="reset-button" disabled>&#x21BA; Reset level</button>
         &nbsp;&mdash;&nbsp;
-        <button onclick="do_play()" class="control-button" id="play-button" disabled>&#x23F5; Play</button>
+        <button data-action="do_play" class="control-button" id="play-button" disabled>&#x23F5; Play</button>
         &nbsp;
-        <button onclick="do_pause()" class="control-button" id="pause-button" disabled>&#x23F8; Pause</button>
+        <button data-action="do_pause" class="control-button" id="pause-button" disabled>&#x23F8; Pause</button>
         &nbsp;
-        <button onclick="do_stop()" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
+        <button data-action="do_stop" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
         &nbsp;&mdash;&nbsp;
         Speed:&nbsp;
-        <select id="speed-selector" onchange="select_speed()">
+        <select id="speed-selector">
           <option value="1000">Slow</option>
           <option value="5000">Medium</option>
           <option value="200" selected>Fast</option>
           <option value="100">Very fast</option>
         </select>
+        <span id="engine-status" class="engine-status"></span>
       </div>
     </div>
 
-    <input id="tab1" type="radio" name="tabs" onChange="change_tabs()" checked>
+    <input id="tab1" type="radio" name="tabs" checked>
     <label for="tab1" name="tabs">Control</label>
 
-    <input id="tab2" type="radio" name="tabs" onChange="change_tabs()">
+    <input id="tab2" type="radio" name="tabs">
     <label for="tab2" name="tabs">Instructions</label>
 
-    <input id="tab3" type="radio" name="tabs" onChange="change_tabs()">
+    <input id="tab3" type="radio" name="tabs">
     <label for="tab3" name="tabs">Game rules</label>
 
-    <input id="tab4" type="radio" name="tabs" onChange="change_tabs()">
+    <input id="tab4" type="radio" name="tabs">
     <label for="tab4" name="tabs">Strategy</label>
 
-    <input id="tab5" type="radio" name="tabs" onChange="change_tabs()">
+    <input id="tab5" type="radio" name="tabs">
     <label for="tab5" name="tabs">Debug</label>
 
-    <input id="tab6" type="radio" name="tabs" onChange="change_tabs()">
+    <input id="tab6" type="radio" name="tabs">
     <label for="tab6" name="tabs">Internals</label>
 
     <section id="section-control">
@@ -112,18 +112,18 @@
         </optgroup>
       </select>
       &nbsp;
-      <button onclick="load_game()" class="control-button">Load</button>
+      <button data-action="load_game" class="control-button">Load</button>
       <p id="load-status"></p>
 
       <h3>Upload game from file</h3>
       <form id="upload-form" enctype="multipart/form-data">
         <label for="file-input" class="control-button">Select file</label>
-        <input type="file" id="file-input" onchange="load_game_from_file(event)" required>
+        <input type="file" id="file-input" required>
       </form>
       <p id="upload-status"></p>
 
       <h3>Download current game</h3>
-      <button onclick="download_game()" class="control-button">Download</button>
+      <button data-action="download_game" class="control-button">Download</button>
 
     </section>
 
@@ -562,9 +562,9 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         This is an auxiliary program that is added to all programs.
       </p>
       <div class="inline-controls" >
-        <button onclick="lock_level_generation()" class="control-button" id="lock-button">&#x25CF; Lock</button>
+        <button data-action="lock_level_generation" class="control-button" id="lock-button">&#x25CF; Lock</button>
         &nbsp;
-        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
+        <button data-action="unlock_level_generation" class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="aux_program"></pre>
       <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
@@ -572,9 +572,9 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         This program expresses how levels are generated.
       </p>
       <div class="inline-controls" >
-        <button onclick="lock_level_generation()" class="control-button" id="lock-button2">&#x25CF; Lock</button>
+        <button data-action="lock_level_generation" class="control-button" id="lock-button2">&#x25CF; Lock</button>
         &nbsp;
-        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
+        <button data-action="unlock_level_generation" class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="level_gen_program"></pre>
 
@@ -583,9 +583,9 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         This program expresses what the player can observe.
       </p>
       <div class="inline-controls" >
-        <button onclick="lock_level_generation()" class="control-button" id="lock-button3">&#x25CF; Lock</button>
+        <button data-action="lock_level_generation" class="control-button" id="lock-button3">&#x25CF; Lock</button>
         &nbsp;
-        <button onclick="unlock_level_generation()" class="control-button" id="unlock-button3" disabled>&#x25CB; Unlock</button>
+        <button data-action="unlock_level_generation" class="control-button" id="unlock-button3" disabled>&#x25CB; Unlock</button>
       </div>
       <pre id="visibility_program"></pre>
 
@@ -618,7 +618,7 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         <pre id="level_settings"></pre>
         <h3>Level state</h3>
         <pre id="level_state"></pre>
-        <button onclick="update_interface()" class="control-button">Update interface</button>
+        <button data-action="update_interface" class="control-button">Update interface</button>
         <p>&nbsp;</p>
       </div>
 
@@ -640,7 +640,7 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
       <!-- <h3>Clingo output</h3>
       <pre id="clingo-output" class="code"></pre> -->
       <!-- <h3>Reset</h3>
-      <button onclick="reset_debugging()" class="control-button">Reset</button> -->
+      <button data-action="reset_debugging" class="control-button">Reset</button> -->
     </section>
 
     <section id="section-internals">
@@ -648,7 +648,7 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         This tab explains how the different logic programs of a game
         talk to each other: what each program gets as input, which parts
         of its answer set are kept, and where those parts go next.
-        It describes what the game engine (<tt>js/game.js</tt>) actually does.
+        It describes what the game engine (<tt>js/engine.js</tt>) actually does.
         The Instructions tab gives the same picture in less detail.
       </p>
 
@@ -1302,10 +1302,25 @@ memory(flag_at(1,4)).</pre>
           already satisfies the winning conditions is won in step 1.
         </li>
         <li>
-          <b>Stratification check.</b> There is code to check that the
-          player program is stratified and "simple" (using
-          <tt>stored/stratified.lp</tt>), but the call to it is commented
-          out, so player programs are currently not restricted.
+          <b>Time limit.</b> clingo runs in the background (in a web
+          worker), so the page stays responsive. If a single call to clingo
+          takes longer than 10 seconds (for example, because a program
+          grounds to something infinite), clingo is stopped and the game
+          ends with <tt>STOPPED!</tt>. The <i>Stop</i> button also stops
+          clingo. The limit can be changed in the URL, e.g.
+          <tt>?timeout=30</tt>.
+        </li>
+        <li>
+          <b>Errors.</b> When clingo reports an error, the engine works out
+          which program (and which line) it is in, and marks it in that
+          program's editor. Programs are also checked for syntax errors
+          and unsafe variables while you type.
+        </li>
+        <li>
+          <b>No stratification check.</b> Player programs are not
+          restricted. (Earlier versions had an unused check that the player
+          program is stratified and "simple", using
+          <tt>stored/stratified.lp</tt>; the program is kept for reference.)
         </li>
       </ul>
     </section>
@@ -1442,14 +1457,7 @@ memory(flag_at(1,4)).</pre>
     </div>
   </div>
 
-  <script type="text/javascript" src="js/ace.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/clingo-module.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/inputs.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/modal.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/control.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/game.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/grid-visual.js" charset="utf-8"></script>
-  <script type="text/javascript" src="js/init.js" charset="utf-8"></script>
-
+  <script src="js/ace.js" charset="utf-8"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
