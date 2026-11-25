@@ -1,4 +1,7 @@
-// The page: buttons, loading and saving games, and playing a game step by step.
+// The page: the buttons and the lock of the game rules, playing a game step by
+// step (with what the board shows, and the Debug tab), the options, loading and
+// saving games (saved work, share links, files, game folders and linked
+// folders), and the wiring of the Versions tab and the tutorial.
 import clingo from '../vendor/clingo-wasm/index.web.js';
 import { create_solver } from './solver.js';
 import { GAME_FIELDS, SOURCE_NAMES, GameSession, generate_level, normalize_game, test_strategy, replay_rng } from './engine.js';
@@ -9,7 +12,7 @@ import { WorkStore, encode_game, decode_game, game_id, same_game } from './stora
 import { VersionStore, read_file, file_stem } from './versions.js';
 import { VersionsTab } from './versions-tab.js';
 import { Tutorial, first_games_html } from './tutorial.js';
-import { files_to_game, game_to_files, make_zip, read_zip, strip_common_dir } from './folder.js';
+import { files_to_game, file_names, game_to_files, make_zip, read_zip, strip_common_dir, MANIFEST } from './folder.js';
 import {
   FolderLink, folder_links_supported, folder_is_empty, remember_folder, remembered_folder, forget_folder, permission,
 } from './folder-link.js';
@@ -211,7 +214,7 @@ function update_controls() {
 
   // The lock of the game rules
   lock_button.disabled = level_locked;
-  set_button(unlock_button, level_locked && !playing && !testing, why);
+  set_button(unlock_button, level_locked && !playing && !testing && !generating, why);
   $('rules-lock').classList.toggle('unlocked', !level_locked);
   $('section-game-rules').classList.toggle('rules-unlocked', !level_locked);
   $('rules-lock-text').textContent = level_locked
@@ -269,6 +272,13 @@ function lock_level_generation() {
 function lock_rules() {
   if (level_locked) return;
   level_locked = true;
+  rules_changed();
+  update_controls();
+}
+
+// The game rules (may) have changed: a level made with other level programs
+// is removed, and a game played with other rules is put away.
+function rules_changed() {
   if (editors.value('level_state') && level_basis &&
       LEVEL_GEN_PROGRAMS.some((k) => level_basis.programs[k] !== editors.value(k))) {
     clear_level();
@@ -279,7 +289,6 @@ function lock_rules() {
   } else if (editors.value('level_state') && !snapshots.length) {
     update_interface();      // (e.g. the visibility program changed)
   }
-  update_controls();
 }
 
 function unlock_rules() {
@@ -333,6 +342,7 @@ function show_edited_level() {
 
 async function do_generate() {
   lock_rules();
+  const for_game = current;
   level_seed = null;
   generating = true;
   board_notice = '';
@@ -343,6 +353,10 @@ async function do_generate() {
     level = await generate_level(solver, editors.game());
   } finally {
     generating = false;
+  }
+  if (current !== for_game) {      // (another game was opened in the meantime)
+    update_controls();
+    return;
   }
   editors.set_value('level_state', level.level_state);
   editors.set_value('level_settings', level.level_settings);
@@ -710,10 +724,13 @@ async function load_folder(event) {
   await stop_game_if_playing();
   try {
     const { dir, paths } = strip_common_dir(list.map((f) => f.webkitRelativePath || f.name));
+    const by_path = new Map(paths.map((p, i) => [p, list[i]]));
+    // Only the files that game.json names (or the default names) are read
     const contents = {};
-    for (let i = 0; i < list.length; i++) {
-      if (/(^|\/)\./.test(paths[i]) || list[i].size > 2e6) continue;     // (e.g. .git, and large files)
-      if (/\.(lp|json)$/i.test(paths[i])) contents[paths[i]] = await list[i].text();
+    if (by_path.has(MANIFEST)) contents[MANIFEST] = await by_path.get(MANIFEST).text();
+    for (const p of new Set(Object.values(file_names(contents[MANIFEST])))) {
+      const file = by_path.get(p);
+      if (file && file.size <= 2e6) contents[p] = await file.text();
     }
     const title = await open_folder_contents(contents, dir || 'folder');
     upload_status.innerText = `Done loading: the folder ${dir || ''} (${title}).`;
@@ -848,8 +865,14 @@ async function replace_game(game, fields = GAME_FIELDS) {
   } else {
     for (const field of fields) editors.set_value(field, game[field]);
     if (fields.some((f) => f === 'level_state' || f === 'level_settings')) {
+      // (a level that comes with the programs, e.g. from the files of a folder)
       level_seed = null;
+      reset_debugging();
+      set_level_basis('loaded');
       await update_interface();
+    } else if (level_locked && fields.some((f) => RULE_PROGRAMS.includes(f))) {
+      rules_changed();
+      update_controls();
     }
   }
   save_work_now();
@@ -954,11 +977,18 @@ async function share_game() {
   }
 }
 
+// Before the game in the editors is replaced: stop a game, a test of the
+// strategy, and wait for a level that is being generated.
 async function stop_game_if_playing() {
   if (playing) {
     do_stop();
     while (playing) await sleep(20);
   }
+  if (testing) {
+    cancel_test();
+    while (testing) await sleep(20);
+  }
+  while (generating) await sleep(20);
 }
 
 async function load_game() {
@@ -1104,6 +1134,7 @@ async function run_test() {
   $('test-cancel').hidden = false;
   $('test-summary').textContent = '';
   $('test-results').replaceChildren();
+  const tested = current;     // (the test result is kept with this game)
   const game = editors.game();
   const code = await encode_game(game);
   const counts = {};
@@ -1128,7 +1159,7 @@ async function run_test() {
       ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
     // The result is kept with this version of the programs (see the Versions tab)
     if (!test_cancelled && n > 0) {
-      const s = versions_tab.record_test(game, n, counts);
+      const s = versions_tab.record_test(tested, game, n, counts);
       if (s) $('test-summary').append(' ', test_kept_note(s));
     }
   }

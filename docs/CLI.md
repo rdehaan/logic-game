@@ -16,8 +16,10 @@ npm install
 npm link          # optional: makes the command `logic-game` available everywhere
 ```
 
-Without `npm link`, run `node bin/logic-game.mjs` (in the `logic-game` folder) wherever
-this guide says `logic-game`. To update later: `git pull` and `npm install` in that folder.
+Without `npm link`, run `node bin/logic-game.mjs` (or `npm run game --`) in the `logic-game`
+folder wherever this guide says `logic-game`. Only clingo-wasm is needed to play: with
+`npm install --omit=dev`, the tools for the tests of the game itself (such as a browser) are
+not installed. To update later: `git pull` and `npm install` in that folder.
 
 ## Quick start
 
@@ -72,12 +74,13 @@ predicates (the same warnings as in the editors of the page), for example a stra
 derives `do/1`, or that uses `at/3` where it can only see `observe(at(...))`:
 
 ```
-my-game/strategy.lp:1:20: warning: at/3 never holds here: the player does not see the state ...
-my-game/strategy.lp:2:1: error: unsafe variables in: foo(X):-bar.; 'X' is unsafe
+my-game/strategy.lp:1:19: warning: at/3 never holds here: the player does not see the state ...
+my-game/winning-conditions.lp:3:1: error: unsafe variables in: lose(X):-current_time(T);T>=15.; 'X' is unsafe
 1 error, 1 warning.
 ```
 
-Many editors can jump to `file:line:column`. With `--strict`, warnings also count as failures.
+Many editors can jump to `file:line:column`. A program with an error gets no warnings until the
+error is fixed. With `--strict`, warnings also count as failures.
 
 ### `logic-game play <game>`
 
@@ -95,7 +98,7 @@ Time 3: the player did do(move(down))
 F = flag, P = player
 ```
 
-Each object is shown with a letter (the first letter of its name, or its label when that is a
+Each object is shown with a letter (the first letter of its name that no other object has, or its label when that is a
 short string, such as `"$"`). Lower-case letters are things the player does not observe, and
 `~` marks cells the player cannot see. In a terminal, the cells that changed in the last step
 are highlighted.
@@ -145,7 +148,10 @@ logic-game convert my-game my-game.json                    # a folder as one gam
 
 - `--timeout S`: stop a call to clingo after S seconds (default 10), as on the page;
 - `--max-steps N`: stop a game after N steps (default 500);
-- `--no-color`: no colours (also when the environment variable `NO_COLOR` is set).
+- `--no-color`: no colours (also when the environment variable `NO_COLOR` is set);
+- `-h`, `--help` (or the command `help`): the list of commands and options.
+
+Short forms: `-v` for `--verbose`, `-q` for `--quiet`.
 
 ### Exit codes
 
@@ -169,7 +175,8 @@ git diff
 git commit -am "Walk around trees"
 ```
 
-The file `level/state.lp` changes whenever a new level is generated. If you do not want that in
+The file `level/state.lp` changes whenever a new level is generated (and the files in `level/`
+are removed when the level is cleared). If you do not want that in
 your history, add `level/` to a `.gitignore` file (games then start with a new level).
 
 ### Together with the web page
@@ -198,7 +205,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: git clone --depth 1 https://github.com/rdehaan/logic-game.git /tmp/logic-game && npm --prefix /tmp/logic-game install
+      - run: git clone --depth 1 https://github.com/rdehaan/logic-game.git /tmp/logic-game && npm --prefix /tmp/logic-game install --omit=dev
       - run: node /tmp/logic-game/bin/logic-game.mjs check . --strict
       - run: node /tmp/logic-game/bin/logic-game.mjs test . --levels 50
 ```

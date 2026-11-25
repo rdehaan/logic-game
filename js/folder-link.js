@@ -35,6 +35,17 @@ async function read_file(dir, p) {
   }
 }
 
+async function remove_file(dir, p) {
+  const parts = p.split('/');
+  let d = dir;
+  try {
+    for (const part of parts.slice(0, -1)) d = await d.getDirectoryHandle(part);
+    await d.removeEntry(parts.at(-1));
+  } catch (e) {
+    if (e.name !== 'NotFoundError') throw e;
+  }
+}
+
 async function write_file(dir, p, text) {
   const writable = await (await file_handle(dir, p, true)).createWritable();
   await writable.write(text);
@@ -112,6 +123,14 @@ export class FolderLink {
       if (now && !same_text(now.text, this.known[p] ?? '')) continue;
       await write_file(this.dir, p, text);
       this.known[p] = text;
+    }
+    // Files that the game does not have any more (the level, when it was cleared)
+    for (const p of Object.keys(this.known)) {
+      if (p === MANIFEST || p in wanted) continue;
+      const now = await read_file(this.dir, p);
+      if (now && !same_text(now.text, this.known[p])) continue;      // (changed outside the page)
+      await remove_file(this.dir, p);
+      delete this.known[p];
     }
   }
 

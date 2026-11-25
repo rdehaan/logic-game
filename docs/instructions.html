@@ -25,6 +25,32 @@
         detail below.
       </p>
 
+      <h3>Playing: the controls</h3>
+      <p>
+        New to the game? The <i>tutorial</i> (in the <i>Control</i> tab) guides you
+        through a first game, step by step.
+      </p>
+      <ul>
+        <li><i>Play</i> plays the level until it is won or lost; <i>Pause</i> stops for a moment
+          (<i>Play</i> goes on), <i>Step</i> plays one step at a time, and <i>Stop</i> ends the game.
+          The <i>Speed</i> sets how fast the game is shown; <i>Instant</i> only shows the end.</li>
+        <li><i>Generate level</i> makes a new level with the level generation program;
+          <i>Clear level</i> removes it, and <i>Reset level</i> shows the level as it was before the game.</li>
+        <li>While a game is paused, and after it ended, the slider under the board shows the board at
+          every time, with the move the player made there. The cells that changed since the time before
+          are marked (this can be turned off under the slider).</li>
+        <li>The line under the board says what the board shows (the start of a level, and where it came
+          from, or the last game) and which programs you changed since then.</li>
+        <li>The programs of the game rules are <i>locked</i> while you play (see <i>Creating your own
+          games</i> below). While they are unlocked, the buttons say <i>Lock rules and generate level</i>,
+          <i>Lock rules and play</i> and <i>Lock rules and test</i>: they lock the rules first.</li>
+        <li>The <i>Debug</i> tab shows, for each step, what went into the player's program and what came
+          out, for the step of the board that is shown (with a slider of its own); or all steps at once.</li>
+        <li>In the <i>Control</i> tab, <i>Options</i>: whether changed cells are marked, the example games
+          with solutions, the level editor (in the Debug tab), the Internals tab, and the time limit
+          for clingo.</li>
+      </ul>
+
       <h3>How are levels generated?</h3>
       <p>
         The generation of levels is expressed by a logic program
@@ -288,7 +314,8 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
       <p>
         You can either load and play an existing game.
         Loading games can be done in the <i>Control</i> tab
-        (and loading files in the <i>Versions</i> tab).
+        (and loading files in the <i>Versions</i> tab, which can also make a
+        link to share the game, or download it as one file).
         Or you can design your own game.
         In order to do so, specify the programs
         under the <i>Game rules</i> tab.
@@ -325,8 +352,10 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
       </ul>
       <p>
         The page also keeps snapshots by itself, so going back is always possible:
-        before an older version is restored, every 10 minutes while you edit,
-        and when you test your strategy.
+        every 10 minutes while you edit, when you test your strategy (with the result),
+        and before your current version is replaced: when you restore an older
+        version, take a program from another version, go back to the original,
+        load a file, or when the files of a linked folder change.
       </p>
 
       <h3>Playing on your own computer</h3>
@@ -393,8 +422,9 @@ logic-game convert project.json my-game   # convert files (e.g. from the Version
           If a program has no answer sets, or contains an error
           (such as a syntax error), this is reported in the game output
           in the <i>Debug</i> tab, together with what the game does instead.
-          Line numbers in error messages refer to the programs as glued
-          together, not to the program on its own.
+          Errors are reported for the program they are in, with the line
+          and column in that program (for example
+          <i>Player strategy, line 3, column 5</i>), and marked in its editor.
         </li>
       </ul>
 

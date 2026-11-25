@@ -1,5 +1,7 @@
-// The Versions tab: snapshots, comparing versions, project files, and the list
-// of all games with saved work in this browser.
+// The Versions tab: snapshots (also the automatic ones, see REASONS), comparing
+// versions, project files and the backup of everything, and the list of all
+// games with saved work in this browser. (Share links, plain game files and
+// game folders on that tab are handled in main.js.)
 //
 // The page (main.js) passes in what this tab needs from it (`app`):
 //   current()              -> { origin, title, original } of the game being edited (or null)
@@ -153,10 +155,10 @@ export class VersionsTab {
   }
 
   // Keep a test result with the version that was tested; returns the snapshot (or null).
-  record_test(game, levels, counts) {
-    const c = this.app.current();
+  // (c: the game that was tested, as app.current() was when the test started)
+  record_test(c, game, levels, counts) {
     if (!c) return null;
-    const s = this.versions.add_test(c.origin, game, { levels, counts }, this.about());
+    const s = this.versions.add_test(c.origin, game, { levels, counts }, { title: c.title, original: c.original });
     if (s) this.refresh();
     return s;
   }

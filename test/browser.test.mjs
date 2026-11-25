@@ -984,6 +984,14 @@ test('game folders: download as a .zip, and load a folder or a .zip', async (t) 
   await other.setInputFiles('#folder-input', folder);
   await other.waitForFunction(() => /Done loading: the folder my-game/.test(document.getElementById('upload-status').textContent));
   assert.equal(await value(other, 'player_move_program'), 'do(move(right)).');
+  // (game.json can name files with other extensions)
+  const manifest = JSON.parse(fs.readFileSync(path.join(folder, 'game.json'), 'utf8'));
+  manifest.files.player_move_program = 'src/player.asp';
+  fs.writeFileSync(path.join(folder, 'game.json'), JSON.stringify(manifest));
+  fs.mkdirSync(path.join(folder, 'src'));
+  fs.writeFileSync(path.join(folder, 'src', 'player.asp'), 'do(move(up)).\n');
+  await other.setInputFiles('#folder-input', folder);
+  await other.waitForFunction(() => window.logic_game.editors.value('player_move_program') === 'do(move(up)).');
 });
 
 // A folder in the browser's own file system stands in for a folder that the player picks.
@@ -1065,6 +1073,14 @@ test('game folders: a linked folder gets every change, and changes to its files 
   assert.equal((await page.evaluate(() => window.logic_game.versions.list('folder:linked'))).at(-1).game.player_move_program, 'typed at the same time.');
   await write_folder_file(page, 'strategy.lp', '% changed outside\ndo(move(left)).\n');
   await page.waitForFunction(() => window.logic_game.editors.value('player_move_program') === '% changed outside\ndo(move(left)).', null, { timeout: 10000 });
+  // Clearing the level removes the level files (and generating one writes them again)
+  await page.click('#clear-button');
+  await wait_folder_file(page, 'level/state.lp', null);
+  await page.click('#generate-button');
+  await page.waitForFunction(() => window.logic_game.editors.value('level_state') !== '');
+  await page.waitForFunction(() => /generated at/.test(document.getElementById('board-status').textContent));
+  for (let i = 0; i < 50 && !(await folder_file(page, 'level/state.lp')); i++) await page.waitForTimeout(100);
+  assert.ok(await folder_file(page, 'level/state.lp'));
   // After a reload, the page offers to link the folder again
   await page.reload();
   await page.waitForSelector('body[data-ready=true]');
@@ -1120,4 +1136,44 @@ test('boards of all sizes fit, with square cells, on a large screen and on a pho
     await page.setViewportSize({ width: Math.round(viewport.width * 0.6), height: viewport.height });
     await page.waitForFunction((w) => document.getElementById('visual').getBoundingClientRect().width < w, before.width);
   }
+});
+
+test('a test result stays with the game that was tested; loading another game stops the test', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions&tab=4');
+  if (!page) return;
+  await page.fill('#test-levels', '200');
+  await page.click('#test-button');
+  await page.waitForFunction(() => /Level \d+ of 200/.test(document.getElementById('test-progress').textContent));
+  await page.click('label[for=tab1]');
+  await page.click('#first-games button[data-example=flag5]');
+  await page.waitForFunction(() => /^Cancelled after/.test(document.getElementById('test-progress').textContent));
+  assert.deepEqual(await page.evaluate(() => window.logic_game.versions.list('example:flag5')), []);
+  assert.deepEqual(await page.evaluate(() => window.logic_game.versions.list('example:flag3-with-solutions')), []);
+  // A test that finishes is kept with its own game
+  await page.fill('#test-levels', '2');
+  await page.click('#test-button');
+  await page.waitForFunction(() => /^Done/.test(document.getElementById('test-progress').textContent), null, { timeout: 60000 });
+  const kept = await page.evaluate(() => window.logic_game.versions.list('example:flag5'));
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].tests[0].levels, 2);
+});
+
+test('taking a level program from another version removes a level that does not fit any more', async (t) => {
+  const page = await open(t, '?file=flag2&tab=7');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.click('#snapshot-button');
+  // A new level generation program (with a new level)
+  await page.click('label[for=tab3]');
+  await page.click('#unlock-button');
+  await set_program(page, 'level_gen_program', (await value(page, 'level_gen_program')) + '\n% changed');
+  await page.click('#generate-button');
+  await page.waitForFunction(() => /generated at/.test(document.getElementById('board-status').textContent));
+  // Take the old level generation program: the rules stay locked, the level goes
+  await page.click('label[for=tab7]');
+  await page.locator('#snapshot-list li[data-id]').first().getByText('Compare with current').click();
+  await page.locator('.diff-program[data-field=level_gen_program]').getByRole('button').click();
+  await page.waitForFunction(() => window.logic_game.editors.value('level_state') === '');
+  assert.match(await page.textContent('#board-status'), /^The level was removed: it was made with another version/);
+  assert.equal(await page.evaluate(() => window.logic_game.editors.get('level_gen_program').getReadOnly()), true);
 });

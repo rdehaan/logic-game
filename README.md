@@ -3,6 +3,18 @@ A Logic Game
 
 Live at https://rdehaan.github.io/logic-game/ (GitHub Pages, deployed from `main` when the tests pass).
 
+In this game, the player is not steered with the keyboard: you write a logic program (answer set
+programming, with clingo) that decides the player's moves, and the rules of the game are logic
+programs too. For players and students:
+- a **tutorial** guides new players through a first game, and the *Find the flag* examples get
+  harder step by step;
+- the editors mark errors while typing, and warn about mistakes with the special predicates;
+- *Test your strategy* plays many random levels, and every level can be played again exactly;
+- the **Versions** tab keeps snapshots of your work, compares versions line by line, and
+  downloads and loads your project (also as a folder with one file per program, for git);
+- a **command-line version** ([docs/CLI.md](docs/CLI.md)) plays the same games on your own
+  computer, with your own editor and git.
+
 ## How it works
 
 The site is static: plain HTML, CSS and JavaScript (ES modules), with no build step.
@@ -19,7 +31,8 @@ shows how long clingo took for each program in each step.
 | --- | --- |
 | `index.html` | The page |
 | `docs/instructions.html`, `docs/internals.html`, `docs/modals.html` | The texts of the Instructions and Internals tabs, and the info pop-ups (loaded into the page) |
-| `js/main.js` | Buttons, loading/saving games, playing a game step by step |
+| `css/main.css`, `css/visual.css` | The look of the page, and of the board |
+| `js/main.js` | The page: the buttons and the lock of the game rules, playing a game step by step, what the board shows, the Debug tab, options, loading and saving games, game folders, and wiring up the other modules |
 | `js/engine.js` | The game engine: how the programs are run and connected (no DOM) |
 | `js/solver.js` | Calls clingo-wasm: time limit, stopping, reading results and errors (no DOM) |
 | `js/asp.js` | Text helpers: composing programs, `RANDINT`, reading clingo's error messages (no DOM) |
@@ -31,18 +44,22 @@ shows how long clingo took for each program in each step.
 | `js/folder.js` | The folder format (one `.lp` file per program), and zip files (no DOM) |
 | `js/folder-link.js` | Linking the page to a game folder on disk (Chrome and Edge) |
 | `js/text-board.js` | The board as text, for the command-line version (no DOM) |
-| `bin/logic-game.mjs`, `cli/` | The command-line version |
+| `bin/logic-game.mjs` | The command-line version (see [docs/CLI.md](docs/CLI.md)) |
+| `cli/game-files.mjs` | Reading and writing games on disk for the command-line version: folders, .zip, game and project files, examples |
 | `js/tutorial.js` | The tutorial for new players (a guided first game), and the list of the first games |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/mode-gringo.js` | Syntax highlighting for ASP in the Ace editor |
 | `js/editor-help.js` | Help in the editors: what a special predicate means (on hover), and autocompletion |
+| `js/modal.js` | The info pop-ups |
 | `sw.js` | Service worker: keeps the files of the game, so that it also works offline |
 | `vendor/clingo-wasm/` | An unmodified copy of the clingo-wasm npm package (see `VERSION`) |
 | `vendor/ace/` | The Ace editor, from the ace-builds npm package |
 | `vendor/fonts/` | Open Sans and Font Awesome, from their npm packages (the page loads nothing from other sites) |
 | `examples/` | The example games |
-| `test/` | The tests |
+| `docs/CLI.md` | The guide to the command-line version |
+| `stored/` | Programs referred to in the Internals tab |
+| `test/` | The tests (`helpers.mjs`: what several tests share) |
 | `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm into `vendor/`) |
 
 ## The game rules, and what the board shows
@@ -51,7 +68,7 @@ The programs of the game rules (auxiliary, level generation, visibility, nature'
 winning conditions) are locked and unlocked together, at the top of the Game rules tab: a level
 can only be generated, and a game only played, with locked rules, so it is always clear which
 programs a game was played with. While they are unlocked, the buttons say *Lock rules and
-generate level*, *Lock rules and play*. Locking keeps the level, unless the auxiliary or level
+generate level*, *Lock rules and play* and *Lock rules and test*. Locking keeps the level, unless the auxiliary or level
 generation program changed since it was made. The line under the board says what the board
 shows (the start of a level and where it came from, or the last game), and which programs
 changed since then. In the Debug tab, the report of one step at a time is shown (the step of
@@ -59,11 +76,16 @@ the board, with a slider), or all of them.
 
 ## Options
 
-In the Control tab (kept in the browser), or in the URL for one visit:
+In the Control tab (kept in the browser), and in the URL for one visit:
 `?solutions=true` (the example games with solutions), `?editor=true` (the level editor in the
 Debug tab), `?internals=true` (the Internals tab), `?timeout=30` (the time limit for each call
-to clingo, in seconds); also whether the cells that changed in the last step are marked.
-Other URL options: `?file=flag3` (load an example), `?tab=4` (open a tab), `?tutorial=true`.
+to clingo, in seconds). Whether the cells that changed in the last step are marked is only an
+option in the Control tab (and under the slider below the board).
+
+Other URL options: `?file=flag3` (load an example), `?tutorial=true` (start the tutorial), and
+`?tab=N` (open a tab). The tabs are numbered by their place in `index.html`, not by the order in
+which they are shown: 1 Control, 2 Instructions, 3 Game rules, 4 Strategy, 5 Debug, 7 Versions,
+and 6 Internals (only with `internals=true`).
 
 ## Feedback for players
 
@@ -93,9 +115,11 @@ Everything about keeping work is in the *Versions* tab:
   (example, uploaded file or shared link); loading that game again brings them back, with a
   button to go back to the original.
 - *Snapshots*: versions that a student keeps, with a name and a note. The page also keeps
-  automatic snapshots (before restoring an older version or going back to the original, before
-  loading a file over saved work, every 10 minutes while editing, and when a strategy is tested);
-  only the newest 20 automatic ones per game are kept, unless they are given a name or a note.
+  automatic snapshots: every 10 minutes while editing, when a strategy is tested, and before the
+  current version is replaced (by restoring an older version, taking a program from another
+  version, going back to the original, loading a file over saved work, or changes to the files
+  of a linked folder). Only the newest 20 automatic ones per game are kept, unless they are given
+  a name or a note.
 - The result of *Test your strategy* is kept with the snapshot of the version that was tested.
 - *Compare versions*: a line-by-line diff (Myers' algorithm) of each program, between any two of
   the current version, the original and the snapshots; a single program can be taken from an
@@ -103,7 +127,10 @@ Everything about keeping work is in the *Versions* tab:
 - *Project file*: one JSON file (`"format": "logic-game-project"`) with the current version, the
   original game and all snapshots; students keep it anywhere (e.g. in a Google Drive folder)
   and load it again on another computer. A *backup* file holds all games of the browser.
-  Uploading a plain game file (like the examples) works as before.
+  *Download game only* gives a plain game file (like the examples), and such files can be loaded
+  too; *Download as a folder (.zip)* gives a game folder (see below).
+- *Everything in this browser*: all games with saved work or snapshots, to open, download or
+  forget, and how much of the browser's storage they use.
 - *Share current game* makes a link that contains the whole game, compressed, after `#game=`;
   that part of a URL never reaches the server, so nothing is uploaded.
 
@@ -157,7 +184,7 @@ tab of the page has the basics (*Playing on your own computer*).
 `play`, `test` and `check` exit with code 3 when the game is not won, a level of the test is
 not won, or there are errors, so they can be used in scripts and in CI.
 
-
+## Offline use
 
 After the first visit, the game also works without a network connection (`sw.js`): the
 files it needs are stored in the browser. Online, the files still come from the network
@@ -172,8 +199,10 @@ You need [Node.js](https://nodejs.org/) 22 or newer.
 npm install                          # once: clingo-wasm and Playwright, for the tests
 npx playwright install chromium      # once: the browser for the browser tests
 npm run serve                        # then open http://localhost:8000/
-npm test                             # all tests (takes about a minute)
+npm test                             # all tests (takes a few minutes)
 npm run test:unit                    # only the tests that do not need a browser
+npm run test:browser                 # only the tests in the browser
+npm run game -- play flag3           # the command-line version (see docs/CLI.md)
 ```
 
 Opening `index.html` directly from disk does not work (browsers do not run web
@@ -185,15 +214,20 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   (no clingo needed); the example games get no warnings;
 - `storage.test.mjs`: share links (every example survives the round trip) and saved work;
 - `folder.test.mjs`: the folder format (every example survives the round trip) and zip files;
-- `cli.test.mjs`: the command-line version (new, check, play, test, convert);
+- `cli.test.mjs`: the command-line version (new, check, play, test, convert, the board as text),
+  and that every command and option is in its help and in docs/CLI.md;
 - `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
   test results, a full storage, and project and backup files;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
-  example is free of syntax errors, and every example solution wins (on fixed random levels);
-- `browser.test.mjs`: the page in Chromium: playing, generating levels, errors and warnings
-  shown in the editors, programs that do not terminate, Stop, Pause, URL options, uploading a game,
-  saved work, share links, snapshots, comparing and restoring versions, project and backup files,
-  and that nothing is loaded from other sites (fonts included).
+  example is free of syntax errors, every example solution wins (on fixed random levels), the
+  history is only kept when it is needed, and tests of a strategy can be repeated exactly;
+- `browser.test.mjs`: the page in Chromium: playing (also step by step, with the slider and the
+  Debug tab), generating levels, the lock of the game rules and the line under the board, errors
+  and warnings shown in the editors, programs that do not terminate, Stop, Pause, options (in the
+  Control tab and the URL), loading files, saved work, share links, snapshots, comparing and
+  restoring versions, project and backup files, game folders (download, load, link), testing a
+  strategy, the tutorial, help in the editors, boards of all sizes, the page on a phone, offline
+  use, and that nothing is loaded from other sites (fonts included).
 
 The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`).
 On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the

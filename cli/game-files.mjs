@@ -73,10 +73,15 @@ function from_json(text, filename) {
 export function save_game(p, game, { title = '', project = null, as_project = false, files = undefined } = {}) {
   const kind = kind_of(p);
   if (kind === 'folder') {
-    for (const [f, text] of Object.entries(game_to_files(game, { title, files }))) {
+    const wanted = game_to_files(game, { title, files });
+    for (const [f, text] of Object.entries(wanted)) {
       const full = path.join(p, f);
       fs.mkdirSync(path.dirname(full), { recursive: true });
       fs.writeFileSync(full, text);
+    }
+    // (a game without a level has no level files: old ones are removed)
+    for (const f of Object.values(file_names(wanted[MANIFEST]))) {
+      if (!(f in wanted) && fs.existsSync(path.join(p, f))) fs.rmSync(path.join(p, f));
     }
   } else if (kind === 'zip') {
     const dir = path.basename(p).replace(/\.zip$/i, '');

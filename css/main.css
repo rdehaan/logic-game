@@ -287,10 +287,6 @@ label.speed-label:before {
   content: none;
 }
 
-.inline-controls {
-  padding-bottom: 1em;
-}
-
 a.modal-link {
   font-family: fontawesome;
   font-size: 16px;

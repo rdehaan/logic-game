@@ -106,9 +106,9 @@
       </p>
 
       <p>
-        Navigate to the next tabs to read the instructions for how to play,
-        to view and edit the game rules,
-        and to enter your strategy.
+        The next tabs have the instructions for how to play, the game rules (to read
+        and to change), and your strategy. The <i>Debug</i> tab shows what happened in
+        each step of a game. Below are the tutorial, the example games, and the options.
       </p>
 
       <h3>Tutorial</h3>
@@ -165,7 +165,8 @@
         <label class="inline-check">Time limit for each call to clingo:
           <input type="number" id="option-timeout" data-option="timeout" min="1" max="600" step="1"> seconds</label>
       </div>
-      <p class="versions-help">These options are kept in this browser. They can also be set in a link, e.g.
+      <p class="versions-help">These options are kept in this browser. All but the first can also be set
+        in a link (then only for that visit), e.g.
         <tt>?solutions=true&amp;editor=true&amp;internals=true&amp;timeout=30</tt>.</p>
     </section>
 
@@ -256,8 +257,9 @@
       <h3>Game output</h3>
       <p>
         For each step of the last game: what went into the player's program
-        (what the player observed, and the player's memory), and what came out
-        (the player's moves and the updates to the memory).
+        (what the player observed, and the player's memory), what came out
+        (the player's moves and the updates to the memory), and the next state
+        of the game that nature computed (and how long clingo took).
         If a program had no answer set or contained an error, this is reported as well.
         The step shown is the one of the board above: move through the game with the slider.
       </p>
@@ -294,8 +296,10 @@
         </div>
       </div>
       <p class="versions-help">
-        The page also keeps snapshots by itself: before you restore an older version,
-        every 10 minutes while you edit, and when you test your strategy (with the result).
+        The page also keeps snapshots by itself: every 10 minutes while you edit, when you
+        test your strategy (with the result), and before your current version is replaced
+        (by restoring an older version, taking a program from another one, going back to
+        the original, loading a file, or changes to the files of a linked folder).
         Only the newest 20 of these are kept; give one a name or a note to keep it.
       </p>
       <label class="inline-check"><input type="checkbox" id="show-auto" checked> Show the automatic snapshots</label>

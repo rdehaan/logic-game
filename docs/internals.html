@@ -66,8 +66,8 @@
           <tt>T</tt> so far.
           A new time slice is added at each step.
           Old slices are kept only if one of the programs that get the
-          game state (visibility, nature, winning conditions, auxiliary
-          program, level settings) mentions <tt>at_time</tt> or
+          game state (visibility, nature, winning conditions, the auxiliary
+          program, or the level settings) mentions <tt>at_time</tt> or
           <tt>state_time</tt>; otherwise only the latest slice is kept.
           This gives the same results, but is much faster: with the whole
           history, every program would ground all past steps again in
@@ -619,12 +619,12 @@ memory(flag_at(1,4)).</pre>
           the game is lost.
         </li>
         <li>
-          <b>The full history is available.</b> The game state contains
-          all <tt>at_time</tt> facts since time 0, and this is passed to the
-          visibility, nature and goal programs. These programs could use
-          <tt>at_time</tt> directly to look at earlier states.
-          The history also grows with every step, so each step's
-          programs get a little larger.
+          <b>The history is available when it is used.</b> A visibility,
+          nature or goal program that mentions <tt>at_time</tt> or
+          <tt>state_time</tt> gets all <tt>at_time</tt> facts since time 0,
+          and can look at earlier states (the history then grows with every
+          step, so each step's programs get a little larger). Otherwise only
+          the latest time slice is kept (see <i>Game state</i> above).
         </li>
         <li>
           <b>Only <tt>at/3</tt> is game state.</b> Anything nature derives
@@ -670,8 +670,8 @@ memory(flag_at(1,4)).</pre>
           takes longer than 10 seconds (for example, because a program
           grounds to something infinite), clingo is stopped and the game
           ends with <tt>STOPPED!</tt>. The <i>Stop</i> button also stops
-          clingo. The limit can be changed in the URL, e.g.
-          <tt>?timeout=30</tt>.
+          clingo. The limit can be changed in the <i>Options</i> of the
+          <i>Control</i> tab, or in the URL, e.g. <tt>?timeout=30</tt>.
         </li>
         <li>
           <b>Time.</b> The game output says, for every step, how long

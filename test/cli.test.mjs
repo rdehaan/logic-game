@@ -115,6 +115,20 @@ test('cli: converting between game files, project files, folders and zip files',
   const original = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'flag6-with-solutions.json'), 'utf8'));
   assert.equal(JSON.parse(fs.readFileSync(json, 'utf8')).player_move_program, original.player_move_program.replace(/\n+$/, ''));
   assert.equal(JSON.parse(fs.readFileSync(project, 'utf8')).format, 'logic-game-project');
+  // A game without a level, written over a folder with a level: the level files go
+  const no_level = path.join(tmp, 'no-level.json');
+  fs.writeFileSync(no_level, JSON.stringify({ ...original, level_state: '', level_settings: '' }));
+  assert.equal((await run('convert', no_level, folder)).code, 0);
+  assert.equal(fs.existsSync(path.join(folder, 'level', 'state.lp')), false);
+  assert.equal(fs.existsSync(path.join(folder, 'strategy.lp')), true);
+  // Wrong uses
+  const wrong_project = await run('convert', 'flag1', path.join(tmp, 'c.zip'), '--project');
+  assert.equal(wrong_project.code, 1);
+  assert.match(wrong_project.stderr, /ends in \.json/);
+  assert.equal(fs.existsSync(path.join(tmp, 'c.zip')), false);
+  const wrong_new = await run('new', path.join(tmp, 'n.zip'));
+  assert.equal(wrong_new.code, 1);
+  assert.match(wrong_new.stderr, /new makes a game folder/);
   const examples = await run('examples');
   assert.match(examples.stdout, /^flag1\nflag1-with-solutions\nflag2\n/);
 });

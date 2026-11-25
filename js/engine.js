@@ -1,6 +1,9 @@
 // The game engine: how the programs of a game are run, and how their answer
 // sets are passed on from one program to the next.
 // (The Internals tab of the page describes this in words.)
+// The game state only holds the latest time slice, unless a program uses the
+// history (needs_history). test_strategy plays many levels from fixed seeds,
+// so that every level can be played again exactly (replay_rng).
 //
 // This module does not use the DOM: all calls to clingo go through a solver
 // (see solver.js), so that the tests can run games in Node.

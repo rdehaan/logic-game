@@ -33,8 +33,8 @@ Commands:
       --new-level                 Generate a new level (also when the game has a level)
       --step                      Wait for Enter after every step
       --delay MS                  Wait MS milliseconds after every step
-      --verbose                   Also show what went into and came out of the programs
-      --quiet                     Only show the result
+      -v, --verbose               Also show what went into and came out of the programs
+      -q, --quiet                 Only show the result
   test <game>                     Play many levels, and count how often the strategy wins
       --levels N                  The number of levels (default 20)
       --first-seed N              The seed of the first level (default 1)
@@ -44,11 +44,14 @@ Commands:
   convert <from> <to>             Convert a game: to a folder, a .zip, or a .json game file
       --project                   Write a project file (for the browser's Versions tab) instead
   examples                        List the example games
+  help                            Show this help (also: --help, -h)
 
 Options for all commands:
   --timeout S                     The time limit for each call to clingo, in seconds (default 10)
   --max-steps N                   Stop a game after N steps (default 500)
-  --no-color                      No colours in the output
+  --no-color                      No colours in the output (also when NO_COLOR is set)
+
+The full guide: docs/CLI.md (https://github.com/rdehaan/logic-game/blob/main/docs/CLI.md).
 
 Exit codes: 0 when all is well (play: won; test: every level won; check: no
 errors), 1 for an error in using the command, 3 when the game was not won, a
@@ -99,6 +102,9 @@ function make_solver(values) {
 
 async function cmd_new([folder], values) {
   if (!folder) throw new UsageError('new: which folder? e.g. logic-game new my-game');
+  if (kind_of(folder) !== 'folder' || (fs.existsSync(folder) && !fs.statSync(folder).isDirectory())) {
+    throw new UsageError(`new makes a game folder: ${folder} is not a folder name (use convert to make a .zip or .json file)`);
+  }
   if (fs.existsSync(folder) && fs.readdirSync(folder).length) throw new UsageError(`${folder} already exists and is not empty`);
   const example = values.example || 'flag1';
   const { game, title } = await load_game(example);
@@ -112,7 +118,7 @@ async function cmd_new([folder], values) {
   out(`  logic-game check ${folder}`);
   out(`  logic-game play ${folder}`);
   out(`  logic-game test ${folder}`);
-  out('In the browser, load the folder in the Versions tab (or open it there, in Chrome and Edge).');
+  out('In the web page (Versions tab): load it with "Select folder", or (in Chrome and Edge) link it with "Link a folder...".');
   return 0;
 }
 
@@ -123,8 +129,8 @@ function cmd_examples() {
 
 async function cmd_convert([from, to], values) {
   if (!from || !to) throw new UsageError('convert: from what to what? e.g. logic-game convert game.json my-game');
+  if (values.project && kind_of(to) !== 'json') throw new UsageError('convert --project writes a project file: give a name that ends in .json');
   const { game, title, project, files } = await load_game(from);
-  if (fs.existsSync(to) && kind_of(to) !== 'folder' && fs.statSync(to).isDirectory()) throw new UsageError(`${to} is a folder`);
   save_game(to, game, { title, project, as_project: values.project, files: files || undefined });
   out(`Wrote ${to} (${values.project ? 'a project file' : kind_of(to) === 'json' ? 'a game file' : kind_of(to) === 'zip' ? 'a zip file of a game folder' : 'a game folder'}).`);
   return 0;
@@ -296,4 +302,7 @@ async function main(argv) {
 }
 
 // (clingo runs in a worker thread, which would keep Node running)
-process.exit(await main(process.argv.slice(2)));
+const code = await main(process.argv.slice(2));
+// (all output is written before Node stops: stdout can be a pipe that is written to later)
+await new Promise((resolve) => process.stdout.write('', resolve));
+process.exit(code);
