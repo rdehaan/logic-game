@@ -48,6 +48,13 @@ The page tries to explain what went wrong:
 The special predicates of each program are listed in `INTERFACES` in `js/hints.js`; they must
 match what `js/engine.js` passes between the programs.
 
+## Testing a strategy
+
+*Test your strategy* (in the Strategy tab) plays the game on many random levels without
+drawing them, and lists the levels that were not won. Level *n* is generated and played with
+random numbers from seed *n*, so each of them can be played again exactly (*Load this level*),
+or shared as a link (`#game=...&seed=n`).
+
 ## Saving and sharing
 
 Changes are saved in the browser automatically (localStorage), separately for each game

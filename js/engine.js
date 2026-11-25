@@ -6,7 +6,7 @@
 // (see solver.js), so that the tests can run games in Node.
 import {
   preprocess_program, filter_answer_set, answer_set_to_facts, answer_set_to_fact_lines,
-  facts_to_answer_set, split_atom,
+  facts_to_answer_set, split_atom, seeded_rng,
 } from './asp.js';
 import { relax_constraints, analyze_program } from './analysis.js';
 
@@ -519,4 +519,40 @@ export async function play_headless(solver, game, options = {}) {
     if (step.message) log.push(step.message);
   }
   return { verdict: session.verdict, steps: session.time_step, log };
+}
+
+// Test a game (typically: a player's strategy) on many random levels.
+// Level n is generated and played with seeded_rng(n), so that it can be
+// played again exactly (see replay_rng). Calls on_level(result) after each
+// level, and stops early when cancelled() returns true.
+// Returns [{ seed, verdict, steps, message }] (verdict 'no level' if no
+// level could be generated).
+export async function test_strategy(solver, game, {
+  levels = 20, first_seed = 1, max_time = 500, on_level = () => {}, cancelled = () => false,
+} = {}) {
+  const results = [];
+  for (let seed = first_seed; seed < first_seed + levels && !cancelled(); seed++) {
+    const rng = seeded_rng(seed);
+    const level = await generate_level(solver, normalize_game(game), rng);
+    let result;
+    if (level.problem) {
+      result = { seed, verdict: is_fatal(level.problem) ? 'stopped' : 'no level', steps: 0, message: 'Level generation: ' + level.problem.text };
+    } else {
+      const played = await play_headless(solver, { ...game, ...level }, { rng, max_time, verbose: false });
+      result = { seed, verdict: played.verdict, steps: played.steps, message: (played.log.at(-1) || '').trim() };
+    }
+    if (cancelled()) break;
+    results.push(result);
+    on_level(result);
+  }
+  return results;
+}
+
+// The random numbers for playing level `seed` (as in test_strategy): the
+// level is generated again, to bring the random numbers to the same point.
+// Returns { rng, level } (level: as generate_level returns it).
+export async function replay_rng(solver, game, seed) {
+  const rng = seeded_rng(seed);
+  const level = await generate_level(solver, normalize_game(game), rng);
+  return { rng, level };
 }

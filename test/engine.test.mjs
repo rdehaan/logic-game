@@ -7,6 +7,7 @@ import clingo from 'clingo-wasm';
 import { create_solver } from '../js/solver.js';
 import {
   GAME_FIELDS, GameSession, generate_level, normalize_game, play_headless, update_player_memory, needs_history,
+  test_strategy, replay_rng,
 } from '../js/engine.js';
 import { preprocess_program } from '../js/asp.js';
 import { ROOT, seeded_rng, load_examples, examples_in_page } from './helpers.mjs';
@@ -209,6 +210,26 @@ test('the time in clingo is reported, and slow programs get a note', async () =>
   const quiet = new GameSession(solver, WALK, { verbose: false });
   await quiet.start();
   assert.doesNotMatch((await quiet.step()).report, /Time in clingo|Note/);
+});
+
+test('testing a strategy on many levels is reproducible', async () => {
+  const { game } = load_examples().find((e) => e.name === 'flag3-with-solutions.json');
+  const weak = { ...game, player_move_program: 'do(move(down)) :- observe(at(R1,C,player)), observe(at(R2,C,flag)), R1 < R2.' };
+  const seen = [];
+  const first = await test_strategy(solver, weak, { levels: 5, first_seed: 10, on_level: (r) => seen.push(r.seed) });
+  assert.deepEqual(seen, [10, 11, 12, 13, 14]);
+  assert.deepEqual(await test_strategy(solver, weak, { levels: 5, first_seed: 10 }), first);
+  // A level of the test, played again with replay_rng, ends the same way
+  const lost = first.find((r) => r.verdict !== 'win');
+  assert.ok(lost, JSON.stringify(first));
+  const { rng, level } = await replay_rng(solver, weak, lost.seed);
+  const again = await play_headless(solver, { ...weak, ...level }, { rng, verbose: false });
+  assert.equal(again.verdict, lost.verdict);
+  assert.equal(again.steps, lost.steps);
+  // The solution wins everywhere; cancelling stops the test
+  assert.ok((await test_strategy(solver, game, { levels: 3 })).every((r) => r.verdict === 'win'));
+  let n = 0;
+  assert.equal((await test_strategy(solver, game, { levels: 10, on_level: () => { n += 1; }, cancelled: () => n >= 2 })).length, 2);
 });
 
 // ---- The examples -----------------------------------------------------------------

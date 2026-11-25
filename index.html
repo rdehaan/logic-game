@@ -648,6 +648,21 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         This program computes the player's move(s).
       </p>
       <pre id="player_move_program"></pre>
+
+      <h3>Test your strategy</h3>
+      <p>
+        This plays the game on many random levels (without drawing them),
+        to see how often your strategy wins. Every level can be played again
+        exactly: load it to watch what happens, or copy a link to it.
+      </p>
+      <div class="test-controls">
+        Levels:&nbsp;<input type="number" id="test-levels" min="1" max="1000" value="20">
+        <button data-action="run_test" id="test-button" class="control-button">Test</button>
+        <button data-action="cancel_test" id="test-cancel" class="control-button" hidden>Cancel</button>
+        <span id="test-progress"></span>
+      </div>
+      <p id="test-summary"></p>
+      <ul id="test-results" class="test-results"></ul>
     </section>
 
     <section id="section-debug">

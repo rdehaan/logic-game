@@ -41,6 +41,19 @@ export function randint(min, max, rng = Math.random) {
   return Math.floor(rng() * (max - min)) + min;
 }
 
+// A random number generator with a seed (mulberry32): the same seed gives the
+// same numbers, so that a level (and a game on it) can be played again exactly.
+export function seeded_rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // Evaluate 'RANDINT(l,u)' (a random integer between l and u, inclusive).
 // The number is padded with spaces to the length of the RANDINT(...) text
 // (newlines are kept), so that line and column numbers in clingo's error

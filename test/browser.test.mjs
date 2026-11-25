@@ -419,3 +419,41 @@ test('playing step by step, and looking back', async (t) => {
   await page.click('#reset-button');
   assert.equal(await page.isHidden('#timeline-box'), true);
 });
+
+test('testing a strategy on many levels, and playing a level of the test again', async (t) => {
+  const page = await open(t, '?file=flag3&tab=4');
+  if (!page) return;
+  // This strategy only wins when the flag is below the player in the same column
+  await set_program(page, 'player_move_program', 'do(move(down)) :- observe(at(R1,C,player)), observe(at(R2,C,flag)), R1 < R2.');
+  await page.fill('#test-levels', '6');
+  await page.click('#test-button');
+  await page.waitForFunction(() => /^Done/.test(document.getElementById('test-progress').textContent), null, { timeout: 120000 });
+  const summary = await page.textContent('#test-summary');
+  assert.match(summary, /^6 levels: (\d+ won, )?\d+ lost\.$/);
+  const items = page.locator('#test-results li');
+  assert.ok(await items.count() > 0);
+  const first = await items.first().textContent();
+  const [, seed, steps] = /^Level (\d+): LOSE! \(lose\(timeout\)\) \(after (\d+) steps\)/.exec(first);
+  // Load the level and play it: the same result
+  await items.first().locator('button', { hasText: 'Load this level' }).click();
+  await page.waitForSelector('#board-message:not([hidden])');
+  assert.equal(await page.textContent('#board-message'), `This is level ${seed} of the test. Play plays it exactly as in the test.`);
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.match(await game_output(page), /^LOSE! \(lose\(timeout\)\)/);
+  assert.equal(await page.locator('#game-output .output-step').count(), Number(steps));
+  // A link to the level gives the same level
+  const level_state = await page.evaluate(() => window.logic_game.editors.value('level_state'));
+  await page.click('label[for=tab1]');
+  await page.click('button[data-action=share_game]');
+  await page.waitForFunction(() => document.getElementById('share-link').value !== '');
+  const link = await page.inputValue('#share-link');
+  assert.match(link, new RegExp(`&seed=${seed}$`));
+  const other = await browser.newPage();
+  t.after(() => other.close());
+  await other.goto(link);
+  await other.waitForSelector('body[data-ready=true]');
+  await other.waitForSelector('#board-message:not([hidden])');
+  assert.equal(await other.evaluate(() => window.logic_game.editors.value('level_state')), level_state);
+});

@@ -499,3 +499,21 @@ input.share-link {
 .timeline[hidden] {
   display: none !important;
 }
+
+/* Testing a strategy on many levels */
+.test-controls input[type="number"] {
+  width: 5em;
+  padding: 3px;
+}
+
+ul.test-results {
+  padding-left: 0;
+  list-style: none;
+}
+
+ul.test-results li {
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  background: #f6f6f6;
+  border-left: 3px solid #E10600;
+}

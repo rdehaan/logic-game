@@ -1,7 +1,7 @@
 // The page: buttons, loading and saving games, and playing a game step by step.
 import clingo from '../vendor/clingo-wasm/index.web.js';
 import { create_solver } from './solver.js';
-import { GAME_FIELDS, GameSession, generate_level, normalize_game } from './engine.js';
+import { GAME_FIELDS, GameSession, generate_level, normalize_game, test_strategy, replay_rng } from './engine.js';
 import { Editors, make_example_editors } from './editors.js';
 import { show_grid, clear_grid, display_win, display_lose } from './grid-visual.js';
 import { board_problems } from './hints.js';
@@ -73,6 +73,11 @@ let playing = false;           // a game is going on (possibly paused)
 let game_paused = false;
 let stop_requested = false;
 let level_locked = false;
+// The seed of the level in the editors, if it is a level from a test (or from a
+// link to one): then Play plays it with the same random numbers as the test did.
+let level_seed = null;
+let testing = false;
+let test_cancelled = false;
 
 function select_speed() {
   speed = Number(speed_selector.value);
@@ -103,6 +108,7 @@ function unlock_level_generation() {
 }
 
 function clear_level() {
+  level_seed = null;
   editors.set_value('level_state', '');
   editors.set_value('level_settings', '');
   update_interface();
@@ -137,6 +143,7 @@ async function update_interface() {
 }
 
 async function do_generate() {
+  level_seed = null;
   generate_button.disabled = true;
   editors.clear_run_problems();
   const level = await generate_level(solver, editors.game());
@@ -233,6 +240,7 @@ function start_playing_interface() {
   pause_button.disabled = false;
   stop_button.disabled = false;
   step_button.disabled = true;
+  $('test-button').disabled = true;
   editors.set_read_only(PLAY_PROGRAMS, true);
 }
 
@@ -250,6 +258,7 @@ function end_playing() {
   pause_button.disabled = true;
   stop_button.disabled = true;
   step_button.disabled = false;
+  $('test-button').disabled = false;
   editors.set_read_only(PLAY_PROGRAMS, false);
   update_timeline();
   editors.set_read_only(LEVEL_PROGRAMS, level_locked);
@@ -277,7 +286,8 @@ async function do_play() {
     clear_snapshots();
     editors.clear_run_problems();
     const verbose_checkbox = $('verbose');
-    session = new GameSession(solver, editors.game(), { verbose: verbose_checkbox ? verbose_checkbox.checked : true });
+    const game = editors.game();
+    session = new GameSession(solver, game, { rng: await play_rng(game), verbose: verbose_checkbox ? verbose_checkbox.checked : true });
     const start = await session.start();
     editors.show_run_problems(start.problems);
     if (session.verdict) {
@@ -368,6 +378,7 @@ function reset_level() {
 // ---- Loading and saving games ----------------------------------------------------
 
 function set_game(game) {
+  level_seed = null;
   game = normalize_game(game);
   editors.clear_run_problems();
   editors.set_game(game);
@@ -474,10 +485,11 @@ async function load_game_from_path(path, title) {
 
 // Load the game in the link (#game=...), if there is one. Returns whether there was one.
 async function load_game_from_link() {
-  const m = /^#game=([A-Za-z0-9_-]+)$/.exec(window.location.hash);
+  const m = /^#game=([A-Za-z0-9_-]+)(?:&seed=(\d+))?$/.exec(window.location.hash);
   if (!m) return false;
   const game = await decode_game(m[1]);
   await open_game(game, 'shared:' + await game_id(game), 'the shared game');
+  if (m[2]) await load_seeded_level(Number(m[2]));
   return true;
 }
 
@@ -488,9 +500,7 @@ function forget_link() {
 
 async function share_game() {
   const code = await encode_game(editors.game());
-  const query = new URLSearchParams(window.location.search);
-  query.delete('file');
-  const link = window.location.origin + window.location.pathname + (query.size ? '?' + query : '') + '#game=' + code;
+  const link = link_to(code, level_seed);
   $('share-box').hidden = false;
   $('share-link').value = link;
   $('share-link').select();
@@ -569,12 +579,120 @@ function change_tabs() {
   load_status.innerText = '';
 }
 
+// ---- Testing a strategy on many levels ------------------------------------------------
+
+
+// The random numbers for playing the current level.
+async function play_rng(game) {
+  if (level_seed == null) return Math.random;
+  const { rng, level } = await replay_rng(solver, game, level_seed);
+  if (level.level_state === game.level_state && level.level_settings === game.level_settings) return rng;
+  level_seed = null;      // the level was changed
+  return Math.random;
+}
+
+// Put level `seed` (as in a test) into the editors.
+async function load_seeded_level(seed) {
+  await stop_game_if_playing();
+  const { level } = await replay_rng(solver, editors.game(), seed);
+  editors.set_value('level_state', level.level_state);
+  editors.set_value('level_settings', level.level_settings);
+  reset_debugging();
+  await update_interface();
+  level_seed = seed;
+  show_board_message([`This is level ${seed} of the test. Play plays it exactly as in the test.`]);
+}
+
+function link_to(code, seed = null) {
+  const query = new URLSearchParams(window.location.search);
+  query.delete('file');
+  return window.location.origin + window.location.pathname + (query.size ? '?' + query : '') +
+    '#game=' + code + (seed != null ? '&seed=' + seed : '');
+}
+
+async function copy_text(text, status_elem) {
+  try {
+    await navigator.clipboard.writeText(text);
+    status_elem.textContent = 'The link is copied to the clipboard.';
+  } catch {
+    window.prompt('Copy this link:', text);
+  }
+}
+
+async function run_test() {
+  if (playing || testing) return;
+  const levels = Math.max(1, Math.min(1000, Number($('test-levels').value) || 20));
+  testing = true;
+  test_cancelled = false;
+  const buttons = [play_button, step_button, generate_button, $('test-button')];
+  const before = buttons.map((b) => b.disabled);
+  buttons.forEach((b) => { b.disabled = true; });
+  $('test-cancel').hidden = false;
+  $('test-summary').textContent = '';
+  $('test-results').replaceChildren();
+  const game = editors.game();
+  const code = await encode_game(game);
+  const counts = {};
+  const t0 = performance.now();
+  try {
+    await test_strategy(solver, game, {
+      levels,
+      cancelled: () => test_cancelled,
+      on_level: (r) => {
+        counts[r.verdict] = (counts[r.verdict] || 0) + 1;
+        $('test-progress').textContent = `Level ${r.seed} of ${levels} played..`;
+        $('test-summary').textContent = test_summary(counts);
+        if (r.verdict !== 'win') $('test-results').append(test_result_item(r, code));
+      },
+    });
+  } finally {
+    testing = false;
+    $('test-cancel').hidden = true;
+    buttons.forEach((b, i) => { b.disabled = before[i]; });
+    const n = Object.values(counts).reduce((a, b) => a + b, 0);
+    $('test-progress').textContent = (test_cancelled ? `Cancelled after ${n} levels` : `Done`) +
+      ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
+  }
+}
+
+function test_summary(counts) {
+  const n = Object.values(counts).reduce((a, b) => a + b, 0);
+  const names = { win: 'won', lose: 'lost', timeout: 'timed out (500 steps)', stopped: 'stopped (clingo took too long)', 'no level': 'no level generated' };
+  const parts = Object.entries(names).filter(([k]) => counts[k]).map(([k, name]) => `${counts[k]} ${name}`);
+  return `${n} level${n > 1 ? 's' : ''}: ${parts.join(', ')}.`;
+}
+
+function test_result_item(r, code) {
+  const li = document.createElement('li');
+  const text = document.createElement('span');
+  text.textContent = `Level ${r.seed}: ${r.message}` + (r.steps ? ` (after ${r.steps} steps)` : '');
+  li.append(text);
+  if (r.verdict !== 'no level') {
+    const load = document.createElement('button');
+    load.className = 'control-button';
+    load.textContent = 'Load this level';
+    load.addEventListener('click', () => load_seeded_level(r.seed));
+    const link = document.createElement('button');
+    link.className = 'control-button';
+    link.textContent = 'Copy link';
+    link.addEventListener('click', () => copy_text(link_to(code, r.seed), $('test-progress')));
+    li.append(' ', load, ' ', link);
+  }
+  return li;
+}
+
+function cancel_test() {
+  if (!testing) return;
+  test_cancelled = true;
+  solver.abort();
+}
+
 // ---- Wiring ------------------------------------------------------------------------
 
 const actions = {
   do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
   lock_level_generation, unlock_level_generation, update_interface, load_game, download_game,
-  share_game, revert_to_original, forget_saved_work,
+  share_game, revert_to_original, forget_saved_work, run_test, cancel_test,
 };
 document.querySelectorAll('[data-action]').forEach((elem) => {
   const action = actions[elem.dataset.action];
