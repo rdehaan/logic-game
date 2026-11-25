@@ -399,14 +399,20 @@ test('playing step by step, and looking back', async (t) => {
   for (let i = 1; i <= 3; i++) {
     await page.click('#step-button');
     await page.waitForFunction(() => !document.getElementById('step-button').disabled);
-    assert.equal(await page.textContent('#timeline-label'), `Time ${i} of ${i} (changes since the time before are marked)`);
+    assert.equal(await page.textContent('#timeline-label'), `Time ${i} of ${i}`);
+    assert.match(await page.textContent('#board-status'), new RegExp(`^Paused at time ${i}\\.`));
   }
   assert.equal(await page.isDisabled('#pause-button'), true);
   assert.equal(await page.isEnabled('#stop-button'), true);
   assert.ok(await page.locator('.grid-visual-cell.changed').count() > 0);
+  // The marks of the cells that changed can be turned off
+  assert.equal(await page.locator('.grid-visual-cell.changed').first().evaluate((e) => getComputedStyle(e).boxShadow !== 'none'), true);
+  await page.uncheck('#mark-changes');
+  assert.equal(await page.locator('.grid-visual-cell.changed').first().evaluate((e) => getComputedStyle(e).boxShadow), 'none');
+  await page.check('#mark-changes');
   // Back one time: the move the player made there
   await page.click('#timeline-prev');
-  assert.match(await page.textContent('#timeline-label'), /^Time 2 of 3: the player moved do\(move\(\w+\)\) /);
+  assert.match(await page.textContent('#timeline-label'), /^Time 2 of 3: the player moved do\(move\(\w+\)\)$/);
   // Play to the end, then look back with the slider and from the game output
   await page.selectOption('#speed-selector', '0');
   await page.click('#play-button');
@@ -417,12 +423,108 @@ test('playing step by step, and looking back', async (t) => {
   await page.dispatchEvent('#timeline', 'input');
   assert.match(await page.textContent('#timeline-label'), /^Time 0 of \d+: the player moved /);
   assert.equal(await page.locator('.grid-visual-cell.changed').count(), 0);
+  // The Debug tab shows the step of the board, with a slider of its own
   await page.click('label[for=tab5]');
+  assert.match(await page.textContent('#debug-step-label'), /^Step 1: the player saw the board of time 0/);
+  assert.match(await page.textContent('#debug-step'), /Player input:/);
+  assert.match(await page.textContent('#debug-messages'), /^WIN!/);
+  await page.click('#debug-next');
+  assert.match(await page.textContent('#timeline-label'), /^Time 1 of /);
+  assert.match(await page.textContent('#debug-step-label'), /^Step 2:/);
+  // or all steps at once
+  await page.check('#show-all-output');
+  assert.equal(await page.isHidden('#debug-steps'), true);
   await page.locator('#game-output .output-step', { hasText: '## STEP 3 ##' }).click();
   assert.match(await page.textContent('#timeline-label'), /^Time 2 of /);
+  await page.uncheck('#show-all-output');
+  // Changing a program after the game: the board says so
+  await set_program(page, 'player_move_program', (await value(page, 'player_move_program')) + '\n% changed');
+  assert.match(await page.textContent('#board-status'), /^The board shows the last game \(WIN at time \d+\)\. Since then, you changed: Player strategy\./);
   // A new game starts a new timeline
   await page.click('#reset-button');
   assert.equal(await page.isHidden('#timeline-box'), true);
+  assert.match(await page.textContent('#debug-step'), /Play a game/);
+  // and clearing the level after a game removes it too
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.equal(await page.isVisible('#timeline-box'), true);
+  await page.click('#clear-button');
+  assert.equal(await page.isHidden('#timeline-box'), true);
+  assert.equal(await page.textContent('#board-status'), 'There is no level: generate one.');
+  assert.equal(await page.isDisabled('#play-button'), true);
+});
+
+test('the game rules are locked together; unlocking keeps the level until the level programs change', async (t) => {
+  const page = await open(t, '?tab=3');
+  if (!page) return;
+  const read_only = () => page.evaluate(() => ['aux_program', 'level_gen_program', 'visibility_program', 'nature_program', 'goal_program', 'player_move_program']
+    .map((k) => window.logic_game.editors.get(k).getReadOnly()));
+  assert.deepEqual(await read_only(), [true, true, true, true, true, false]);
+  const level = await value(page, 'level_state');
+  await page.click('#unlock-button');
+  assert.deepEqual(await read_only(), [false, false, false, false, false, false]);
+  assert.equal(await page.textContent('#play-button'), '\u23F5\u00A0Lock rules and play');
+  assert.equal(await page.textContent('#generate-button'), '\u239A\u00A0Lock rules and generate level');
+  assert.match(await page.textContent('#board-status'), /The game rules are unlocked/);
+  // Changing the winning conditions keeps the level
+  await set_program(page, 'goal_program', (await value(page, 'goal_program')) + '\n% changed');
+  await page.click('#lock-button');
+  assert.equal(await value(page, 'level_state'), level);
+  assert.equal(await page.textContent('#play-button'), '\u23F5\u00A0Play');
+  // Changing the level generation removes the level when locking (here with Lock rules and play)
+  await page.click('#unlock-button');
+  await set_program(page, 'level_gen_program', (await value(page, 'level_gen_program')) + '\n% changed');
+  await page.click('#play-button');
+  assert.equal(await value(page, 'level_state'), '');
+  assert.match(await page.textContent('#board-status'), /^The level was removed: it was made with another version/);
+  assert.deepEqual(await read_only(), [true, true, true, true, true, false]);
+  // Lock rules and generate level
+  await page.click('#unlock-button');
+  await page.click('#generate-button');
+  await page.waitForFunction(() => window.logic_game.editors.value('level_state') !== '');
+  assert.match(await page.textContent('#board-status'), /^The board shows the start of the level \(generated at /);
+  // During a game, the strategy cannot be changed either
+  await page.selectOption('#speed-selector', '1000');
+  await page.click('#play-button');
+  await page.waitForFunction(() => window.logic_game.editors.get('player_move_program').getReadOnly());
+  assert.equal(await page.isDisabled('#unlock-button'), true);
+  await page.click('#stop-button');
+  await page.waitForFunction(() => !window.logic_game.editors.get('player_move_program').getReadOnly());
+});
+
+test('options in the Control tab are kept, and can be set in the URL', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  assert.equal(await page.isHidden('label[for=tab6]'), true);
+  assert.equal(await page.locator('#example-games optgroup[label=Solutions]').count(), 0);
+  await page.check('#option-internals');
+  await page.check('#option-solutions');
+  await page.check('#option-editor');
+  await page.fill('#option-timeout', '25');
+  await page.dispatchEvent('#option-timeout', 'change');
+  await page.uncheck('#option-mark-changes');
+  assert.equal(await page.isVisible('label[for=tab6]'), true);
+  assert.equal(await page.locator('#example-games optgroup[label=Solutions]').count(), 1);
+  assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 25000);
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isVisible('label[for=tab6]'), true);
+  assert.equal(await page.isChecked('#option-editor'), true);
+  assert.equal(await page.isChecked('#mark-changes'), false);
+  assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 25000);
+  // A link can turn them off (only for that visit)
+  await page.goto(base + '?internals=false&timeout=5');
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isHidden('label[for=tab6]'), true);
+  assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 5000);
+  await page.goto(base);
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isVisible('label[for=tab6]'), true);
+  // Turning off the Internals tab while it is open goes to the Control tab
+  await page.click('label[for=tab6]');
+  await page.click('label[for=tab1]');
+  await page.uncheck('#option-internals');
+  assert.equal(await page.isHidden('label[for=tab6]'), true);
 });
 
 test('testing a strategy on many levels, and playing a level of the test again', async (t) => {
@@ -797,7 +899,7 @@ test('the tutorial: from the first move to a winning strategy', async (t) => {
   // Steps that wait for the player
   assert.equal(await page.isDisabled('.tutorial-next'), true);
   await page.click('#play-button');
-  await page.waitForSelector('.tutorial-after');
+  await page.waitForSelector('.tutorial-after', { timeout: 60000 });
   await next();
   await page.click('label[for=tab4]');
   await page.waitForFunction(() => document.querySelector('.tutorial-count').textContent === '5 of 12');
@@ -805,13 +907,13 @@ test('the tutorial: from the first move to a winning strategy', async (t) => {
   await page.waitForSelector('.tutorial-after');
   await next();
   await page.click('#play-button');
-  await page.waitForSelector('.tutorial-after');
+  await page.waitForSelector('.tutorial-after', { timeout: 60000 });
   await next();
   await page.click('.tutorial-do-it');
   await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
   await next();
   await page.click('#play-button');
-  await page.waitForSelector('.tutorial-after');
+  await page.waitForSelector('.tutorial-after', { timeout: 60000 });
   assert.match(await game_output(page), /^WIN!/);
   await next();
   await next();

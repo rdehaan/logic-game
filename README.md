@@ -41,6 +41,26 @@ shows how long clingo took for each program in each step.
 | `test/` | The tests |
 | `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm into `vendor/`) |
 
+## The game rules, and what the board shows
+
+The programs of the game rules (auxiliary, level generation, visibility, nature's moves and
+winning conditions) are locked and unlocked together, at the top of the Game rules tab: a level
+can only be generated, and a game only played, with locked rules, so it is always clear which
+programs a game was played with. While they are unlocked, the buttons say *Lock rules and
+generate level*, *Lock rules and play*. Locking keeps the level, unless the auxiliary or level
+generation program changed since it was made. The line under the board says what the board
+shows (the start of a level and where it came from, or the last game), and which programs
+changed since then. In the Debug tab, the report of one step at a time is shown (the step of
+the board, with a slider), or all of them.
+
+## Options
+
+In the Control tab (kept in the browser), or in the URL for one visit:
+`?solutions=true` (the example games with solutions), `?editor=true` (the level editor in the
+Debug tab), `?internals=true` (the Internals tab), `?timeout=30` (the time limit for each call
+to clingo, in seconds); also whether the cells that changed in the last step are marked.
+Other URL options: `?file=flag3` (load an example), `?tab=4` (open a tab), `?tutorial=true`.
+
 ## Feedback for players
 
 The page tries to explain what went wrong:

@@ -1,7 +1,7 @@
 // The page: buttons, loading and saving games, and playing a game step by step.
 import clingo from '../vendor/clingo-wasm/index.web.js';
 import { create_solver } from './solver.js';
-import { GAME_FIELDS, GameSession, generate_level, normalize_game, test_strategy, replay_rng } from './engine.js';
+import { GAME_FIELDS, SOURCE_NAMES, GameSession, generate_level, normalize_game, test_strategy, replay_rng } from './engine.js';
 import { Editors, make_example_editors } from './editors.js';
 import { show_grid, clear_grid, display_win, display_lose } from './grid-visual.js';
 import { board_problems } from './hints.js';
@@ -28,8 +28,8 @@ const fragments = load_fragments();
 
 // Handles for elements
 const $ = (id) => document.getElementById(id);
-const lock_buttons = [$('lock-button'), $('lock-button2'), $('lock-button3')];
-const unlock_buttons = [$('unlock-button'), $('unlock-button2'), $('unlock-button3')];
+const lock_button = $('lock-button');
+const unlock_button = $('unlock-button');
 const generate_button = $('generate-button');
 const clear_button = $('clear-button');
 const reset_button = $('reset-button');
@@ -43,8 +43,10 @@ const load_status = $('load-status');
 const upload_status = $('upload-status');
 const engine_status = $('engine-status');
 
-const LEVEL_PROGRAMS = ['aux_program', 'level_gen_program', 'visibility_program'];
-const PLAY_PROGRAMS = ['visibility_program', 'nature_program', 'goal_program', 'player_move_program'];
+// The game rules: locked while playing (and needed to be locked to play)
+const RULE_PROGRAMS = ['aux_program', 'level_gen_program', 'visibility_program', 'nature_program', 'goal_program'];
+// The programs that make the level
+const LEVEL_GEN_PROGRAMS = ['aux_program', 'level_gen_program'];
 
 function set_button(button, enabled, title = '') {
   button.disabled = !enabled;
@@ -57,10 +59,19 @@ function set_engine_status(text, is_error = false) {
 }
 
 // ---- Game output -------------------------------------------------------------
+//
+// The reports of the steps of the last game. The Debug tab shows one step at a
+// time (the step of the board that is shown), or all of them at once.
 
 const game_output_elem = $('game-output');
+let step_reports = new Map();     // step -> report
+let output_messages = [];         // the other messages (verdicts, problems), newest first
+
 function clear_game_output() {
   game_output_elem.textContent = '';
+  step_reports = new Map();
+  output_messages = [];
+  update_debug_view();
 }
 // New text goes at the top (most recent step first). Each piece is its own
 // text node, so that adding a step does not rewrite the whole output.
@@ -68,8 +79,11 @@ function clear_game_output() {
 function add_to_game_output(text, step = null) {
   if (step == null) {
     game_output_elem.prepend(document.createTextNode(text + '\n'));
+    output_messages.unshift(text);
+    update_debug_view();
     return;
   }
+  step_reports.set(step, text);
   const span = document.createElement('span');
   span.className = 'output-step';
   span.textContent = text + '\n';
@@ -79,6 +93,47 @@ function add_to_game_output(text, step = null) {
   game_output_elem.prepend(span);
 }
 
+// The Debug tab: the messages, and the report of the step of the board that is shown.
+function update_debug_view() {
+  const all = $('show-all-output').checked;
+  game_output_elem.hidden = !all;
+  $('debug-steps').hidden = all;
+  $('debug-messages').textContent = output_messages.join('\n').trim();
+  $('debug-messages').hidden = all || output_messages.length === 0;
+  const snap = snapshots[shown_snapshot];
+  const report = snap ? step_reports.get(snap.time + 1) : null;
+  const elem = $('debug-step');
+  if (!snapshots.length) {
+    $('debug-step-label').textContent = '';
+    elem.textContent = output_messages.length ? '' : 'Play a game (or use Step) to see here what happens in each step.';
+  } else if (!snap) {
+    $('debug-step-label').textContent = '';
+    elem.textContent = 'The game is being played…';
+  } else if (report) {
+    $('debug-step-label').textContent = `Step ${snap.time + 1}: the player saw the board of time ${snap.time} (shown above), and decided on a move.`;
+    elem.textContent = report.replace(/^## STEP \d+ ##\n/, '');
+  } else {
+    $('debug-step-label').textContent = `Time ${snap.time}: the end of the game.`;
+    elem.textContent = shown_snapshot === snapshots.length - 1 && final_verdict ? (output_messages[0] || '') : 'This step has not been played yet.';
+  }
+  // The slider of the Debug tab follows the one under the board
+  const slider = $('debug-timeline');
+  slider.max = $('timeline').max;
+  slider.value = $('timeline').value;
+  slider.disabled = $('timeline').disabled;
+  $('debug-prev').disabled = $('timeline-prev').disabled;
+  $('debug-next').disabled = $('timeline-next').disabled;
+  $('debug-steps').classList.toggle('empty', snapshots.length === 0);
+}
+
+$('show-all-output').addEventListener('change', () => {
+  set_option('all_output', $('show-all-output').checked);
+  update_debug_view();
+});
+$('debug-timeline').addEventListener('input', () => show_snapshot(Number($('debug-timeline').value) - 1));
+$('debug-prev').addEventListener('click', () => show_snapshot(shown_snapshot - 1));
+$('debug-next').addEventListener('click', () => show_snapshot(shown_snapshot + 1));
+
 // ---- States of the game engine -------------------------------------------------
 
 let speed = Number(speed_selector.value);
@@ -86,57 +141,168 @@ let session = null;            // the game being played
 let playing = false;           // a game is going on (possibly paused)
 let game_paused = false;
 let stop_requested = false;
-let level_locked = false;
+let single_step = false;
+let level_locked = false;      // the game rules are locked (needed to generate a level and to play)
+let generating = false;
 // The seed of the level in the editors, if it is a level from a test (or from a
 // link to one): then Play plays it with the same random numbers as the test did.
 let level_seed = null;
 let testing = false;
 let test_cancelled = false;
 
+// What the board is based on:
+// - level_basis: where the level came from ({ source, at, programs }), with the
+//   programs that made it (the auxiliary and level generation programs);
+// - run_basis: all programs and the level when the last game was started.
+let level_basis = null;
+let run_basis = null;
+let board_notice = '';         // a message about the last change to the level
+
 function select_speed() {
   speed = Number(speed_selector.value);
 }
 
-function lock_level_generation() {
-  level_locked = true;
-  lock_buttons.forEach((b) => { b.disabled = true; });
-  unlock_buttons.forEach((b) => { b.disabled = playing; });
-  set_button(generate_button, !playing, 'A new level cannot be generated while the game is ongoing.');
-  editors.set_read_only(LEVEL_PROGRAMS, true);
+const level_programs = () => Object.fromEntries(LEVEL_GEN_PROGRAMS.map((k) => [k, editors.value(k)]));
+
+function set_level_basis(source) {
+  level_basis = editors.value('level_state') ? { source, at: new Date(), programs: level_programs() } : null;
 }
 
-function unlock_level_generation() {
-  level_locked = false;
-  lock_buttons.forEach((b) => { b.disabled = false; });
-  unlock_buttons.forEach((b) => { b.disabled = true; });
-  set_button(generate_button, false, 'Auxiliary, level generation and visibility programs need to be locked to generate a level.');
-  set_button(clear_button, false, 'There is no level to be cleared.');
-  set_button(reset_button, false, 'There is no level to be reset.');
-  set_button(play_button, false, 'There is no level to play.');
-  step_button.disabled = play_button.disabled;
-  pause_button.disabled = true;
-  stop_button.disabled = true;
-  editors.set_read_only(LEVEL_PROGRAMS, false);
-  clear_level();
-  reset_debugging();
+// The fields that changed since a game (an object with all fields).
+function changed_since(game) {
+  if (!game) return [];
+  return GAME_FIELDS.filter((k) => (game[k] || '') !== editors.value(k));
 }
+
+// ---- The buttons, and what the board shows ------------------------------------------
+
+function set_label(button, icon, text) {
+  button.textContent = icon + ' ' + text;
+}
+
+// Enable the buttons that can be used now, and say why the others cannot.
+function update_controls() {
+  const has_level = Boolean(editors.value('level_state'));
+  const busy = playing && !game_paused;
+  const idle = !playing && !testing && !generating;
+  const why = playing ? 'Not while a game is going on (Stop ends it).' : testing ? 'Not while the strategy is being tested.' : generating ? 'A level is being generated.' : '';
+
+  set_label(generate_button, '⎚', level_locked ? 'Generate level' : 'Lock rules and generate level');
+  set_button(generate_button, idle, why);
+  if (idle) generate_button.title = level_locked ? 'Make a new level with the level generation program' : 'Lock the game rules (so that they cannot be changed during a game), and make a new level with them';
+  set_button(clear_button, idle && has_level, why || 'There is no level.');
+  set_button(reset_button, idle && has_level && snapshots.length > 0, why || (has_level ? 'The level is already in its initial state.' : 'There is no level.'));
+  if (!reset_button.disabled) reset_button.title = 'Show the level as it was before the game';
+
+  const can_play = has_level && (!playing || game_paused) && !testing && !generating;
+  set_label(play_button, '⏵', game_paused ? 'Resume' : level_locked ? 'Play' : 'Lock rules and play');
+  set_button(play_button, can_play, !has_level ? 'There is no level: generate one first.' : why);
+  set_button(step_button, can_play, !has_level ? 'There is no level: generate one first.' : why);
+  if (can_play) step_button.title = 'Play one step, then pause';
+  set_button(pause_button, busy && !single_step, 'There is no game going on.');
+  set_button(stop_button, playing, 'There is no game going on.');
+  const test_button = $('test-button');
+  set_button(test_button, !playing && !testing && !generating, why);
+  test_button.textContent = level_locked ? 'Test' : 'Lock rules and test';
+
+  // The lock of the game rules
+  lock_button.disabled = level_locked;
+  set_button(unlock_button, level_locked && !playing && !testing, why);
+  $('rules-lock').classList.toggle('unlocked', !level_locked);
+  $('section-game-rules').classList.toggle('rules-unlocked', !level_locked);
+  $('rules-lock-text').textContent = level_locked
+    ? 'The game rules are locked: games are played with these programs. Unlock them to change them.'
+    : 'The game rules are unlocked: you can change them. Lock them again to generate a level or play.';
+  editors.set_read_only(RULE_PROGRAMS, level_locked || playing);
+  editors.set_read_only(['player_move_program'], playing);
+  update_board_status();
+}
+
+// The line under the board: what it shows, and what changed since.
+function update_board_status() {
+  const elem = $('board-status');
+  const parts = [];
+  const has_level = Boolean(editors.value('level_state'));
+  if (generating) {
+    parts.push('Generating a level…');
+  } else if (testing) {
+    parts.push('Testing the strategy on many levels… (see the Strategy tab)');
+  } else if (playing && !game_paused) {
+    parts.push('Playing… The programs cannot be changed during a game.');
+  } else if (playing) {
+    parts.push(`Paused at time ${snapshots.length ? snapshots.at(-1).time : 0}. Play goes on, Step plays one step, Stop ends the game.`);
+  } else {
+    if (board_notice) parts.push(board_notice);
+    if (!has_level) {
+      if (!board_notice) parts.push('There is no level: generate one.');
+    } else if (snapshots.length && run_basis) {
+      const t = snapshots.at(-1).time;
+      const verdict = final_verdict ? final_verdict.toUpperCase() : 'stopped';
+      let text = `The board shows the last game (${verdict} at time ${t}).`;
+      const changed = changed_since(run_basis);
+      if (changed.length) text += ` Since then, you changed: ${changed.map((k) => SOURCE_NAMES[k]).join(', ')}. Play again to see what the game does now.`;
+      parts.push(text);
+    } else if (level_basis) {
+      const from = level_basis.source === 'generated' ? `generated at ${level_basis.at.toLocaleTimeString()}`
+        : level_basis.source === 'loaded' ? 'from the game that was loaded'
+          : level_basis.source;
+      parts.push(`The board shows the start of the level (${from}).`);
+    } else {
+      parts.push('The board shows the start of the level.');
+    }
+    if (!level_locked) parts.push('The game rules are unlocked, so they can be changed: lock them to play.');
+  }
+  elem.textContent = parts.join(' ');
+  elem.classList.toggle('attention', !level_locked || (!playing && changed_since(run_basis).length > 0 && snapshots.length > 0));
+}
+
+function lock_level_generation() {
+  lock_rules();
+}
+
+// Lock the game rules. A level that was made with other versions of the level
+// programs is removed; a game that was played with other rules is put away.
+function lock_rules() {
+  if (level_locked) return;
+  level_locked = true;
+  if (editors.value('level_state') && level_basis &&
+      LEVEL_GEN_PROGRAMS.some((k) => level_basis.programs[k] !== editors.value(k))) {
+    clear_level();
+    board_notice = 'The level was removed: it was made with another version of the auxiliary or level generation program. Generate a new level.';
+  } else if (snapshots.length && run_basis && RULE_PROGRAMS.some((k) => run_basis[k] !== editors.value(k))) {
+    reset_debugging();
+    update_interface();
+  } else if (editors.value('level_state') && !snapshots.length) {
+    update_interface();      // (e.g. the visibility program changed)
+  }
+  update_controls();
+}
+
+function unlock_rules() {
+  if (playing || testing) return;
+  level_locked = false;
+  update_controls();
+}
+
+// (the names of the actions in older versions of the page)
+const unlock_level_generation = unlock_rules;
 
 function clear_level() {
   level_seed = null;
+  level_basis = null;
+  board_notice = '';
   editors.set_value('level_state', '');
   editors.set_value('level_settings', '');
+  reset_debugging();
   update_interface();
 }
 
-// Show the level in its initial state (and enable the buttons that need a level).
+// Show the level in its initial state.
 let preview_counter = 0;
 async function update_interface() {
   const my_preview = ++preview_counter;
+  update_controls();
   if (editors.value('level_state')) {
-    set_button(clear_button, true);
-    set_button(reset_button, false, 'The level is already in its initial state.');
-    set_button(play_button, true);
-    step_button.disabled = play_button.disabled;
     const preview = new GameSession(solver, editors.game());
     const start = await preview.start();
     if (my_preview !== preview_counter || playing) return;   // outdated
@@ -148,26 +314,40 @@ async function update_interface() {
     ]);
   } else {
     show_board_message([]);
-    set_button(clear_button, false, 'There is no level to be cleared.');
-    set_button(reset_button, false, 'There is no level to be reset.');
-    set_button(play_button, false, 'There is no level to play.');
-    step_button.disabled = play_button.disabled;
     clear_grid();
   }
 }
 
-async function do_generate() {
+// The level editor: show the level that was typed there.
+function show_edited_level() {
   level_seed = null;
-  generate_button.disabled = true;
+  reset_debugging();
+  set_level_basis('typed in the level editor');
+  board_notice = '';
+  return update_interface();
+}
+
+async function do_generate() {
+  lock_rules();
+  level_seed = null;
+  generating = true;
+  board_notice = '';
+  update_controls();
   editors.clear_run_problems();
-  const level = await generate_level(solver, editors.game());
-  generate_button.disabled = !level_locked || playing;
+  let level;
+  try {
+    level = await generate_level(solver, editors.game());
+  } finally {
+    generating = false;
+  }
   editors.set_value('level_state', level.level_state);
   editors.set_value('level_settings', level.level_settings);
   reset_debugging();
+  set_level_basis('generated');
   if (level.problem) {
     editors.show_run_problems([level.problem]);
     add_to_game_output('Level generation: ' + level.problem.text + '\n  (no level generated)\n');
+    board_notice = 'No level was generated: ' + level.problem.text.split('\n')[0] + ' (see the Debug tab).';
   }
   await update_interface();
 }
@@ -221,22 +401,24 @@ function show_snapshot(index) {
 function update_timeline() {
   const box = $('timeline-box');
   box.hidden = snapshots.length === 0;
-  if (box.hidden) return;
   const busy = playing && !game_paused;
   const slider = $('timeline');
-  slider.max = String(snapshots.length);
+  slider.max = String(Math.max(1, snapshots.length));
   slider.value = String(shown_snapshot + 1);
   slider.disabled = busy || snapshots.length < 2;
   $('timeline-prev').disabled = busy || shown_snapshot <= 0;
   $('timeline-next').disabled = busy || shown_snapshot >= snapshots.length - 1;
   const snap = snapshots[shown_snapshot];
-  if (!snap) return;
-  const last = shown_snapshot === snapshots.length - 1;
-  let what = '';
-  if (snap.moves != null) what = snap.moves ? `the player moved ${snap.moves.replace(/\.$/, '').replace(/\. /g, ', ')}` : 'the player made no move';
-  else if (last && final_verdict) what = final_verdict.toUpperCase();
-  $('timeline-label').textContent = `Time ${snap.time} of ${snapshots.at(-1).time}` + (what ? `: ${what}` : '') +
-    (shown_snapshot > 0 ? ' (changes since the time before are marked)' : '');
+  if (snap) {
+    const last = shown_snapshot === snapshots.length - 1;
+    let what = '';
+    if (snap.moves != null) what = snap.moves ? `the player moved ${snap.moves.replace(/\.$/, '').replace(/\. /g, ', ')}` : 'the player made no move';
+    else if (last && final_verdict) what = final_verdict.toUpperCase();
+    $('timeline-label').textContent = `Time ${snap.time} of ${snapshots.at(-1).time}` + (what ? `: ${what}` : '');
+  } else {
+    $('timeline-label').textContent = '';
+  }
+  update_debug_view();
 }
 
 $('timeline').addEventListener('input', () => show_snapshot(Number($('timeline').value) - 1));
@@ -244,19 +426,6 @@ $('timeline-prev').addEventListener('click', () => show_snapshot(shown_snapshot 
 $('timeline-next').addEventListener('click', () => show_snapshot(shown_snapshot + 1));
 
 // ---- Playing -------------------------------------------------------------------
-
-function start_playing_interface() {
-  playing = true;
-  unlock_buttons.forEach((b) => { b.disabled = true; });
-  set_button(clear_button, false, 'The level cannot be cleared while the game is ongoing.');
-  set_button(reset_button, false, 'The level cannot be reset while the game is ongoing.');
-  set_button(generate_button, false, 'A new level cannot be generated while the game is ongoing.');
-  pause_button.disabled = false;
-  stop_button.disabled = false;
-  step_button.disabled = true;
-  $('test-button').disabled = true;
-  editors.set_read_only(PLAY_PROGRAMS, true);
-}
 
 // The number of games played until the end, and the last verdict (for the tutorial)
 const results = { games: 0, verdict: null };
@@ -270,25 +439,14 @@ function end_playing() {
   session = null;
   game_paused = false;
   stop_requested = false;
-  unlock_buttons.forEach((b) => { b.disabled = !level_locked; });
-  set_button(clear_button, true);
-  set_button(generate_button, level_locked, 'Auxiliary, level generation and visibility programs need to be locked to generate a level.');
-  play_button.disabled = false;
-  pause_button.disabled = true;
-  stop_button.disabled = true;
-  step_button.disabled = false;
-  $('test-button').disabled = false;
-  editors.set_read_only(PLAY_PROGRAMS, false);
   update_timeline();
-  editors.set_read_only(LEVEL_PROGRAMS, level_locked);
   if (stopped) {
+    run_basis = null;
     update_interface();
   } else {
-    set_button(reset_button, true);
+    update_controls();
   }
 }
-
-let single_step = false;
 
 // Play one step, then pause (starting a game if there is none).
 async function do_step() {
@@ -297,15 +455,23 @@ async function do_step() {
 }
 
 async function do_play() {
-  play_button.disabled = true;
-  step_button.disabled = true;
+  if (!level_locked) {
+    lock_rules();
+    if (!editors.value('level_state')) {
+      single_step = false;
+      return;
+    }
+  }
   if (!game_paused) {
-    start_playing_interface();
+    playing = true;
+    board_notice = '';
     clear_game_output();
     clear_snapshots();
+    update_controls();
     editors.clear_run_problems();
     const verbose_checkbox = $('verbose');
     const game = editors.game();
+    run_basis = game;
     session = new GameSession(solver, game, { rng: await play_rng(game), verbose: verbose_checkbox ? verbose_checkbox.checked : true });
     const start = await session.start();
     editors.show_run_problems(start.problems);
@@ -319,7 +485,7 @@ async function do_play() {
     record_snapshot(0, session.view());
   }
   game_paused = false;
-  pause_button.disabled = single_step;
+  update_controls();
   update_timeline();
   await play_loop();
 }
@@ -335,10 +501,7 @@ async function play_loop() {
     }
     if (game_paused) {
       show_snapshot(snapshots.length - 1);
-      play_button.disabled = false;
-      step_button.disabled = false;
-      pause_button.disabled = true;
-      update_timeline();
+      update_controls();
       return;
     }
     // (at the speed 'Instant', the board is only drawn at the end)
@@ -387,21 +550,24 @@ function do_stop() {
 function reset_debugging() {
   clear_game_output();
   clear_snapshots();
+  run_basis = null;
 }
 
 function reset_level() {
-  update_interface();
   reset_debugging();
+  update_interface();
 }
 
 // ---- Loading and saving games ----------------------------------------------------
 
 function set_game(game) {
   level_seed = null;
+  board_notice = '';
   game = normalize_game(game);
   editors.clear_run_problems();
   editors.set_game(game);
   reset_debugging();
+  set_level_basis('loaded');
   return update_interface();
 }
 
@@ -434,7 +600,8 @@ function save_work_now() {
   }
 }
 
-editors.on_change = () => {
+editors.on_change = (key) => {
+  if (key === 'level_state') update_controls(); else update_board_status();
   if (!current || loading_game) return;
   clearTimeout(save_timer);
   save_timer = setTimeout(save_work_now, SAVE_DELAY_MS);
@@ -465,7 +632,12 @@ async function open_game(game, origin, title) {
   versions_tab.opened();
 }
 
+function show_game_title() {
+  $('game-title').textContent = current ? current.title.replace(/^the /, (m) => m[0].toUpperCase() + m.slice(1)) : '';
+}
+
 function show_work_notice(text) {
+  show_game_title();
   $('work-notice-text').textContent = text || '';
   $('work-notice').hidden = !text;
 }
@@ -613,14 +785,14 @@ async function stop_game_if_playing() {
 }
 
 async function load_game() {
-  load_status.innerText = 'Loading..';
+  load_status.innerText = 'Loading\u2026';
   await stop_game_if_playing();
   try {
     forget_link();
     const option = example_games.selectedOptions[0];
     await load_game_from_path(example_games.value, option ? option.textContent : null);
     lock_level_generation();
-    load_status.innerText = 'Done loading..';
+    load_status.innerText = `Done loading: ${option ? option.textContent : 'the game'}.`;
   } catch (e) {
     load_status.innerText = 'Loading failed: ' + e.message;
   }
@@ -651,7 +823,7 @@ async function load_game_from_file(event) {
         upload_status.innerText = `Done loading the project ${p.title} (${p.snapshots.length} snapshot${p.snapshots.length === 1 ? '' : 's'}).`;
       } else {
         await open_game(content.game, 'file:' + file.name, file.name);
-        upload_status.innerText = 'Done loading..';
+        upload_status.innerText = `Done loading: ${file.name}.`;
       }
       lock_level_generation();
     }
@@ -714,6 +886,7 @@ async function load_seeded_level(seed) {
   editors.set_value('level_state', level.level_state);
   editors.set_value('level_settings', level.level_settings);
   reset_debugging();
+  set_level_basis(`level ${seed} of the test`);
   await update_interface();
   level_seed = seed;
   show_board_message([`This is level ${seed} of the test. Play plays it exactly as in the test.`]);
@@ -738,11 +911,10 @@ async function copy_text(text, status_elem) {
 async function run_test() {
   if (playing || testing) return;
   const levels = Math.max(1, Math.min(1000, Number($('test-levels').value) || 20));
+  lock_rules();
   testing = true;
   test_cancelled = false;
-  const buttons = [play_button, step_button, generate_button, $('test-button')];
-  const before = buttons.map((b) => b.disabled);
-  buttons.forEach((b) => { b.disabled = true; });
+  update_controls();
   $('test-cancel').hidden = false;
   $('test-summary').textContent = '';
   $('test-results').replaceChildren();
@@ -764,7 +936,7 @@ async function run_test() {
   } finally {
     testing = false;
     $('test-cancel').hidden = true;
-    buttons.forEach((b, i) => { b.disabled = before[i]; });
+    update_controls();
     const n = Object.values(counts).reduce((a, b) => a + b, 0);
     $('test-progress').textContent = (test_cancelled ? `Cancelled after ${n} levels` : `Done`) +
       ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
@@ -879,7 +1051,7 @@ async function start_tutorial() {
 
 const actions = {
   do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
-  lock_level_generation, unlock_level_generation, update_interface, load_game, download_game,
+  lock_level_generation, unlock_level_generation, lock_rules, unlock_rules, update_interface: show_edited_level, load_game, download_game,
   share_game, revert_to_original, forget_saved_work, run_test, cancel_test,
   take_snapshot: () => versions_tab.take_snapshot(),
   download_project: () => versions_tab.download_project(),
@@ -908,32 +1080,74 @@ window.addEventListener('storage', (e) => {
   if (!e.key || e.key.startsWith('logic-game:')) versions_tab.refresh();
 });
 
-// ---- Options in the URL ---------------------------------------------------------------
+// ---- Options --------------------------------------------------------------------------
+//
+// Set in the Control tab (and kept in this browser), or in the URL, e.g.
+// ?solutions=true&editor=true&internals=true&timeout=30 (then only for this visit).
 
 const params = new URLSearchParams(window.location.search);
+const OPTIONS_KEY = 'logic-game:options';
+const DEFAULT_OPTIONS = { mark_changes: true, solutions: false, editor: false, internals: false, timeout: solver.timeout_ms / 1000, all_output: false };
 
-// Only show the (explicit) level editor if specified in the URL
-if (params.get('editor') !== 'true') {
-  $('level-editor').style.display = 'none';
+function stored_options() {
+  try {
+    return JSON.parse(storage.getItem(OPTIONS_KEY)) || {};
+  } catch {
+    return {};
+  }
 }
-// Only show the internals tab if specified in the URL
-if (params.get('internals') !== 'true') {
-  $('tab6').style.display = 'none';
-  document.querySelector('label[for="tab6"]').style.display = 'none';
+
+const options = { ...DEFAULT_OPTIONS, ...stored_options() };
+for (const key of ['solutions', 'editor', 'internals']) {
+  if (params.has(key)) options[key] = params.get(key) === 'true';
 }
-// Only show solutions if called for in the URL
-if (params.get('solutions') !== 'true') {
-  document.querySelector('#example-games optgroup[label="Solutions"]').remove();
+if (Number(params.get('timeout')) > 0) options.timeout = Number(params.get('timeout'));
+
+function set_option(key, value) {
+  options[key] = value;
+  try {
+    storage.setItem(OPTIONS_KEY, JSON.stringify({ ...stored_options(), [key]: value }));
+  } catch {
+    // (only for this visit)
+  }
+  apply_options();
 }
+
+const solutions_group = document.querySelector('#example-games optgroup[label="Solutions"]');
+
+function apply_options() {
+  $('visual-container').classList.toggle('hide-changes', !options.mark_changes);
+  $('mark-changes').checked = options.mark_changes;
+  $('level-editor').style.display = options.editor ? '' : 'none';
+  $('tab6').style.display = options.internals ? '' : 'none';
+  document.querySelector('label[for="tab6"]').style.display = options.internals ? '' : 'none';
+  if (!options.internals && $('tab6').checked) select_tab(1);
+  if (options.solutions && !solutions_group.isConnected) example_games.append(solutions_group);
+  if (!options.solutions && solutions_group.isConnected) solutions_group.remove();
+  solver.timeout_ms = Math.max(1, Number(options.timeout) || DEFAULT_OPTIONS.timeout) * 1000;
+  $('show-all-output').checked = options.all_output;
+  for (const input of document.querySelectorAll('[data-option]')) {
+    if (input.type === 'checkbox') input.checked = Boolean(options[input.dataset.option]);
+    else if (document.activeElement !== input) input.value = String(options[input.dataset.option]);
+  }
+  update_debug_view();
+}
+
+for (const input of document.querySelectorAll('[data-option]')) {
+  input.addEventListener('change', () => {
+    const key = input.dataset.option;
+    if (input.type === 'checkbox') set_option(key, input.checked);
+    else if (Number(input.value) > 0) set_option(key, Number(input.value));
+  });
+}
+$('mark-changes').addEventListener('change', () => set_option('mark_changes', $('mark-changes').checked));
+apply_options();
+
 // Select a particular tab if specified in the URL
 const tab = params.get('tab');
-if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && params.get('internals') === 'true')) {
+if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && options.internals)) {
   $('tab' + tab).checked = true;
   reset_tab_color();
-}
-// Per-call time limit for clingo (in seconds), e.g. ?timeout=30
-if (Number(params.get('timeout')) > 0) {
-  solver.timeout_ms = Number(params.get('timeout')) * 1000;
 }
 
 // ---- Start ---------------------------------------------------------------------------

@@ -198,6 +198,7 @@ label[for="tab2"] {
 
   .timeline,
   .board-message,
+  .board-status,
   .work-notice {
     margin-left: 0;
     margin-right: 0;
@@ -238,7 +239,8 @@ input[type="file"] {
   margin: 10px auto;
   font: 12px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
   text-align:left;
-  max-height: 200px;
+  max-height: 60vh;
+  overflow: auto;
 }
 
 pre,
@@ -990,4 +992,125 @@ ul.tutorial-games .control-button {
 ul.tutorial-games span {
   color: #666;
   font-size: 0.9em;
+}
+
+/* What the board shows */
+.game-title {
+  margin: 0 0 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #555;
+}
+
+.game-title:empty {
+  display: none;
+}
+
+.board-status {
+  margin: 0 10% 10px;
+  padding: 5px 10px;
+  color: #555;
+  background: #f5f5f5;
+  border-left: 3px solid #ccc;
+}
+
+.board-status:empty {
+  display: none;
+}
+
+.board-status.attention {
+  color: #8a5300;
+  background: #fff4de;
+  border-left-color: #E69500;
+}
+
+.visual-container.hide-changes .grid-visual-cell.changed {
+  box-shadow: none;
+}
+
+.timeline .timeline-option {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 0.85em;
+  color: #777;
+}
+
+/* The lock of the game rules */
+.rules-lock {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 10px 0;
+  padding: 8px 10px;
+  background: #eef2f5;
+  border-left: 3px solid #7a8c99;
+}
+
+.rules-lock span {
+  flex: 1 1 300px;
+}
+
+.rules-lock.unlocked {
+  background: #fff4de;
+  border-left-color: #E69500;
+}
+
+.rules-lock .control-button:disabled {
+  display: none;
+}
+
+#section-game-rules h3::after {
+  content: ' \f023';
+  font-family: fontawesome;
+  font-size: 0.8em;
+  color: #aaa;
+}
+
+#section-game-rules.rules-unlocked h3::after {
+  content: ' \f3c1';
+  color: #E69500;
+}
+
+/* The Debug tab */
+.debug-steps.empty .debug-timeline,
+.debug-steps.empty .debug-step-label {
+  display: none;
+}
+
+.debug-step-label {
+  margin: 4px 0;
+  color: #555;
+}
+
+pre.debug-step,
+pre.debug-messages,
+#game-output {
+  margin: 6px 0 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.45 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  text-align: left;
+}
+
+pre.debug-messages {
+  background: #fff4de;
+}
+
+.debug-timeline {
+  margin: 0;
+  justify-content: flex-start;
+}
+
+/* Options */
+.options label.inline-check {
+  display: block;
+  text-align: left;
+}
+
+.options input[type="number"] {
+  width: 5em;
 }

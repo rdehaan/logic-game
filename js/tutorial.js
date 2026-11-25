@@ -143,7 +143,7 @@ function make_steps(app) {
       target: () => tab_label(5),
       text: `<p>The <b>Debug</b> tab shows, for every step, what went into your program
         (what the player observed) and which move came out.
-        Click on a step there to see the board at that moment; the <b>Step</b> button plays one step at a time.</p>
+        Move through the game with the slider there (or the one under the board); the <b>Step</b> button plays one step at a time.</p>
         <p>Mistakes are marked in the editors while you type (try leaving out a period),
         with an explanation under the editor. Hover over a word like <tt>observe</tt> for help.</p>`,
     },

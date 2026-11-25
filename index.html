@@ -24,6 +24,7 @@
       <button data-action="start_tutorial" class="control-button" id="tutorial-start">Start the tutorial</button>
       <button data-action="dismiss_tutorial" class="control-button">No, thanks</button>
     </p>
+    <p id="game-title" class="game-title"></p>
     <div class="visual-container" id="visual-container">
       <div id="visual"></div>
     </div>
@@ -32,7 +33,9 @@
       <input type="range" id="timeline" min="1" max="1" value="1" aria-label="Step to show">
       <button id="timeline-next" class="control-button" title="Next step">&#x25B6;</button>
       <span id="timeline-label"></span>
+      <label class="inline-check timeline-option"><input type="checkbox" id="mark-changes" checked> Mark the cells that changed since the time before</label>
     </div>
+    <p id="board-status" class="board-status" aria-live="polite"></p>
     <p id="board-message" class="board-message" hidden></p>
     <p id="work-notice" class="work-notice" hidden>
       <span id="work-notice-text"></span>
@@ -147,41 +150,43 @@
       <button data-action="load_game" class="control-button">Load</button>
       <p id="load-status"></p>
 
+
+      <h3>Options</h3>
+      <div class="options">
+        <label class="inline-check"><input type="checkbox" id="option-mark-changes" data-option="mark_changes"> Mark the cells on the board that changed in the last step</label>
+        <label class="inline-check"><input type="checkbox" id="option-solutions" data-option="solutions"> Show the example games with solutions</label>
+        <label class="inline-check"><input type="checkbox" id="option-editor" data-option="editor"> Show the level editor (in the Debug tab)</label>
+        <label class="inline-check"><input type="checkbox" id="option-internals" data-option="internals"> Show the Internals tab (how the game works inside)</label>
+        <label class="inline-check">Time limit for each call to clingo:
+          <input type="number" id="option-timeout" data-option="timeout" min="1" max="600" step="1"> seconds</label>
+      </div>
+      <p class="versions-help">These options are kept in this browser. They can also be set in a link, e.g.
+        <tt>?solutions=true&amp;editor=true&amp;internals=true&amp;timeout=30</tt>.</p>
     </section>
 
     <section id="section-instructions" data-include="docs/instructions.html"></section>
 
     <section id="section-game-rules">
+      <div id="rules-lock" class="rules-lock">
+        <span id="rules-lock-text"></span>
+        <button data-action="lock_rules" class="control-button" id="lock-button">&#x25CF; Lock</button>
+        <button data-action="unlock_rules" class="control-button" id="unlock-button">&#x25CB; Unlock to edit</button>
+      </div>
       <h3>Auxiliary <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
         This is an auxiliary program that is added to all programs.
       </p>
-      <div class="inline-controls" >
-        <button data-action="lock_level_generation" class="control-button" id="lock-button">&#x25CF; Lock</button>
-        &nbsp;
-        <button data-action="unlock_level_generation" class="control-button" id="unlock-button" disabled>&#x25CB; Unlock</button>
-      </div>
       <pre id="aux_program"></pre>
       <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
         This program expresses how levels are generated.
       </p>
-      <div class="inline-controls" >
-        <button data-action="lock_level_generation" class="control-button" id="lock-button2">&#x25CF; Lock</button>
-        &nbsp;
-        <button data-action="unlock_level_generation" class="control-button" id="unlock-button2" disabled>&#x25CB; Unlock</button>
-      </div>
       <pre id="level_gen_program"></pre>
 
       <h3>Visibility <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
       <p>
         This program expresses what the player can observe.
       </p>
-      <div class="inline-controls" >
-        <button data-action="lock_level_generation" class="control-button" id="lock-button3">&#x25CF; Lock</button>
-        &nbsp;
-        <button data-action="unlock_level_generation" class="control-button" id="unlock-button3" disabled>&#x25CB; Unlock</button>
-      </div>
       <pre id="visibility_program"></pre>
 
       <h3>Nature's moves <a href="javascript:void()" class="modal-link" data-open="modal-natures-moves">&#xf05a;</a></h3>
@@ -228,7 +233,7 @@
         <pre id="level_settings"></pre>
         <h3>Level state</h3>
         <pre id="level_state"></pre>
-        <button data-action="update_interface" class="control-button">Update interface</button>
+        <button data-action="update_interface" class="control-button">Show this level on the board</button>
         <p>&nbsp;</p>
       </div>
 
@@ -245,26 +250,24 @@
 
       <h3>Game output</h3>
       <p>
-        Below you will find, for each time step (most recent step at the top),
-        what facts were fed into the player program,
-        based on (i) the state of the game that is observable to the player,
-        and (ii) the player's memory.
-        It also shows what came out of the step:
-        the player's moves, the updates to the player's memory,
-        and the next state of the game computed by nature.
-        If a program had no answer sets or contained an error,
-        this is reported as well.
-        Click on a step to see the board as the player saw it in that step
-        (also with the slider under the board, while the game is paused or
-        after it ended); the <i>Step</i> button plays one step at a time.
+        For each step of the last game: what went into the player's program
+        (what the player observed, and the player's memory), and what came out
+        (the player's moves and the updates to the memory).
+        If a program had no answer set or contained an error, this is reported as well.
+        The step shown is the one of the board above: move through the game with the slider.
       </p>
-      <!-- <input type="checkbox" id="verbose" name="verbose" value="Verbose" checked>
-      <label for="verbose"> Verbose</label><br> -->
-      <pre id="game-output" class="code"></pre>
-      <!-- <h3>Clingo output</h3>
-      <pre id="clingo-output" class="code"></pre> -->
-      <!-- <h3>Reset</h3>
-      <button data-action="reset_debugging" class="control-button">Reset</button> -->
+      <pre id="debug-messages" class="code debug-messages" hidden></pre>
+      <div id="debug-steps" class="debug-steps">
+        <div class="timeline debug-timeline">
+          <button id="debug-prev" class="control-button" title="Previous step">&#x25C0;</button>
+          <input type="range" id="debug-timeline" min="1" max="1" value="1" aria-label="Step to show">
+          <button id="debug-next" class="control-button" title="Next step">&#x25B6;</button>
+        </div>
+        <p id="debug-step-label" class="debug-step-label"></p>
+        <pre id="debug-step" class="code debug-step"></pre>
+      </div>
+      <label class="inline-check"><input type="checkbox" id="show-all-output"> Show all steps at once (newest first)</label>
+      <pre id="game-output" class="code" hidden></pre>
     </section>
 
     <section id="section-versions">

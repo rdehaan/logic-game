@@ -294,13 +294,16 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         under the <i>Game rules</i> tab.
       </p>
       <p>
-        Note: in order to edit the <i>auxiliary</i>,
-        <i>level generation</i> and <i>visibility</i>
-        programs, you need to unlock these for editing.
-        This will remove the level that is currently in memory,
-        to ensure that the level in memory is based on the
-        <i>auxiliary</i>,
-        <i>level generation</i> and <i>visibility</i> programs.
+        Note: the programs of the game rules are <i>locked</i>, so that it is
+        always clear with which rules a game was played. To change them,
+        click <i>Unlock to edit</i> at the top of the <i>Game rules</i> tab;
+        lock them again to generate a level or to play
+        (<i>Lock rules and play</i> does both at once).
+        When the auxiliary or level generation program changed, locking
+        removes the level, because it was made with the old programs:
+        generate a new one.
+        The line under the board always says what the board shows (the
+        start of a level, or the last game) and what changed since.
       </p>
 
       <h3>Working on a project: versions and files</h3>
