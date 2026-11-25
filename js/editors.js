@@ -45,6 +45,10 @@ function make_editor(id) {
     autoScrollEditorIntoView: true,
     useWorker: false,
   });
+  // On narrow screens (phones), long lines are wrapped
+  const narrow = window.matchMedia('(max-width: 650px)');
+  editor.session.setUseWrapMode(narrow.matches);
+  narrow.addEventListener('change', () => editor.session.setUseWrapMode(narrow.matches));
   return editor;
 }
 

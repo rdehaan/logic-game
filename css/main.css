@@ -173,18 +173,34 @@ label[for="tab2"] {
 }
 
 @media screen and (max-width: 650px) {
-  label {
+  label[name="tabs"] {
     font-size: 0;
+    padding: 12px 14px;
   }
 
-  label:before {
+  label[name="tabs"]:before {
     margin: 0;
     font-size: 18px;
   }
-}
-@media screen and (max-width: 400px) {
-  label {
-    padding: 15px;
+
+  h1 {
+    padding: 20px 0;
+  }
+
+  main {
+    padding: 16px;
+  }
+
+  .timeline,
+  .board-message,
+  .work-notice {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .grid-visual {
+    min-width: 0;
+    width: 100% !important;
   }
 }
 
@@ -240,8 +256,33 @@ pre {
 
 .game-controls {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
+  gap: 8px 24px;
   padding-bottom: 2em;
+}
+
+.control-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.control-group:empty,
+.control-group:has(> .engine-status:empty + .problems-notice[hidden]) {
+  display: none;
+}
+
+label.speed-label {
+  padding: 0;
+  font-size: inherit;
+}
+
+label.speed-label:before {
+  content: none;
 }
 
 .inline-controls {

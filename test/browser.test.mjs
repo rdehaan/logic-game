@@ -11,8 +11,9 @@ import { createServer } from '../tools/serve.mjs';
 import { ROOT } from './helpers.mjs';
 
 let chromium = null;
+let devices = {};
 try {
-  ({ chromium } = await import('playwright'));
+  ({ chromium, devices } = await import('playwright'));
 } catch {
   // playwright is not installed
 }
@@ -513,4 +514,30 @@ test('the offline copy holds every file that the page loads', async (t) => {
   assert.deepEqual(missing, [], 'add these files to PRECACHE in sw.js');
   // and every file in the list exists
   for (const f of precache) if (f !== './') assert.ok(fs.existsSync(path.join(ROOT, f)), f);
+});
+
+test('the page fits on a phone', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const context = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  await page.goto(base);
+  await page.waitForSelector('body[data-ready=true]');
+  for (const tab of [1, 2, 3, 4, 5]) {
+    await page.click(`label[for=tab${tab}]`);
+    const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    assert.ok(scroll <= width, `tab ${tab}: the page is ${scroll} pixels wide on a ${width} pixel screen`);
+  }
+  // All tabs on one row
+  const tops = await page.evaluate(() => [...document.querySelectorAll('label[name=tabs]')]
+    .filter((l) => l.offsetParent).map((l) => Math.round(l.getBoundingClientRect().top)));
+  assert.ok(Math.max(...tops) - Math.min(...tops) <= 4, JSON.stringify(tops));
+  // Long lines in the editors are wrapped
+  assert.equal(await page.evaluate(() => window.logic_game.editors.get('player_move_program').session.getUseWrapMode()), true);
+  // and the board fits
+  const board = await page.locator('#visual').boundingBox();
+  assert.ok(board.x >= 0 && board.x + board.width <= 390, JSON.stringify(board));
 });

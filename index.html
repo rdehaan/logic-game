@@ -34,22 +34,19 @@
     </p>
 
     <div class="game-controls">
-      <div>
+      <div class="control-group">
         <button data-action="do_generate" class="control-button" id="generate-button" disabled>&#x239A; Generate level</button>
-        &nbsp;
         <button data-action="clear_level" class="control-button" id="clear-button" disabled>&#x2717; Clear level</button>
-        &nbsp;
         <button data-action="reset_level" class="control-button" id="reset-button" disabled>&#x21BA; Reset level</button>
-        &nbsp;&mdash;&nbsp;
+      </div>
+      <div class="control-group">
         <button data-action="do_play" class="control-button" id="play-button" disabled>&#x23F5; Play</button>
-        &nbsp;
         <button data-action="do_pause" class="control-button" id="pause-button" disabled>&#x23F8; Pause</button>
-        &nbsp;
         <button data-action="do_step" class="control-button" id="step-button" title="Play one step, then pause" disabled>&#x23ED; Step</button>
-        &nbsp;
         <button data-action="do_stop" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
-        &nbsp;&mdash;&nbsp;
-        Speed:&nbsp;
+      </div>
+      <div class="control-group">
+        <label for="speed-selector" class="speed-label">Speed:</label>
         <select id="speed-selector">
           <option value="1000">Slow</option>
           <option value="500">Medium</option>
@@ -58,6 +55,8 @@
           <option value="0">As fast as possible</option>
           <option value="-1">Instant (show only the end)</option>
         </select>
+      </div>
+      <div class="control-group">
         <span id="engine-status" class="engine-status"></span>
         <button id="problems-notice" class="problems-notice" title="Show the list in the Debug tab" hidden></button>
       </div>
