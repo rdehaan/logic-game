@@ -5,7 +5,9 @@ import { GAME_FIELDS, GameSession, generate_level, normalize_game, test_strategy
 import { Editors, make_example_editors } from './editors.js';
 import { show_grid, clear_grid, display_win, display_lose } from './grid-visual.js';
 import { board_problems } from './hints.js';
-import { WorkStore, encode_game, decode_game, game_id } from './storage.js';
+import { WorkStore, encode_game, decode_game, game_id, same_game } from './storage.js';
+import { VersionStore, read_file, file_stem } from './versions.js';
+import { VersionsTab } from './versions-tab.js';
 import './modal.js';
 
 const solver = create_solver(clingo);
@@ -406,6 +408,7 @@ try {
   // no storage (e.g. blocked by the browser): work is not saved
 }
 const work = new WorkStore(storage);
+const versions = new VersionStore(storage);
 const SAVE_DELAY_MS = 500;
 
 // Where the game being edited was loaded from: { origin, title, original }.
@@ -417,11 +420,11 @@ function save_work_now() {
   clearTimeout(save_timer);
   save_timer = null;
   if (current) {
-    work.save(current.origin, editors.game(), current.original);
-    update_saved_work_status();
+    work.save(current.origin, editors.game(), current.original, current.title);
     const saved = work.load(current.origin);
     show_work_notice(saved ? `You are working on your own version of ${current.title}` +
       ` (saved ${new Date(saved.saved_at).toLocaleString()}), saved in this browser.` : null);
+    versions_tab.after_save();
   }
 }
 
@@ -453,7 +456,7 @@ async function open_game(game, origin, title) {
   } finally {
     loading_game = false;
   }
-  update_saved_work_status();
+  versions_tab.opened();
 }
 
 function show_work_notice(text) {
@@ -467,25 +470,97 @@ async function revert_to_original() {
   await stop_game_if_playing();
   clearTimeout(save_timer);
   save_timer = null;
+  versions_tab.auto_snapshot('revert');
   work.forget(current.origin);
   await open_game(current.original, current.origin, current.title);
 }
 
-function update_saved_work_status() {
-  const n = work.origins().length;
-  $('saved-work-status').textContent = !storage ? 'This browser does not allow saving work.'
-    : n === 0 ? 'There is no saved work.' : `There is saved work for ${n} game${n > 1 ? 's' : ''}.`;
-  $('forget-button').disabled = n === 0;
-}
-
 async function forget_saved_work() {
-  if (!window.confirm('Forget all your saved work in this browser? (The games stay as they are on the page until you load them again.)')) return;
+  if (!window.confirm('Forget all your saved work in this browser, with all snapshots? (Download a backup first to keep it. The game stays as it is on the page until you load it again.)')) return;
   clearTimeout(save_timer);
   save_timer = null;
   work.forget_all();
+  versions.forget_all();
   show_work_notice(null);
-  update_saved_work_status();
+  versions_tab.refresh();
 }
+
+// Put (some fields of) a game into the editors, as if the player typed it, and save it.
+async function replace_game(game, fields = GAME_FIELDS) {
+  await stop_game_if_playing();
+  if (fields.length === GAME_FIELDS.length) {
+    await set_game(game);
+    lock_level_generation();
+  } else {
+    for (const field of fields) editors.set_value(field, game[field]);
+    if (fields.some((f) => f === 'level_state' || f === 'level_settings')) {
+      level_seed = null;
+      await update_interface();
+    }
+  }
+  save_work_now();
+}
+
+// A title for a game that was saved without one (by an older version of the page).
+function title_of(origin) {
+  const m = /^example:(.*)$/.exec(origin);
+  if (m) {
+    const option = [...example_games.options].find((o) => o.value === `examples/${m[1]}.json`);
+    return option ? option.textContent : m[1];
+  }
+  if (origin.startsWith('file:')) return origin.slice(5);
+  if (origin.startsWith('shared:')) return 'a shared game';
+  return origin;
+}
+
+// Open a game from the list of saved work (p: what versions_tab knows about it).
+function can_open(origin, p) {
+  return origin.startsWith('example:') || Boolean(p.original);
+}
+
+async function open_saved(origin, p) {
+  await stop_game_if_playing();
+  forget_link();
+  if (origin.startsWith('example:')) await load_game_from_path(`examples/${origin.slice(8)}.json`, p.title);
+  else await open_game(p.original, origin, p.title);
+  lock_level_generation();
+}
+
+// Put a project (from a file) into this browser: its snapshots are added, and its
+// current version becomes the saved work (the work that was there is kept as a snapshot).
+function import_project(p) {
+  if (save_timer) save_work_now();
+  const about = { title: p.title, original: p.original };
+  const existing = work.load(p.origin);
+  if (existing && !same_game(existing.game, p.game)) {
+    versions.add(p.origin, existing.game, { auto: true, reason: 'load' }, about);
+  }
+  if (versions.merge(p.origin, p.snapshots, about) == null && p.snapshots.length) {
+    throw new Error('the snapshots could not be saved in this browser (its storage is full, or blocked)');
+  }
+  if (p.original) work.save(p.origin, p.game, p.original, p.title);
+  else work.save(p.origin, p.game, null, p.title);
+}
+
+const versions_tab = new VersionsTab({
+  versions, work, storage,
+  app: {
+    current: () => current,
+    game: () => editors.game(),
+    replace: replace_game,
+    title_of,
+    can_open,
+    open: open_saved,
+    download: save,
+    forgot: (origin) => {
+      if (current && current.origin === origin) {
+        clearTimeout(save_timer);
+        save_timer = null;
+        show_work_notice(null);
+      }
+    },
+  },
+});
 
 async function load_game_from_path(path, title) {
   const response = await fetch(path);
@@ -549,11 +624,30 @@ async function load_game_from_file(event) {
   if (!file) return;
   await stop_game_if_playing();
   try {
-    const game = JSON.parse(await file.text());
-    forget_link();
-    await open_game(game, 'file:' + file.name, file.name);
-    lock_level_generation();
-    upload_status.innerText = 'Done loading..';
+    const content = read_file(await file.text(), file.name);
+    if (content.kind === 'backup') {
+      const n = content.projects.length;
+      if (!window.confirm(`This backup holds ${n} game${n > 1 ? 's' : ''}. Load ${n > 1 ? 'them' : 'it'} into this browser? (Your work on these games in this browser is kept as snapshots.)`)) {
+        upload_status.innerText = '';
+        event.target.value = '';
+        return;
+      }
+      for (const p of content.projects) import_project(p);
+      if (current) await open_game(current.original, current.origin, current.title);
+      upload_status.innerText = `Done loading: ${n} game${n > 1 ? 's' : ''}. Open them from the list "Everything in this browser" below.`;
+    } else {
+      forget_link();
+      if (content.kind === 'project') {
+        const p = content.project;
+        import_project(p);
+        await open_game(p.original || p.game, p.origin, p.title);
+        upload_status.innerText = `Done loading the project ${p.title} (${p.snapshots.length} snapshot${p.snapshots.length === 1 ? '' : 's'}).`;
+      } else {
+        await open_game(content.game, 'file:' + file.name, file.name);
+        upload_status.innerText = 'Done loading..';
+      }
+      lock_level_generation();
+    }
   } catch (e) {
     upload_status.innerText = 'Loading failed: ' + e.message;
   }
@@ -561,9 +655,7 @@ async function load_game_from_file(event) {
 }
 
 function download_game() {
-  const game = {};
-  for (const key of GAME_FIELDS) game[key] = editors.value(key);
-  save('game.json', JSON.stringify(game, null, 2));
+  save(file_stem(current ? current.title : 'game') + '.json', JSON.stringify(editors.game(), null, 2));
 }
 
 function save(filename, data) {
@@ -588,6 +680,12 @@ function change_tabs() {
   editors.resize();
   upload_status.innerText = '';
   load_status.innerText = '';
+  versions_tab.shown();
+}
+
+function select_tab(n) {
+  $('tab' + n).checked = true;
+  change_tabs();
 }
 
 // ---- Testing a strategy on many levels ------------------------------------------------
@@ -663,7 +761,21 @@ async function run_test() {
     const n = Object.values(counts).reduce((a, b) => a + b, 0);
     $('test-progress').textContent = (test_cancelled ? `Cancelled after ${n} levels` : `Done`) +
       ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
+    // The result is kept with this version of the programs (see the Versions tab)
+    if (!test_cancelled && n > 0) {
+      const s = versions_tab.record_test(game, n, counts);
+      if (s) $('test-summary').append(' ', test_kept_note(s));
+    }
   }
+}
+
+function test_kept_note(s) {
+  const a = document.createElement('a');
+  a.href = '?tab=7';
+  a.dataset.tab = '7';
+  a.className = 'tab-link';
+  a.textContent = s.name ? `(Kept with the snapshot "${s.name}" in the Versions tab.)` : '(Kept with this version in the Versions tab.)';
+  return a;
 }
 
 function test_summary(counts) {
@@ -704,6 +816,9 @@ const actions = {
   do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
   lock_level_generation, unlock_level_generation, update_interface, load_game, download_game,
   share_game, revert_to_original, forget_saved_work, run_test, cancel_test,
+  take_snapshot: () => versions_tab.take_snapshot(),
+  download_project: () => versions_tab.download_project(),
+  download_backup: () => versions_tab.download_backup(),
 };
 document.querySelectorAll('[data-action]').forEach((elem) => {
   const action = actions[elem.dataset.action];
@@ -713,6 +828,18 @@ document.querySelectorAll('[data-action]').forEach((elem) => {
 speed_selector.addEventListener('change', select_speed);
 $('file-input').addEventListener('change', load_game_from_file);
 document.querySelectorAll('input[name="tabs"]').forEach((tab) => tab.addEventListener('change', change_tabs));
+// Links to a tab (they also work as plain links, e.g. opened in a new window)
+document.addEventListener('click', (e) => {
+  const link = e.target.closest && e.target.closest('a.tab-link[data-tab]');
+  if (!link || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  e.preventDefault();
+  select_tab(link.dataset.tab);
+  window.scrollTo({ top: $('tab1').getBoundingClientRect().top + window.scrollY - 10 });
+});
+// Work saved in another window (of the same browser)
+window.addEventListener('storage', (e) => {
+  if (!e.key || e.key.startsWith('logic-game:')) versions_tab.refresh();
+});
 
 // ---- Options in the URL ---------------------------------------------------------------
 
@@ -733,7 +860,7 @@ if (params.get('solutions') !== 'true') {
 }
 // Select a particular tab if specified in the URL
 const tab = params.get('tab');
-if (['1', '2', '3', '4', '5'].includes(tab) || (tab === '6' && params.get('internals') === 'true')) {
+if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && params.get('internals') === 'true')) {
   $('tab' + tab).checked = true;
   reset_tab_color();
 }
@@ -793,4 +920,4 @@ window.addEventListener('hashchange', async () => {
 });
 
 // (for debugging in the browser console)
-window.logic_game = { solver, editors, clingo, work };
+window.logic_game = { solver, editors, clingo, work, versions, versions_tab };

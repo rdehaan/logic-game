@@ -78,15 +78,18 @@
     <input id="tab5" type="radio" name="tabs">
     <label for="tab5" name="tabs">Debug</label>
 
+    <input id="tab7" type="radio" name="tabs">
+    <label for="tab7" name="tabs">Versions</label>
+
     <input id="tab6" type="radio" name="tabs">
     <label for="tab6" name="tabs">Internals</label>
 
     <section id="section-control">
       <p>
-        Here you can load files, from one of the examples listed
-        or from a file on your device.
-        You can also download the current game to a file
-        on your device.
+        Here you can load one of the example games.
+        To load a game or a project from a file on your device,
+        to download your work, or to keep and compare versions of it,
+        go to the <a href="?tab=7" class="tab-link" data-tab="7">Versions</a> tab.
       </p>
 
       <p>
@@ -130,38 +133,6 @@
       &nbsp;
       <button data-action="load_game" class="control-button">Load</button>
       <p id="load-status"></p>
-
-      <h3>Upload game from file</h3>
-      <form id="upload-form" enctype="multipart/form-data">
-        <label for="file-input" class="control-button">Select file</label>
-        <input type="file" id="file-input" required>
-      </form>
-      <p id="upload-status"></p>
-
-      <h3>Download current game</h3>
-      <button data-action="download_game" class="control-button">Download</button>
-
-      <h3>Share current game</h3>
-      <p>
-        This creates a link that contains the whole game (all programs,
-        including your strategy). Whoever opens the link gets their own copy
-        of the game. The game is not uploaded anywhere: it is stored in the
-        link itself.
-      </p>
-      <button data-action="share_game" class="control-button">Create link</button>
-      <p id="share-box" hidden>
-        <input type="text" id="share-link" class="share-link" readonly>
-        <span id="share-status"></span>
-      </p>
-
-      <h3>Saved work</h3>
-      <p>
-        Your changes are saved in this browser automatically, for each game
-        separately. When you load a game again (or reload the page), your
-        changes come back.
-      </p>
-      <p id="saved-work-status"></p>
-      <button data-action="forget_saved_work" class="control-button" id="forget-button">Forget all saved work</button>
 
     </section>
 
@@ -281,6 +252,89 @@
       <pre id="clingo-output" class="code"></pre> -->
       <!-- <h3>Reset</h3>
       <button data-action="reset_debugging" class="control-button">Reset</button> -->
+    </section>
+
+    <section id="section-versions">
+      <p>
+        Your work is saved in this browser automatically, for each game separately.
+        Here you can also keep <i>snapshots</i>: versions of your work that you can
+        compare and go back to. And you can keep your whole project in a file,
+        for example in your Google Drive or OneDrive folder or on a USB stick,
+        to go on working on another computer.
+      </p>
+
+      <h3>Snapshots of <span id="versions-title">this game</span></h3>
+      <div class="snapshot-form">
+        <input type="text" id="snapshot-name" maxlength="100" placeholder="Name, e.g. &quot;walks around walls&quot;" aria-label="Name of the snapshot">
+        <textarea id="snapshot-note" rows="2" maxlength="2000" placeholder="Note (optional): what changed, what works, what does not yet" aria-label="Note for the snapshot"></textarea>
+        <div>
+          <button data-action="take_snapshot" class="control-button" id="snapshot-button">Keep a snapshot of the current version</button>
+          <span id="snapshot-status" class="versions-status"></span>
+        </div>
+      </div>
+      <p class="versions-help">
+        The page also keeps snapshots by itself: before you restore an older version,
+        every 10 minutes while you edit, and when you test your strategy (with the result).
+        Only the newest 20 of these are kept; give one a name or a note to keep it.
+      </p>
+      <label class="inline-check"><input type="checkbox" id="show-auto" checked> Show the automatic snapshots</label>
+      <ol id="snapshot-list" class="snapshot-list" reversed></ol>
+
+      <h3 id="compare-heading">Compare versions</h3>
+      <div class="compare-controls">
+        <label for="diff-from">From</label> <select id="diff-from"></select>
+        <label for="diff-to">to</label> <select id="diff-to"></select>
+        <label class="inline-check"><input type="checkbox" id="diff-level"> with the level</label>
+      </div>
+      <div id="diff-output" class="diff-output"></div>
+
+      <h3>Keep your work in a file</h3>
+      <p>
+        The <i>project file</i> holds your current version, all snapshots (with
+        their notes and test results) and the original game. Save it wherever you
+        keep your files; load it below on any computer to go on where you left off.
+        Work saved in a browser can get lost (for example when the browser's
+        data is cleared), so download your project now and then.
+      </p>
+      <p id="download-reminder" class="versions-status"></p>
+      <button data-action="download_project" class="control-button">Download project file</button>
+      <button data-action="download_game" class="control-button" title="Only the programs and the level, like the example games: to hand in, or to give to someone">Download game only</button>
+
+      <h3>Load a file</h3>
+      <p>
+        A project file, a game file (like the examples), or a backup of everything.
+        Your current work on that game is kept as a snapshot first.
+      </p>
+      <form id="upload-form" enctype="multipart/form-data">
+        <label for="file-input" class="control-button">Select file</label>
+        <input type="file" id="file-input" accept=".json,application/json" required>
+      </form>
+      <p id="upload-status"></p>
+
+      <h3>Share current game</h3>
+      <p>
+        This creates a link that contains the whole game (all programs,
+        including your strategy, but not your snapshots). Whoever opens the link
+        gets their own copy of the game. The game is not uploaded anywhere: it is
+        stored in the link itself.
+      </p>
+      <button data-action="share_game" class="control-button">Create link</button>
+      <p id="share-box" hidden>
+        <input type="text" id="share-link" class="share-link" readonly>
+        <span id="share-status"></span>
+      </p>
+
+      <h3>Everything in this browser</h3>
+      <p id="saved-work-status"></p>
+      <div class="table-wrapper">
+        <table id="saved-games" class="saved-games" hidden>
+          <thead><tr><th>Game</th><th>Last saved</th><th>Snapshots</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="storage-used" class="versions-help"></p>
+      <button data-action="download_backup" class="control-button" id="backup-button">Download a backup of everything</button>
+      <button data-action="forget_saved_work" class="control-button" id="forget-button">Forget all saved work</button>
     </section>
 
     <section id="section-internals" data-include="docs/internals.html"></section>

@@ -315,7 +315,7 @@ test('share links', async (t) => {
   const page = await open(t, '?tab=4');
   if (!page) return;
   await set_program(page, 'player_move_program', '% shared strategy\ndo(move(down)).');
-  await page.click('label[for=tab1]');
+  await page.click('label[for=tab7]');
   await page.click('button[data-action=share_game]');
   await page.waitForSelector('#share-box:not([hidden])');
   const link = await page.inputValue('#share-link');
@@ -348,7 +348,7 @@ test('forgetting all saved work', async (t) => {
   page.on('dialog', (dialog) => dialog.accept());
   await set_program(page, 'player_move_program', 'do(move(up)).');
   await page.waitForFunction(() => window.logic_game.work.origins().length === 1);
-  await page.click('label[for=tab1]');
+  await page.click('label[for=tab7]');
   assert.equal(await page.textContent('#saved-work-status'), 'There is saved work for 1 game.');
   await page.click('#forget-button');
   assert.equal(await page.textContent('#saved-work-status'), 'There is no saved work.');
@@ -434,7 +434,7 @@ test('testing a strategy on many levels, and playing a level of the test again',
   await page.click('#test-button');
   await page.waitForFunction(() => /^Done/.test(document.getElementById('test-progress').textContent), null, { timeout: 120000 });
   const summary = await page.textContent('#test-summary');
-  assert.match(summary, /^6 levels: (\d+ won, )?\d+ lost\.$/);
+  assert.match(summary, /^6 levels: (\d+ won, )?\d+ lost\. \(Kept with this version in the Versions tab\.\)$/);
   const items = page.locator('#test-results li');
   assert.ok(await items.count() > 0);
   const first = await items.first().textContent();
@@ -450,7 +450,7 @@ test('testing a strategy on many levels, and playing a level of the test again',
   assert.equal(await page.locator('#game-output .output-step').count(), Number(steps));
   // A link to the level gives the same level
   const level_state = await page.evaluate(() => window.logic_game.editors.value('level_state'));
-  await page.click('label[for=tab1]');
+  await page.click('label[for=tab7]');
   await page.click('button[data-action=share_game]');
   await page.waitForFunction(() => document.getElementById('share-link').value !== '');
   const link = await page.inputValue('#share-link');
@@ -506,7 +506,7 @@ test('the offline copy holds every file that the page loads', async (t) => {
   await page.selectOption('#speed-selector', '0');
   await page.click('#play-button');
   await wait_for_verdict(page);
-  for (const tab of [2, 3, 4, 5, 6]) await page.click(`label[for=tab${tab}]`);
+  for (const tab of [2, 3, 4, 5, 6, 7]) await page.click(`label[for=tab${tab}]`);
   await page.waitForTimeout(300);
   const source = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
   const precache = new Set(eval(/const PRECACHE = (\[[\s\S]*?\n\]);/.exec(source)[1]));
@@ -526,7 +526,7 @@ test('the page fits on a phone', async (t) => {
   const page = await context.newPage();
   await page.goto(base);
   await page.waitForSelector('body[data-ready=true]');
-  for (const tab of [1, 2, 3, 4, 5]) {
+  for (const tab of [1, 2, 3, 4, 5, 7]) {
     await page.click(`label[for=tab${tab}]`);
     const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     assert.ok(scroll <= width, `tab ${tab}: the page is ${scroll} pixels wide on a ${width} pixel screen`);
@@ -601,4 +601,157 @@ test('help about special predicates in the editors', async (t) => {
   await page.keyboard.type('X');
   await page.waitForTimeout(400);
   assert.equal(await page.locator('.ace_autocomplete').isVisible(), false);
+});
+
+// ---- The Versions tab ----------------------------------------------------------------
+
+const value = (page, key) => page.evaluate((k) => window.logic_game.editors.value(k), key);
+const snapshot_names = (page) => page.locator('#snapshot-list li[data-id] .snapshot-name').allTextContents();
+
+async function wait_saved(page, text) {
+  await page.waitForFunction((t) => {
+    const w = window.logic_game.work.origins().map((o) => window.logic_game.work.load(o));
+    return w.some((x) => x.game.player_move_program === t);
+  }, text);
+}
+
+test('snapshots: keep, compare, take one program, restore', async (t) => {
+  const page = await open(t, '?file=flag3&tab=7');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await set_program(page, 'player_move_program', 'do(move(down)).');
+  await set_program(page, 'goal_program', 'win :- at(R,C,player), at(R,C,flag).');
+  await wait_saved(page, 'do(move(down)).');
+  await page.fill('#snapshot-name', 'goes down');
+  await page.fill('#snapshot-note', 'only down');
+  await page.click('#snapshot-button');
+  assert.deepEqual(await snapshot_names(page), ['goes down']);
+  assert.equal(await page.textContent('#snapshot-list li[data-id] .snapshot-note'), 'only down');
+  // A name is not HTML
+  await set_program(page, 'player_move_program', 'do(move(up)).\n% now up');
+  await set_program(page, 'goal_program', 'win :- at(R,C,player).');
+  await wait_saved(page, 'do(move(up)).\n% now up');
+  await page.fill('#snapshot-name', '<img src=x onerror=alert(1)>');
+  await page.click('#snapshot-button');
+  assert.deepEqual(await snapshot_names(page), ['<img src=x onerror=alert(1)>', 'goes down']);
+  // Change it again, and compare with "goes down"
+  await set_program(page, 'player_move_program', 'do(move(left)).');
+  await wait_saved(page, 'do(move(left)).');
+  await page.locator('#snapshot-list li[data-id]').nth(1).getByText('Compare with current').click();
+  const strategy = page.locator('.diff-program[data-field=player_move_program]');
+  assert.deepEqual(await strategy.locator('.diff-del').allTextContents(), ['1− do(move(down)).']);
+  assert.deepEqual(await strategy.locator('.diff-add').allTextContents(), ['1+ do(move(left)).']);
+  assert.match(await page.textContent('.diff-unchanged'), /No changes: Auxiliary program, .*Nature's moves\./);
+  // Take only the winning conditions of "goes down"
+  await page.locator('.diff-program[data-field=goal_program]').getByText('Use the Winning conditions of "goes down"').click();
+  assert.equal(await value(page, 'goal_program'), 'win :- at(R,C,player), at(R,C,flag).');
+  assert.equal(await value(page, 'player_move_program'), 'do(move(left)).');
+  // (the version before was kept)
+  assert.match((await snapshot_names(page))[0], /^Automatic snapshot before taking a program/);
+  // Restore all of "goes down"
+  await page.locator('#snapshot-list li[data-id]', { hasText: 'only down' }).getByText('Restore').click();
+  await page.waitForFunction(() => window.logic_game.editors.value('player_move_program') === 'do(move(down)).');
+  await page.waitForSelector('#snapshot-list li.current:has-text("The same as the snapshot \\"goes down\\"")');
+  // Automatic snapshots can be hidden, and named to keep them
+  await page.uncheck('#show-auto');
+  assert.deepEqual(await snapshot_names(page), ['<img src=x onerror=alert(1)>', 'goes down']);
+  await page.check('#show-auto');
+  const auto = page.locator('#snapshot-list li.auto').first();
+  await auto.getByText('Name and keep').click();
+  await auto.locator('input[type=text]').fill('left');
+  await auto.getByText('Save').click();
+  assert.equal(await page.locator('#snapshot-list li.auto').count(), 1);
+  // After a reload, everything is still there
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal((await snapshot_names(page)).length, 4);
+  assert.deepEqual(page.errors, []);
+});
+
+test('test results are kept with the version, and going back to the original keeps a snapshot', async (t) => {
+  const page = await open(t, '?file=flag1-with-solutions&tab=4');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.fill('#test-levels', '3');
+  await page.click('#test-button');
+  await page.waitForFunction(() => /Done/.test(document.getElementById('test-progress').textContent), null, { timeout: 60000 });
+  assert.match(await page.textContent('#test-summary'), /3 levels: 3 won\. \(Kept with this version in the Versions tab\.\)/);
+  await page.click('#test-summary a.tab-link');
+  assert.equal(await page.isChecked('#tab7'), true);
+  assert.equal(await page.textContent('#snapshot-list .snapshot-badge.tested'), 'Test: 3 of 3 won');
+  // Back to the original: the changed version is kept
+  await set_program(page, 'player_move_program', 'do(wait).');
+  await wait_saved(page, 'do(wait).');
+  await page.click('button[data-action=revert_to_original]');
+  await page.waitForSelector('#work-notice', { state: 'hidden' });
+  const list = await page.evaluate(() => window.logic_game.versions.list('example:flag1-with-solutions'));
+  assert.deepEqual(list.map((s) => [s.reason, s.game.player_move_program === 'do(wait).']), [['tested', false], ['revert', true]]);
+});
+
+test('project files: download, and continue in another browser', async (t) => {
+  const page = await open(t, '?file=flag2&tab=7');
+  if (!page) return;
+  await set_program(page, 'player_move_program', '% my work\ndo(move(down)).');
+  await wait_saved(page, '% my work\ndo(move(down)).');
+  await page.fill('#snapshot-name', 'first');
+  await page.click('#snapshot-button');
+  await set_program(page, 'player_move_program', '% my work\ndo(move(up)).');
+  await wait_saved(page, '% my work\ndo(move(up)).');
+  assert.match(await page.textContent('#download-reminder'), /not downloaded the project file of Find the flag 2 yet/);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('button[data-action=download_project]')]);
+  assert.match(download.suggestedFilename(), /^find-the-flag-2-project-\d{4}-\d\d-\d\d\.json$/);
+  const file = fs.readFileSync(await download.path());
+  assert.match(await page.textContent('#download-reminder'), /nothing has changed since then/);
+  // Another browser, with work of its own on the same game
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const other = await context.newPage();
+  other.on('dialog', (dialog) => dialog.accept());
+  await other.goto(base + '?file=flag2&tab=7');
+  await other.waitForSelector('body[data-ready=true]');
+  await set_program(other, 'player_move_program', 'other work.');
+  await wait_saved(other, 'other work.');
+  await other.setInputFiles('#file-input', { name: 'p.json', mimeType: 'application/json', buffer: file });
+  await other.waitForFunction(() => /Done loading the project Find the flag 2 \(1 snapshot\)/.test(document.getElementById('upload-status').textContent));
+  assert.equal(await value(other, 'player_move_program'), '% my work\ndo(move(up)).');
+  assert.deepEqual((await snapshot_names(other)).sort(), ['Automatic snapshot before loading a file', 'first']);
+  assert.match(await other.textContent('#work-notice'), /your own version of Find the flag 2/);
+  // A plain game file still loads as before; a file that is not a game is refused
+  await other.setInputFiles('#file-input', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('{"a": 1}') });
+  await other.waitForFunction(() => /Loading failed: this is not a game or project file/.test(document.getElementById('upload-status').textContent));
+});
+
+test('everything in this browser: the list, a backup, and opening a game from the list', async (t) => {
+  const page = await open(t, '?file=flag1&tab=7');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await set_program(page, 'player_move_program', 'one.');
+  await wait_saved(page, 'one.');
+  const game = { aux_program: '% uploaded', level_gen_program: 'setting(grid_width(2)). setting(grid_height(1)). at(1,1,player).' };
+  await page.setInputFiles('#file-input', { name: 'mine.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(game)) });
+  await page.waitForFunction(() => /Done loading/.test(document.getElementById('upload-status').textContent));
+  await set_program(page, 'player_move_program', 'two.');
+  await wait_saved(page, 'two.');
+  const rows = page.locator('#saved-games tbody tr');
+  assert.equal(await rows.count(), 2);
+  assert.match(await rows.nth(1).textContent(), /mine\.json \(open now\)/);
+  // Open the other game from the list
+  await rows.nth(0).getByText('Open').click();
+  await page.waitForFunction(() => window.logic_game.editors.value('player_move_program') === 'one.');
+  // A backup, loaded into another browser
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('#backup-button')]);
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const other = await context.newPage();
+  other.on('dialog', (dialog) => dialog.accept());
+  await other.goto(base + '?tab=7');
+  await other.waitForSelector('body[data-ready=true]');
+  await other.setInputFiles('#file-input', { name: 'backup.json', mimeType: 'application/json', buffer: fs.readFileSync(await download.path()) });
+  await other.waitForFunction(() => /Done loading: 2 games/.test(document.getElementById('upload-status').textContent));
+  await other.locator('#saved-games tbody tr', { hasText: 'mine.json' }).getByText('Open').click();
+  await other.waitForFunction(() => window.logic_game.editors.value('player_move_program') === 'two.');
+  assert.equal(await value(other, 'aux_program'), '% uploaded');
+  // Forget one game
+  await other.locator('#saved-games tbody tr', { hasText: 'Find the flag 1' }).getByText('Forget').click();
+  assert.equal(await other.locator('#saved-games tbody tr').count(), 1);
 });

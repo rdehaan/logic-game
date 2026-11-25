@@ -147,6 +147,10 @@ label[for*='6']:before {
   content: '\f0e8';
 }
 
+label[for='tab7']:before {
+  content: '\f126';
+}
+
 label:hover {
   color: #888;
   cursor: pointer;
@@ -168,7 +172,8 @@ label[for="tab2"] {
 #tab3:checked ~ #section-game-rules,
 #tab4:checked ~ #section-player-strategy,
 #tab5:checked ~ #section-debug,
-#tab6:checked ~ #section-internals {
+#tab6:checked ~ #section-internals,
+#tab7:checked ~ #section-versions {
   display: block;
 }
 
@@ -570,4 +575,249 @@ ul.test-results li {
   line-height: 1.4;
   border-radius: 3px;
   pointer-events: none;
+}
+
+/* The Versions tab */
+.snapshot-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 640px;
+}
+
+.snapshot-form input[type="text"],
+.snapshot-form textarea,
+.snapshot-item textarea,
+.snapshot-item input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px;
+  font: inherit;
+  font-size: 0.95em;
+}
+
+.versions-status {
+  margin-left: 8px;
+  color: #2c5d87;
+}
+
+.versions-status.error {
+  color: #E10600;
+}
+
+p.versions-status {
+  margin-left: 0;
+}
+
+.versions-help {
+  font-size: 0.9em;
+  color: #777;
+}
+
+label.inline-check {
+  padding: 5px 0;
+  font-size: 0.95em;
+}
+
+.snapshot-list {
+  padding: 0;
+  list-style: none;
+}
+
+.snapshot-item {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-left: 3px solid #4a90c8;
+  background: #fff;
+}
+
+.snapshot-item.auto {
+  border-left-color: #ccc;
+  background: #fafafa;
+}
+
+.snapshot-item.current {
+  border-left-color: orange;
+}
+
+.snapshot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.snapshot-name {
+  font-weight: 600;
+}
+
+.snapshot-item.auto .snapshot-name {
+  font-weight: normal;
+  font-style: italic;
+  color: #666;
+}
+
+.snapshot-meta {
+  font-size: 0.85em;
+  color: #888;
+}
+
+div.snapshot-meta {
+  margin-top: 3px;
+}
+
+.snapshot-badge {
+  font-size: 0.8em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #eaf3fb;
+  color: #2c5d87;
+  white-space: nowrap;
+}
+
+.snapshot-badge.tested {
+  background: #e8f5e9;
+  color: #2e6b31;
+}
+
+.snapshot-note {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  color: #444;
+}
+
+.snapshot-buttons {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.snapshot-buttons .control-button,
+.diff-program .control-button,
+.saved-games .control-button {
+  padding: 3px 8px;
+  font-size: 0.85em;
+}
+
+.compare-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.compare-controls label {
+  padding: 0;
+}
+
+.compare-controls select {
+  max-width: 100%;
+}
+
+.diff-program {
+  margin: 12px 0;
+}
+
+.diff-program h4 {
+  margin: 0 0 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.diff-counts {
+  font-weight: normal;
+  font-size: 0.85em;
+}
+
+.diff-counts .plus { color: #2e6b31; }
+.diff-counts .minus { color: #b00500; }
+
+pre.diff {
+  margin: 0;
+  padding: 4px 0;
+  border: 1px solid #ddd;
+  background: #fff;
+  font: 12px/1.45 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+pre.diff > span {
+  display: block;
+  padding: 0 6px 0 7.5em;
+  text-indent: -7.5em;
+}
+
+pre.diff .line-no {
+  display: inline-block;
+  width: 3em;
+  text-indent: 0;
+  color: #aaa;
+  text-align: right;
+  user-select: none;
+}
+
+pre.diff .line-no + .line-no {
+  margin-right: 0.8em;
+}
+
+pre.diff .diff-add {
+  background: #e6ffec;
+}
+
+pre.diff .diff-del {
+  background: #ffebe9;
+}
+
+pre.diff .diff-skip {
+  color: #888;
+  background: #f3f6f9;
+  font-style: italic;
+}
+
+.diff-unchanged {
+  color: #777;
+  font-size: 0.9em;
+}
+
+table.saved-games {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.95em;
+}
+
+table.saved-games th,
+table.saved-games td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.saved-games tr.current td:first-child {
+  font-weight: 600;
+}
+
+table.saved-games td.buttons {
+  white-space: nowrap;
+}
+
+@media screen and (max-width: 650px) {
+  pre.diff > span {
+    padding-left: 6.2em;
+    text-indent: -6.2em;
+  }
+
+  pre.diff .line-no {
+    width: 2.5em;
+  }
+
+  table.saved-games td.buttons {
+    white-space: normal;
+  }
 }

@@ -34,6 +34,8 @@ const PRECACHE = [
   'js/modal.js',
   'js/solver.js',
   'js/storage.js',
+  'js/versions.js',
+  'js/versions-tab.js',
   'vendor/clingo-wasm/index.web.js',
   'vendor/clingo-wasm/client.js',
   'vendor/clingo-wasm/stream.js',

@@ -50,7 +50,7 @@ export async function decode_game(text) {
 }
 
 // A game without its empty fields (shorter links).
-function compact(game) {
+export function compact(game) {
   const out = {};
   for (const field of GAME_FIELDS) if (game[field]) out[field] = game[field];
   return out;
@@ -65,8 +65,8 @@ export async function game_id(game) {
 
 // ---- Saved work ---------------------------------------------------------------------
 
-function same_game(a, b) {
-  return GAME_FIELDS.every((f) => (a[f] || '') === (b[f] || ''));
+export function same_game(a, b, fields = GAME_FIELDS) {
+  return fields.every((f) => (a[f] || '') === (b[f] || ''));
 }
 
 // Saved work, in a storage such as window.localStorage. All calls return
@@ -76,25 +76,35 @@ export class WorkStore {
     this.storage = storage;
   }
 
-  // The saved version of a game (or null): { game, saved_at }.
+  // The saved version of a game (or null): { game, saved_at, original, title }
+  // (the original game and its title are null for work saved by older versions).
   load(origin) {
     try {
       const entry = JSON.parse(this.storage.getItem(PREFIX + origin));
       if (!entry || !entry.game) return null;
-      return { game: normalize_game(entry.game), saved_at: entry.saved_at };
+      return {
+        game: normalize_game(entry.game),
+        saved_at: entry.saved_at,
+        original: entry.original ? normalize_game(entry.original) : null,
+        title: typeof entry.title === 'string' ? entry.title : null,
+      };
     } catch {
       return null;
     }
   }
 
   // Save the current version of a game; a version that is the same as the
-  // original is not kept.
-  save(origin, game, original) {
+  // original is not kept. The original and its title are kept with it, so that
+  // the game can be opened again from the list of saved work.
+  save(origin, game, original, title) {
     try {
       if (original && same_game(game, original)) {
         this.storage.removeItem(PREFIX + origin);
       } else {
-        this.storage.setItem(PREFIX + origin, JSON.stringify({ game: compact(game), saved_at: new Date().toISOString() }));
+        const entry = { game: compact(game), saved_at: new Date().toISOString() };
+        if (original) entry.original = compact(original);
+        if (title) entry.title = title;
+        this.storage.setItem(PREFIX + origin, JSON.stringify(entry));
       }
       return true;
     } catch {

@@ -26,6 +26,8 @@ shows how long clingo took for each program in each step.
 | `js/analysis.js` | A light-weight analysis of programs: which predicates they derive and use (no DOM) |
 | `js/hints.js` | Warnings about the special predicates of each program (`do/1`, `observe/1`, ...) (no DOM) |
 | `js/storage.js` | Saved work (in the browser) and share links (no DOM) |
+| `js/versions.js` | Snapshots, differences between versions, project and backup files (no DOM) |
+| `js/versions-tab.js` | The Versions tab |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/mode-gringo.js` | Syntax highlighting for ASP in the Ace editor |
@@ -59,13 +61,26 @@ drawing them, and lists the levels that were not won. Level *n* is generated and
 random numbers from seed *n*, so each of them can be played again exactly (*Load this level*),
 or shared as a link (`#game=...&seed=n`).
 
-## Saving and sharing
+## Saving, versions and sharing
 
-Changes are saved in the browser automatically (localStorage), separately for each game
-(example, uploaded file or shared link); loading that game again brings them back, with a
-button to go back to the original. *Share current game* in the Control tab makes a link that
-contains the whole game, compressed, after `#game=`; that part of a URL never reaches the
-server, so nothing is uploaded.
+Everything about keeping work is in the *Versions* tab:
+- Changes are saved in the browser automatically (localStorage), separately for each game
+  (example, uploaded file or shared link); loading that game again brings them back, with a
+  button to go back to the original.
+- *Snapshots*: versions that a student keeps, with a name and a note. The page also keeps
+  automatic snapshots (before restoring an older version or going back to the original, before
+  loading a file over saved work, every 10 minutes while editing, and when a strategy is tested);
+  only the newest 20 automatic ones per game are kept, unless they are given a name or a note.
+- The result of *Test your strategy* is kept with the snapshot of the version that was tested.
+- *Compare versions*: a line-by-line diff (Myers' algorithm) of each program, between any two of
+  the current version, the original and the snapshots; a single program can be taken from an
+  older version.
+- *Project file*: one JSON file (`"format": "logic-game-project"`) with the current version, the
+  original game and all snapshots; students keep it anywhere (e.g. in a Google Drive folder)
+  and load it again on another computer. A *backup* file holds all games of the browser.
+  Uploading a plain game file (like the examples) works as before.
+- *Share current game* makes a link that contains the whole game, compressed, after `#game=`;
+  that part of a URL never reaches the server, so nothing is uploaded.
 
 ## Offline use
 
@@ -94,11 +109,14 @@ The tests (in `test/`, run with Node's built-in test runner) check:
 - `hints.test.mjs`: the analysis of programs and the warnings about special predicates
   (no clingo needed); the example games get no warnings;
 - `storage.test.mjs`: share links (every example survives the round trip) and saved work;
+- `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
+  test results, a full storage, and project and backup files;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
   example is free of syntax errors, and every example solution wins (on fixed random levels);
 - `browser.test.mjs`: the page in Chromium: playing, generating levels, errors and warnings
   shown in the editors, programs that do not terminate, Stop, Pause, URL options, uploading a game,
-  saved work, share links, and that nothing is loaded from other sites (fonts included).
+  saved work, share links, snapshots, comparing and restoring versions, project and backup files,
+  and that nothing is loaded from other sites (fonts included).
 
 The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`).
 On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the

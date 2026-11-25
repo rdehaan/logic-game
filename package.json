@@ -5,7 +5,7 @@
   "description": "A logic game played with answer set programs (clingo in the browser).",
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:unit": "node --test test/asp.test.mjs test/hints.test.mjs test/storage.test.mjs test/engine.test.mjs",
+    "test:unit": "node --test test/asp.test.mjs test/hints.test.mjs test/storage.test.mjs test/versions.test.mjs test/engine.test.mjs",
     "test:browser": "node --test test/browser.test.mjs",
     "vendor": "node tools/vendor.mjs",
     "serve": "node tools/serve.mjs"
