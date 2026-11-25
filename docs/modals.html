@@ -1,0 +1,130 @@
+<!-- The info pop-ups that the (i) links open. Loaded into index.html by js/main.js (see load_fragments). -->
+  <div class="modal" id="modal-level-programs">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+      </header>
+      <div class="modal-content">
+        <h3>Auxiliary, level generation &amp; visibility programs</h3>
+        <p>
+          The auxiliary program can be used to define helping predicates
+          that are used in the other programs. This program is added to the
+          other programs when they are used.
+        </p>
+        <p>
+          The level generation program specifies how levels are generated.
+          An answer set for this program encodes the level
+          using atoms with predicate names <tt>at</tt>,
+          <tt>setting</tt>, and <tt>decorate</tt>.
+        </p>
+        <p>
+          The visibility program defines what parts of the game are
+          observable to the player.
+          The predicate name <tt>observe</tt> is used for this.
+          It may also derive atoms over <tt>decorate</tt>, which are only
+          used to visualize the game and are not passed on to the player.
+        </p>
+        <p>
+          To generate a level, these three programs need to be locked.
+          Unlocking these programs will clear the level that is
+          currently loaded.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-natures-moves">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+      </header>
+      <div class="modal-content">
+        <h3>Nature's moves</h3>
+        <p>
+          This program expresses how the game
+          progresses from one state to the next.
+          An answer set of this program,
+          restricted to atoms over the predicate <tt>next</tt>,
+          constitutes the next state of the game,
+          where these atoms are translated to use the predicate
+          <tt>at</tt> instead of <tt>next</tt>.
+        </p>
+        <p>
+          If the answer set contains the atom <tt>wipe_player_memory</tt>,
+          the player's memory is wiped:
+          the player starts the next time step with an empty memory.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-winning-conditions">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+      </header>
+      <div class="modal-content">
+        <h3>Winning conditions</h3>
+        <p>
+          This program determines whether the player wins or loses the game,
+          at each time step,
+          or whether it continues.
+        </p>
+        <p>
+          If an answer set of the program contains any atoms over <tt>lose</tt>,
+          the player loses the game.
+          Otherwise, if this answer set contains any atoms over <tt>win</tt>,
+          the player wins.
+          Otherwise, the game continues.
+          This is checked at the start of each time step,
+          before the player moves.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-player-program">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+      </header>
+      <div class="modal-content">
+        <h3>Player strategy</h3>
+        <p>
+          This program specifies what move(s) the player performs at each
+          time steps, and how the player's memory is updated.
+          The program gets what the player can observe
+          (atoms over <tt>observe</tt>), the level settings
+          (atoms over <tt>setting</tt>), the player's memory
+          (atoms over <tt>memory</tt>), the current time
+          (<tt>current_time(t)</tt>), and the auxiliary program.
+          An answer set <i>A</i> of the resulting program is taken.
+          This answer set restricted to atoms over <tt>do</tt>
+          constitutes the moves that the player performs.
+          This answer set restricted to atoms over <tt>remember</tt>
+          and <tt>forget</tt> specifies how the player's memory changes.
+        </p>
+        <p>
+          The player's memory in the next time step consists
+          of (i) all atoms <tt>memory(M)</tt> such that <tt>forget(M)</tt>
+          does not occur in <i>A</i>,
+          and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
+          occurs in <i>A</i>,
+          unless nature wipes the player's memory,
+          in which case the player's memory in the next time step is empty.
+        </p>
+        <p>
+          For more details, see the instructions tab.
+        </p>
+      </div>
+    </div>
+  </div>

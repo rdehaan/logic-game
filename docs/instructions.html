@@ -1,0 +1,425 @@
+<!-- The Instructions tab. Loaded into index.html by js/main.js (see load_fragments). -->
+      <h3>General gameplay</h3>
+      <p>
+        This game is played by writing a logic program that expresses your
+        strategy. You are the <i>player</i>.
+        The rules of the game are also expressed by a logic program.
+        For example, what is the effect of moves?
+        What do opponents (if any) do?
+        When is the game won or lost?
+      </p>
+      <p>
+        In each level, the player controls some elements, and <i>nature</i>
+        controls the rest.
+        The game is played in discrete time steps.
+        At each time step, the player performs some action(s).
+        Based on these actions, nature determines the next state of the game.
+      </p>
+      <p>
+        Not everything in the game may be observable to the player.
+        The player can keep (and update) some things in their memory as
+        the game progresses.
+      </p>
+      <p>
+        The various elements and features of the game are explained in
+        detail below.
+      </p>
+
+      <h3>How are levels generated?</h3>
+      <p>
+        The generation of levels is expressed by a logic program
+        (labeled <i>level generation</i>).
+        An answer set for this program encodes the level
+        using atoms with predicate names <tt>at</tt>,
+        <tt>setting</tt>, and <tt>decorate</tt>.
+        Atoms over the predicate <tt>at</tt> specify the (initial) state
+        of the world in the level.
+        Atoms over the predicate <tt>setting</tt> specify features of the level
+        that remain fixed over the course of the game.
+        Atoms over the predicate <tt>decorate</tt> specify how the level
+        is visualized (for example, which icons are used for items, and
+        the background colors of cells).
+        See <i>How is the game visualized?</i> below.
+        Atoms over <tt>debug</tt> are also shown in the level state
+        (in the level editor), but they are not part of the game.
+        Other atoms in the answer set are ignored.
+      </p>
+      <p>
+        The level generation program may contain substrings of the form
+        <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
+        integers (possibly negative, and possibly with spaces around them,
+        as in <tt>RANDINT(-2, 2)</tt>).
+        In the preprocessing of the program, these
+        are replaced by a random integer between (and including)
+        <tt>l</tt> and <tt>u</tt>.
+        This gives an easy way to include randomness in the level generation.
+      </p>
+      <p>
+        The program labeled <i>auxiliary program</i> is added to the level
+        generation program (as well as to the other programs).
+        The aim of this auxiliary program is to define helping predicates
+        that can be used in multiple parts of the game.
+      </p>
+      <p>
+        For example, the following program specifies a game that is played on
+        a 3x3 grid, with initial locations for an element <tt>player</tt>
+        and an element <tt>flag</tt>,
+        and encodes some information about how to visualize the game.
+      </p>
+      <pre class="example-code">
+% The game is played on a 3x3 grid
+setting(grid_width(3)).
+setting(grid_height(3)).
+
+% Time bound: 4 steps
+setting(time_bound(4)).
+
+% The player is placed in the top-left cell
+at(1,1,player).
+% The flag is placed randomly in the bottom row
+at(3,RANDINT(1,3),flag).
+
+% Visualization instructions
+decorate(game_type,grid).
+decorate(label,flag,font_f024).
+decorate(label,player,font_f007).</pre>
+
+      <h3>What can the player observe?</h3>
+      <p>
+        The logic program labeled <i>visibility</i> encodes what parts of the
+        game are visible (or observable) to the player at each time step.
+        For this, the predicate name <tt>observe</tt> is used.
+        To this program are added the current state of the game
+        (in the form of atoms over <tt>at</tt>),
+        and the level settings
+        (in the form of atoms over <tt>setting</tt>).
+        An answer set of the resulting program,
+        restricted to atoms over the predicate <tt>observe</tt>,
+        constitutes what is observable to the player.
+        These atoms, together with the level settings, are passed on to the
+        player's program.
+        Atoms over <tt>at</tt> are never passed on to the player directly:
+        the player only knows what is made observable here.
+      </p>
+      <p>
+        For example, the following visibility program captures that
+        every true atom <tt>at(R,C,O)</tt> is observable.
+      </p>
+      <pre class="example-code">
+% Everything is observable
+observe(at(R,C,O)) :- at(R,C,O).</pre>
+
+      <h3>How does the game progress?</h3>
+      <p>
+        The logic program labeled <i>nature's moves</i> expresses how the game
+        progresses from one state to the next.
+        To this program are added the current state of the game
+        (in the form of atoms over <tt>at</tt>),
+        the move(s) of the player
+        (in the form of atoms over <tt>do</tt>),
+        and the level settings
+        (in the form of atoms over <tt>setting</tt>).
+        An answer set of the resulting program,
+        restricted to atoms over the predicate <tt>next</tt>,
+        constitutes the next state of the game,
+        where these atoms are translated to use the predicate
+        <tt>at</tt> instead of <tt>next</tt>.
+      </p>
+      <p>
+        Nature can also wipe the player's memory.
+        If the answer set contains the atom <tt>wipe_player_memory</tt>,
+        the player starts the next time step with an empty memory.
+        This also erases anything that the player chose to remember
+        in the current time step.
+        For example, the following rule expresses that the player's memory
+        is wiped when the player steps onto an item <tt>amnesia</tt>.
+      </p>
+      <pre class="example-code">
+wipe_player_memory :- next(R,C,player), at(R,C,amnesia).</pre>
+      <p>
+        This program may contain substrings of the form
+        <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
+        integers (possibly negative, and possibly with spaces around them,
+        as in <tt>RANDINT(-2, 2)</tt>).
+        In the preprocessing of the program, these
+        are replaced by a random integer between (and including)
+        <tt>l</tt> and <tt>u</tt>.
+        This happens anew at every time step.
+        This gives an easy way to include randomness in nature's moves.
+      </p>
+      <p>
+        Only atoms over <tt>next</tt> carry over to the next state of the
+        game; any other atoms derived by this program are not kept
+        (except <tt>wipe_player_memory</tt>).
+        In particular, an object for which no <tt>next</tt> atom is derived
+        disappears from the game.
+        So objects that stay where they are need a rule such as
+        <tt>next(R,C,flag) :- at(R,C,flag).</tt>
+        If the answer set contains no atoms over <tt>next</tt> at all,
+        the next state of the game is empty (all objects disappear),
+        and time still advances.
+      </p>
+      <p>
+        If the combined program has no answer sets,
+        the state of the game does not change
+        (but time does advance),
+        and the player's memory is not wiped.
+      </p>
+      <p>
+        For example, the following program expresses that
+        the flag moves to a randomly selected location that is in the same
+        column as where it was in the previous state.
+      </p>
+      <pre class="example-code">
+% The flag moves randomly inside its column
+next(RANDINT(1,3),C,flag) :- at(R,C,flag).</pre>
+
+      <h3>When is a game won or lost?</h3>
+      <p>
+        At each time step, the logic program labeled <i>winning conditions</i>
+        determines whether the player wins or loses the game, or whether it
+        continues.
+        To this program are added the current state of the game
+        (in the form of atoms over <tt>at</tt>),
+        the level settings
+        (in the form of atoms over <tt>setting</tt>),
+        and an atom <tt>current_time(t)</tt>,
+        where <tt>t</tt> is replaced by the integer value specifying
+        the number of time steps that have passed.
+        An answer set of the resulting program is taken.
+        If this answer set contains any atoms over <tt>lose</tt>,
+        the player loses the game.
+        Otherwise, if this answer set contains any atoms over <tt>win</tt>,
+        the player wins.
+        Otherwise, the game continues.
+        So if both <tt>win</tt> and <tt>lose</tt> are derived,
+        the player loses.
+      </p>
+      <p>
+        This check is done at the start of each time step,
+        before the player moves.
+        So the initial state of the level is checked as well.
+        If the program has no answer sets, the game continues.
+      </p>
+      <p>
+        For example, the following program expresses that
+        the player wins if it reaches the flag,
+        and that it loses if time runs out.
+      </p>
+      <pre class="example-code">
+% Goal: reach the flag
+win :- at(R,C,player), at(R,C,flag).
+% You lose if time runs out..
+lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
+
+      <h3>How to instruct the player?</h3>
+      <p>
+        At each time step, the logic program labeled <i>player strategy</i>
+        specifies what move(s) the player performs at that time step,
+        and how the player's memory is updated.
+        To this program are added what the player can observe
+        (in the form of atoms over <tt>observe</tt>,
+        as computed by the visibility program; see
+        <i>What can the player observe?</i> above),
+        the level settings
+        (in the form of atoms over <tt>setting</tt>),
+        the player's memory
+        (in the form of atoms over <tt>memory</tt>),
+        an atom <tt>current_time(t)</tt>,
+        where <tt>t</tt> is the number of time steps that have passed,
+        and the auxiliary program.
+        The player does not get the state of the game itself
+        (the atoms over <tt>at</tt>).
+        An answer set <i>A</i> of the resulting program is taken.
+        This answer set restricted to atoms over <tt>do</tt>
+        constitutes the moves that the player performs.
+        This answer set restricted to atoms over <tt>remember</tt>
+        and <tt>forget</tt> specifies how the player's memory changes.
+      </p>
+      <p>
+        The player's memory in the next time step consists
+        of (i) all atoms <tt>memory(M)</tt> such that <tt>forget(M)</tt>
+        does not occur in <i>A</i>,
+        and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
+        occurs in <i>A</i>.
+        So if both <tt>remember(M)</tt> and <tt>forget(M)</tt> occur
+        in <i>A</i>, the atom <tt>memory(M)</tt> is kept.
+        Atoms <tt>memory(M)</tt> that the program derives itself
+        are not stored; only <tt>remember</tt> stores things.
+        The only exception is when nature wipes the player's memory
+        (see <i>How does the game progress?</i> above):
+        then the player's memory in the next time step is empty.
+      </p>
+      <p>
+        If the combined program has no answer sets,
+        the player performs no moves and its memory does not change.
+      </p>
+      <p>
+        The player strategy program may contain substrings of the form
+        <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
+        integers (possibly negative, and possibly with spaces around them,
+        as in <tt>RANDINT(-2, 2)</tt>).
+        In the preprocessing of the program, these
+        are replaced by a random integer between (and including)
+        <tt>l</tt> and <tt>u</tt>.
+        This happens anew at every time step.
+        This gives an easy way to include randomness in the player's strategy.
+      </p>
+      <p>
+        <tt>RANDINT</tt> can only be used in the level generation,
+        nature's moves and player strategy programs.
+        It is not replaced in the auxiliary, visibility and
+        winning conditions programs.
+      </p>
+      <p>
+        For example, the following program expresses that
+        the player performs the action <tt>wait</tt>,
+        and that the memory counter <tt>counter(T)</tt> is increased by one.
+      </p>
+      <pre class="example-code">
+% Wait
+do(wait).
+
+% Increase counter in memory
+forget(counter(T)) :- memory(counter(T)).
+remember(counter(T+1)) :- memory(counter(T)).</pre>
+
+      <h3>Creating your own games</h3>
+      <p>
+        You can either load and play an existing game.
+        Loading games can be done in the <i>Control</i> tab.
+        Or you can design your own game.
+        In order to do so, specify the programs
+        under the <i>Game rules</i> tab.
+      </p>
+      <p>
+        Note: in order to edit the <i>auxiliary</i>,
+        <i>level generation</i> and <i>visibility</i>
+        programs, you need to unlock these for editing.
+        This will remove the level that is currently in memory,
+        to ensure that the level in memory is based on the
+        <i>auxiliary</i>,
+        <i>level generation</i> and <i>visibility</i> programs.
+      </p>
+
+      <h3>Tips for writing programs</h3>
+      <ul>
+        <li>
+          Only the first answer set that is found is used.
+          Randomness comes from <tt>RANDINT</tt>
+          (or from <tt>#heuristic</tt> statements that use it),
+          not from the choice of answer set.
+        </li>
+        <li>
+          The visibility, nature's moves and winning conditions programs
+          also get the whole history of the game, in the form of atoms
+          <tt>at_time(T,R,C,O)</tt>
+          (object <tt>O</tt> was in cell <tt>R,C</tt> at time <tt>T</tt>),
+          together with atoms <tt>state_time(T)</tt> for every time
+          <tt>T</tt> so far.
+          The atoms over <tt>at</tt> are the ones for the latest time.
+        </li>
+        <li>
+          The atom <tt>current_time(T)</tt> is available in the visibility,
+          nature's moves, winning conditions and player strategy programs
+          (and so also in the auxiliary program, when it is used together
+          with one of these).
+        </li>
+        <li>
+          After 500 time steps, the game is stopped with a timeout,
+          to avoid games that go on forever. This counts as a loss.
+        </li>
+        <li>
+          If a program has no answer sets, or contains an error
+          (such as a syntax error), this is reported in the game output
+          in the <i>Debug</i> tab, together with what the game does instead.
+          Line numbers in error messages refer to the programs as glued
+          together, not to the program on its own.
+        </li>
+      </ul>
+
+      <h3>How is the game visualized?</h3>
+      <p>
+        Currently, only games played on a rectangular grid can be visualized.
+        In order for this to work,
+        the level settings must include facts <tt>setting(grid_width(w))</tt>
+        and <tt>setting(grid_height(h))</tt> for some positive integers
+        <tt>w</tt> and <tt>h</tt>.
+      </p>
+      <p>
+        Items on the grid may be visualized with an icon in the
+        <a href="https://fontawesome.com/icons">Font Awesome</a>
+        font (version 7, free icons in the solid and brands styles) as follows.
+        To depict an item named <tt>obj</tt> in the logic programs
+        by an icon with unicode representation <tt>fXXX</tt>
+        (shown on the icon's page; newer icons may start with <tt>e</tt>, such as <tt>e4c0</tt>),
+        add the following fact to the level generation program:
+        <tt>decorate(label,obj,font_fXXX).</tt>
+      </p>
+      <p>
+        For example, the following line expresses that
+        the item named <tt>bug</tt> is depicted with a bug icon.
+      </p>
+      <pre class="example-code">
+decorate(label,bug,font_f188).</pre>
+      <p>
+        The background color of cells can be set with atoms of the form
+        <tt>decorate(bgcolor,R,C,Color)</tt>, which color the cell
+        <tt>R,C</tt>.
+        The color <tt>Color</tt> can be a
+        <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/named-color">CSS color name</a>
+        written in lowercase (such as <tt>lightgreen</tt>),
+        or a hexadecimal color code prefixed by <tt>hex_</tt>
+        (such as <tt>hex_ff8800</tt> for <tt>#ff8800</tt>,
+        or <tt>hex_aac</tt> for <tt>#aac</tt>).
+        Each cell should get at most one background color.
+      </p>
+      <p>
+        Background colors given in the level generation program stay the same
+        throughout the game.
+        For example, the following line colors the bottom row
+        of a 3x3 grid light green.
+      </p>
+      <pre class="example-code">
+decorate(bgcolor,3,1..3,lightgreen).</pre>
+      <p>
+        Background colors can also be derived in the visibility program.
+        There, they are computed anew at every step, based on the current
+        state of the game, and they can depend on what the player observes.
+        A background color takes precedence over the gray color of cells
+        that are covered by fog (<tt>observe(fog(R,C))</tt>).
+        Like all atoms over <tt>decorate</tt> in the visibility program,
+        these atoms are not passed on to the player.
+        For example, the following rules highlight the cell of the player,
+        and color water differently depending on whether it is covered by fog.
+        The condition <tt>not at(R,C,player)</tt> makes sure that a cell
+        with the player on it (for instance, on a bridge over water)
+        gets only one background color.
+      </p>
+      <pre class="example-code">
+decorate(bgcolor,R,C,hex_ffd) :- at(R,C,player).
+decorate(bgcolor,R,C,hex_aac) :- at(R,C,water), observe(fog(R,C)),
+    not at(R,C,player).
+decorate(bgcolor,R,C,hex_ddf) :- at(R,C,water), not observe(fog(R,C)),
+    not at(R,C,player).</pre>
+      <p>
+        Items that are not observable to the player can also be shown on the
+        grid, for example to see what the player is missing, or to help debug
+        a game.
+        For this, the visibility program can use atoms of the form
+        <tt>decorate(item,R,C,O)</tt>, which lead to item <tt>O</tt>
+        being shown in the cell <tt>R,C</tt>.
+        Such items use the same icons and colors as other items,
+        but are drawn faded, to distinguish them from what the player observes.
+      </p>
+      <p>
+        Atoms over <tt>decorate</tt> derived by the visibility program are only
+        used for the visualization: they are <b>*not*</b> passed on to the
+        player's program. So they cannot reveal anything to the player.
+      </p>
+      <p>
+        For example, the following rule in the visibility program shows
+        every item that the player cannot observe.
+      </p>
+      <pre class="example-code">
+decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>

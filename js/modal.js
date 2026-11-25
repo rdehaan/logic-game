@@ -1,29 +1,28 @@
 // The info pop-ups (modals) that the (i) links open.
+// (One listener for the whole page, so that it also works for links and
+// pop-ups that are loaded later, see load_fragments in main.js.)
 
-const open_elems = document.querySelectorAll("[data-open]");
-const close_elems = document.querySelectorAll("[data-close]");
-
-for(const elem of open_elems) {
-  elem.addEventListener("click", function() {
-    const identifier = elem.getAttribute("data-open");
-    document.getElementById(identifier).classList.add("is-visible");
-  });
-}
-
-for (const elem of close_elems) {
-  elem.addEventListener("click", function() {
-    this.parentElement.parentElement.parentElement.classList.remove("is-visible");
-  });
-}
-
-document.addEventListener("click", e => {
-  if (e.target == document.querySelector(".modal.is-visible")) {
-    document.querySelector(".modal.is-visible").classList.remove("is-visible");
+document.addEventListener('click', (e) => {
+  const open = e.target.closest('[data-open]');
+  if (open) {
+    e.preventDefault();
+    const modal = document.getElementById(open.dataset.open);
+    if (modal) modal.classList.add('is-visible');
+    return;
+  }
+  const close = e.target.closest('[data-close]');
+  if (close) {
+    const modal = close.closest('.modal');
+    if (modal) modal.classList.remove('is-visible');
+    return;
+  }
+  // A click next to the pop-up closes it
+  if (e.target.classList.contains('modal') && e.target.classList.contains('is-visible')) {
+    e.target.classList.remove('is-visible');
   }
 });
 
-document.addEventListener("keyup", e => {
-  if (e.key == "Escape" && document.querySelector(".modal.is-visible")) {
-    document.querySelector(".modal.is-visible").classList.remove("is-visible");
-  }
+document.addEventListener('keyup', (e) => {
+  const visible = document.querySelector('.modal.is-visible');
+  if (e.key === 'Escape' && visible) visible.classList.remove('is-visible');
 });

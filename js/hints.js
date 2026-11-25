@@ -11,7 +11,7 @@
 import { analyze_program, sig, terms_match, term_to_string } from './analysis.js';
 import { preprocess_program } from './asp.js';
 
-// What each program gets and passes on (see the Internals tab in index.html).
+// What each program gets and passes on (see the Internals tab, docs/internals.html).
 // `inputs` and `outputs` are signatures; '*' as arity means any arity.
 export const INTERFACES = {
   level_gen_program: {

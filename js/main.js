@@ -10,7 +10,18 @@ import './modal.js';
 
 const solver = create_solver(clingo);
 const editors = new Editors(solver);
-make_example_editors();
+
+// The texts of the Instructions and Internals tabs, and the info pop-ups, are
+// in docs/*.html; they are put into the elements with data-include.
+async function load_fragments() {
+  await Promise.all([...document.querySelectorAll('[data-include]')].map(async (elem) => {
+    const response = await fetch(elem.dataset.include);
+    if (!response.ok) throw new Error(`could not load ${elem.dataset.include} (${response.status})`);
+    elem.innerHTML = await response.text();     // (files of the site itself)
+  }));
+  make_example_editors();
+}
+const fragments = load_fragments();
 
 // Handles for elements
 const $ = (id) => document.getElementById(id);
@@ -756,6 +767,12 @@ async function start() {
     set_engine_status('clingo could not be loaded: ' + e.message, true);
   }
   await loading;
+  try {
+    await fragments;
+  } catch (e) {
+    console.error(e);
+    load_status.innerText = 'Some texts could not be loaded: ' + e.message;
+  }
   if (link_error) set_engine_status(link_error, true);
   // Keep the files of the game, so that it also works offline (see sw.js)
   if ('serviceWorker' in navigator) {

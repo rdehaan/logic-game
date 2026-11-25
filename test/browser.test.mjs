@@ -541,3 +541,24 @@ test('the page fits on a phone', async (t) => {
   const board = await page.locator('#visual').boundingBox();
   assert.ok(board.x >= 0 && board.x + board.width <= 390, JSON.stringify(board));
 });
+
+test('the texts of the tabs and the info pop-ups are loaded', async (t) => {
+  const page = await open(t, '?internals=true');
+  if (!page) return;
+  await page.click('label[for=tab2]');
+  assert.match(await page.textContent('#section-instructions'), /observe/);
+  // example code in the texts is shown in (read-only) editors
+  assert.ok(await page.locator('#section-instructions .ace_editor').count() > 0);
+  await page.click('label[for=tab6]');
+  assert.match(await page.textContent('#section-internals'), /current-state rules/);
+  // an (i) link opens its pop-up, Escape closes it
+  await page.click('label[for=tab3]');
+  await page.locator('#section-game-rules a.modal-link').first().click();
+  await page.waitForSelector('.modal.is-visible');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.modal.is-visible', { state: 'detached' });
+  await page.locator('#section-game-rules a.modal-link').first().click();
+  await page.click('.modal.is-visible [data-close]');
+  assert.equal(await page.locator('.modal.is-visible').count(), 0);
+  assert.deepEqual(page.errors, []);
+});

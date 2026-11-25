@@ -17,7 +17,8 @@ shows how long clingo took for each program in each step.
 
 | File | What it does |
 | --- | --- |
-| `index.html` | The page (including the Instructions and Internals tabs) |
+| `index.html` | The page |
+| `docs/instructions.html`, `docs/internals.html`, `docs/modals.html` | The texts of the Instructions and Internals tabs, and the info pop-ups (loaded into the page) |
 | `js/main.js` | Buttons, loading/saving games, playing a game step by step |
 | `js/engine.js` | The game engine: how the programs are run and connected (no DOM) |
 | `js/solver.js` | Calls clingo-wasm: time limit, stopping, reading results and errors (no DOM) |
