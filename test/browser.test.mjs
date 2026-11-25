@@ -385,3 +385,37 @@ test('a game cannot inject HTML or scripts into the page through the board', asy
   assert.equal(await page.evaluate(() => window.injected), false);
   assert.deepEqual(page.external, []);
 });
+
+test('playing step by step, and looking back', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  assert.equal(await page.isHidden('#timeline-box'), true);
+  // Step starts a game and plays one step
+  for (let i = 1; i <= 3; i++) {
+    await page.click('#step-button');
+    await page.waitForFunction(() => !document.getElementById('step-button').disabled);
+    assert.equal(await page.textContent('#timeline-label'), `Time ${i} of ${i} (changes since the time before are marked)`);
+  }
+  assert.equal(await page.isDisabled('#pause-button'), true);
+  assert.equal(await page.isEnabled('#stop-button'), true);
+  assert.ok(await page.locator('.grid-visual-cell.changed').count() > 0);
+  // Back one time: the move the player made there
+  await page.click('#timeline-prev');
+  assert.match(await page.textContent('#timeline-label'), /^Time 2 of 3: the player moved do\(move\(\w+\)\) /);
+  // Play to the end, then look back with the slider and from the game output
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  const end = await page.textContent('#timeline-label');
+  assert.match(end, /^Time (\d+) of \1: WIN/);
+  await page.fill('#timeline', '1');
+  await page.dispatchEvent('#timeline', 'input');
+  assert.match(await page.textContent('#timeline-label'), /^Time 0 of \d+: the player moved /);
+  assert.equal(await page.locator('.grid-visual-cell.changed').count(), 0);
+  await page.click('label[for=tab5]');
+  await page.locator('#game-output .output-step', { hasText: '## STEP 3 ##' }).click();
+  assert.match(await page.textContent('#timeline-label'), /^Time 2 of /);
+  // A new game starts a new timeline
+  await page.click('#reset-button');
+  assert.equal(await page.isHidden('#timeline-box'), true);
+});

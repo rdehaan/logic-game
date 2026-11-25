@@ -21,6 +21,12 @@
     <div class="visual-container" id="visual-container">
       <div id="visual"></div>
     </div>
+    <div id="timeline-box" class="timeline" hidden>
+      <button id="timeline-prev" class="control-button" title="Previous step">&#x25C0;</button>
+      <input type="range" id="timeline" min="1" max="1" value="1" aria-label="Step to show">
+      <button id="timeline-next" class="control-button" title="Next step">&#x25B6;</button>
+      <span id="timeline-label"></span>
+    </div>
     <p id="board-message" class="board-message" hidden></p>
     <p id="work-notice" class="work-notice" hidden>
       <span id="work-notice-text"></span>
@@ -38,6 +44,8 @@
         <button data-action="do_play" class="control-button" id="play-button" disabled>&#x23F5; Play</button>
         &nbsp;
         <button data-action="do_pause" class="control-button" id="pause-button" disabled>&#x23F8; Pause</button>
+        &nbsp;
+        <button data-action="do_step" class="control-button" id="step-button" title="Play one step, then pause" disabled>&#x23ED; Step</button>
         &nbsp;
         <button data-action="do_stop" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
         &nbsp;&mdash;&nbsp;
@@ -674,6 +682,9 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         and the next state of the game computed by nature.
         If a program had no answer sets or contained an error,
         this is reported as well.
+        Click on a step to see the board as the player saw it in that step
+        (also with the slider under the board, while the game is paused or
+        after it ended); the <i>Step</i> button plays one step at a time.
       </p>
       <!-- <input type="checkbox" id="verbose" name="verbose" value="Verbose" checked>
       <label for="verbose"> Verbose</label><br> -->

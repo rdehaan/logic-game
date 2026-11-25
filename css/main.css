@@ -461,3 +461,41 @@ input.share-link {
   font-family: monospace;
   font-size: 12px;
 }
+
+/* Looking back: the timeline under the board, and steps in the game output */
+.timeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 10% 10px;
+  flex-wrap: wrap;
+}
+
+.timeline input[type="range"] {
+  flex: 1 1 200px;
+  max-width: 400px;
+}
+
+.timeline #timeline-label {
+  flex-basis: 100%;
+  text-align: center;
+  color: #555;
+}
+
+.grid-visual-cell.changed {
+  box-shadow: inset 0 0 0 3px #f5a623;
+}
+
+#game-output .output-step {
+  cursor: pointer;
+}
+
+#game-output .output-step:hover {
+  background: #e4ecf5;
+}
+
+[hidden],
+.timeline[hidden] {
+  display: none !important;
+}

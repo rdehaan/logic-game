@@ -486,7 +486,7 @@ export class GameSession {
     if (is_fatal(this.visibility_problem)) return this.stop(report, this.visibility_problem, problems);
 
     report += this.time_report();
-    return { report, verdict: null, message: '', problems, times: this.times };
+    return { report, verdict: null, message: '', problems, times: this.times, moves: move.player_moves };
   }
 
   // Lines for the game output about the time spent in clingo in this step:

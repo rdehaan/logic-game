@@ -22,6 +22,7 @@ const reset_button = $('reset-button');
 const play_button = $('play-button');
 const pause_button = $('pause-button');
 const stop_button = $('stop-button');
+const step_button = $('step-button');
 const speed_selector = $('speed-selector');
 const example_games = $('example-games');
 const load_status = $('load-status');
@@ -49,8 +50,19 @@ function clear_game_output() {
 }
 // New text goes at the top (most recent step first). Each piece is its own
 // text node, so that adding a step does not rewrite the whole output.
-function add_to_game_output(text) {
-  game_output_elem.prepend(document.createTextNode(text + '\n'));
+// A step's report can be clicked to show the board at that step.
+function add_to_game_output(text, step = null) {
+  if (step == null) {
+    game_output_elem.prepend(document.createTextNode(text + '\n'));
+    return;
+  }
+  const span = document.createElement('span');
+  span.className = 'output-step';
+  span.textContent = text + '\n';
+  span.title = 'Click to see the board at this step';
+  // (the board that the player saw in this step)
+  span.addEventListener('click', () => show_snapshot(snapshots.findIndex((x) => x.time === step - 1)));
+  game_output_elem.prepend(span);
 }
 
 // ---- States of the game engine -------------------------------------------------
@@ -82,6 +94,7 @@ function unlock_level_generation() {
   set_button(clear_button, false, 'There is no level to be cleared.');
   set_button(reset_button, false, 'There is no level to be reset.');
   set_button(play_button, false, 'There is no level to play.');
+  step_button.disabled = play_button.disabled;
   pause_button.disabled = true;
   stop_button.disabled = true;
   editors.set_read_only(LEVEL_PROGRAMS, false);
@@ -103,6 +116,7 @@ async function update_interface() {
     set_button(clear_button, true);
     set_button(reset_button, false, 'The level is already in its initial state.');
     set_button(play_button, true);
+    step_button.disabled = play_button.disabled;
     const preview = new GameSession(solver, editors.game());
     const start = await preview.start();
     if (my_preview !== preview_counter || playing) return;   // outdated
@@ -117,6 +131,7 @@ async function update_interface() {
     set_button(clear_button, false, 'There is no level to be cleared.');
     set_button(reset_button, false, 'There is no level to be reset.');
     set_button(play_button, false, 'There is no level to play.');
+    step_button.disabled = play_button.disabled;
     clear_grid();
   }
 }
@@ -150,6 +165,63 @@ function problems_tip() {
   return `(There ${n > 1 ? 'are' : 'is'} ${n} error${n > 1 ? 's or warnings' : ' or warning'} in the programs that may explain this: see "Errors and warnings" above the game output.)\n`;
 }
 
+// ---- Looking back ------------------------------------------------------------------
+
+// The board at every time of the game: [{ time, view, moves }], where moves
+// are the moves the player made when it saw this board (in step time+1).
+let snapshots = [];
+let shown_snapshot = -1;
+let final_verdict = null;
+
+function clear_snapshots() {
+  snapshots = [];
+  shown_snapshot = -1;
+  final_verdict = null;
+  update_timeline();
+}
+
+function record_snapshot(time, view) {
+  snapshots.push({ time, view, moves: null });
+}
+
+// Show the board as it was at a step (an index into snapshots).
+function show_snapshot(index) {
+  if (index < 0 || index >= snapshots.length) return;
+  shown_snapshot = index;
+  const snap = snapshots[index];
+  show_grid(snap.view, index > 0 ? snapshots[index - 1].view : null);
+  if (index === snapshots.length - 1 && final_verdict) {
+    if (final_verdict === 'win') display_win(); else display_lose();
+  }
+  update_timeline();
+}
+
+// The timeline under the board: usable while the game is paused, and after it ended.
+function update_timeline() {
+  const box = $('timeline-box');
+  box.hidden = snapshots.length === 0;
+  if (box.hidden) return;
+  const busy = playing && !game_paused;
+  const slider = $('timeline');
+  slider.max = String(snapshots.length);
+  slider.value = String(shown_snapshot + 1);
+  slider.disabled = busy || snapshots.length < 2;
+  $('timeline-prev').disabled = busy || shown_snapshot <= 0;
+  $('timeline-next').disabled = busy || shown_snapshot >= snapshots.length - 1;
+  const snap = snapshots[shown_snapshot];
+  if (!snap) return;
+  const last = shown_snapshot === snapshots.length - 1;
+  let what = '';
+  if (snap.moves != null) what = snap.moves ? `the player moved ${snap.moves.replace(/\.$/, '').replace(/\. /g, ', ')}` : 'the player made no move';
+  else if (last && final_verdict) what = final_verdict.toUpperCase();
+  $('timeline-label').textContent = `Time ${snap.time} of ${snapshots.at(-1).time}` + (what ? `: ${what}` : '') +
+    (shown_snapshot > 0 ? ' (changes since the time before are marked)' : '');
+}
+
+$('timeline').addEventListener('input', () => show_snapshot(Number($('timeline').value) - 1));
+$('timeline-prev').addEventListener('click', () => show_snapshot(shown_snapshot - 1));
+$('timeline-next').addEventListener('click', () => show_snapshot(shown_snapshot + 1));
+
 // ---- Playing -------------------------------------------------------------------
 
 function start_playing_interface() {
@@ -160,11 +232,13 @@ function start_playing_interface() {
   set_button(generate_button, false, 'A new level cannot be generated while the game is ongoing.');
   pause_button.disabled = false;
   stop_button.disabled = false;
+  step_button.disabled = true;
   editors.set_read_only(PLAY_PROGRAMS, true);
 }
 
 function end_playing() {
   const stopped = stop_requested;
+  single_step = false;
   playing = false;
   session = null;
   game_paused = false;
@@ -175,7 +249,9 @@ function end_playing() {
   play_button.disabled = false;
   pause_button.disabled = true;
   stop_button.disabled = true;
+  step_button.disabled = false;
   editors.set_read_only(PLAY_PROGRAMS, false);
+  update_timeline();
   editors.set_read_only(LEVEL_PROGRAMS, level_locked);
   if (stopped) {
     update_interface();
@@ -184,11 +260,21 @@ function end_playing() {
   }
 }
 
+let single_step = false;
+
+// Play one step, then pause (starting a game if there is none).
+async function do_step() {
+  single_step = true;
+  await do_play();
+}
+
 async function do_play() {
   play_button.disabled = true;
+  step_button.disabled = true;
   if (!game_paused) {
     start_playing_interface();
     clear_game_output();
+    clear_snapshots();
     editors.clear_run_problems();
     const verbose_checkbox = $('verbose');
     session = new GameSession(solver, editors.game(), { verbose: verbose_checkbox ? verbose_checkbox.checked : true });
@@ -201,9 +287,11 @@ async function do_play() {
       end_playing();
       return;
     }
+    record_snapshot(0, session.view());
   }
   game_paused = false;
-  pause_button.disabled = false;
+  pause_button.disabled = single_step;
+  update_timeline();
   await play_loop();
 }
 
@@ -217,22 +305,34 @@ async function play_loop() {
       return;
     }
     if (game_paused) {
-      show_grid(session.view());
+      show_snapshot(snapshots.length - 1);
       play_button.disabled = false;
+      step_button.disabled = false;
+      pause_button.disabled = true;
+      update_timeline();
       return;
     }
     // (at the speed 'Instant', the board is only drawn at the end)
-    if (speed >= 0) show_grid(session.view());
+    if (speed >= 0) show_snapshot(snapshots.length - 1);
+    else shown_snapshot = -1;
     const step = await session.step();
+    snapshots.at(-1).moves = step.verdict ? null : (step.moves || '');
     editors.show_run_problems(step.problems);
     if (stop_requested) continue;
-    if (step.report) add_to_game_output(step.report);
+    if (step.report) add_to_game_output(step.report, session.time_step);
     if (step.verdict) {
-      show_grid(session.view());
+      final_verdict = step.verdict;
       add_to_game_output(step.verdict === 'win' ? step.message : step.message + problems_tip());
-      if (step.verdict === 'win') display_win(); else display_lose();
       end_playing();
+      show_snapshot(snapshots.length - 1);
       return;
+    }
+    record_snapshot(session.time_step, session.view());
+    if (single_step) {
+      single_step = false;
+      game_paused = true;
+      show_snapshot(snapshots.length - 1);
+      continue;
     }
     await sleep(Math.max(0, speed));
   }
@@ -257,6 +357,7 @@ function do_stop() {
 
 function reset_debugging() {
   clear_game_output();
+  clear_snapshots();
 }
 
 function reset_level() {
@@ -471,7 +572,7 @@ function change_tabs() {
 // ---- Wiring ------------------------------------------------------------------------
 
 const actions = {
-  do_generate, clear_level, reset_level, do_play, do_pause, do_stop,
+  do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
   lock_level_generation, unlock_level_generation, update_interface, load_game, download_game,
   share_game, revert_to_original, forget_saved_work,
 };

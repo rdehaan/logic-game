@@ -109,7 +109,22 @@ function item_element(grid, item, css_class) {
   return span;
 }
 
-function visualize_grid(grid) {
+// What a cell shows, as text (for comparing two boards).
+function cell_contents(grid, i) {
+  return JSON.stringify([(grid.cells.get(i) || []).toSorted(), (grid.hidden.get(i) || []).toSorted(), grid.fog.has(i)]);
+}
+
+// The cells that show something else on two boards (of the same size).
+export function changed_cells(grid, previous) {
+  const out = new Set();
+  if (!grid || !previous || grid.width !== previous.width || grid.height !== previous.height) return out;
+  for (let i = 1; i <= grid.height * grid.width; i++) {
+    if (cell_contents(grid, i) !== cell_contents(previous, i)) out.add(i);
+  }
+  return out;
+}
+
+function visualize_grid(grid, changed = new Set()) {
   const visual = document.getElementById('visual');
   visual.replaceChildren();
   visual.className = 'grid-visual';
@@ -122,7 +137,7 @@ function visualize_grid(grid) {
 
   for (let i = 1; i <= grid.height * grid.width; i++) {
     const div = document.createElement('div');
-    div.className = 'grid-visual-cell';
+    div.className = changed.has(i) ? 'grid-visual-cell changed' : 'grid-visual-cell';
     div.style.setProperty('--font-size', font_size + 'vw');
     if (grid.fog.has(i)) div.style.backgroundColor = '#ddd';
     const bg = css_color(grid.bg.get(i));
@@ -143,10 +158,16 @@ export function display_lose() {
   document.getElementById('visual').style.setProperty('border', '3px solid #E10600');
 }
 
-export function show_grid(facts) {
+// Draw the board; with the facts of the previous step, the cells that
+// changed since then are highlighted.
+export function show_grid(facts, previous_facts = null) {
   const grid = compute_grid_ds(facts);
-  if (grid) visualize_grid(grid);
-  else clear_grid();
+  if (!grid) {
+    clear_grid();
+    return;
+  }
+  const changed = previous_facts != null ? changed_cells(grid, compute_grid_ds(previous_facts)) : new Set();
+  visualize_grid(grid, changed);
 }
 
 export function clear_grid() {
