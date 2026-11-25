@@ -129,11 +129,14 @@ export function changed_cells(grid, previous) {
 // a board that is larger than that can be scrolled).
 const MIN_CELL = 6;
 const MAX_CELL = 96;
+const SIDE_BY_SIDE_MIN = 1100;      // (as in css/main.css)
 
 function cell_size(width, height) {
   const container = document.getElementById('visual-container');
   const available_width = Math.max(100, (container ? container.clientWidth : window.innerWidth) - 4);
-  const available_height = Math.max(160, Math.min(window.innerHeight * 0.7, 640));
+  // (next to the tabs, the board shares the height of the screen with the buttons)
+  const share = document.body.classList.contains('side-by-side') && window.innerWidth >= SIDE_BY_SIDE_MIN ? 0.55 : 0.7;
+  const available_height = Math.max(160, Math.min(window.innerHeight * share, 640));
   const size = Math.floor(Math.min(available_width / width, available_height / height, MAX_CELL));
   return Math.max(MIN_CELL, size);
 }
@@ -174,9 +177,26 @@ function watch_size() {
   window.addEventListener('resize', layout_grid);
 }
 
+// The cell with the keyboard focus (an index), kept when the board is drawn again.
+let focused_cell = 1;
+
+// What a cell holds, in words (for screen readers, and as a tooltip).
+function cell_description(grid, i, changed) {
+  const row = Math.floor((i - 1) / grid.width) + 1;
+  const col = ((i - 1) % grid.width) + 1;
+  const items = [...(grid.cells.get(i) || []), ...(grid.hidden.get(i) || [])].toSorted();
+  let what = items.length ? items.join(', ') : grid.fog.has(i) ? 'not visible' : 'empty';
+  if (items.length && grid.fog.has(i)) what += ' (not visible)';
+  return `Row ${row}, column ${col}: ${what}` + (changed.has(i) ? ' (changed)' : '');
+}
+
 function visualize_grid(grid, changed = new Set()) {
   const visual = document.getElementById('visual');
+  const had_focus = visual.contains(document.activeElement);
+  if (focused_cell > grid.width * grid.height) focused_cell = 1;
   visual.replaceChildren();
+  visual.setAttribute('role', 'group');
+  visual.setAttribute('aria-label', `The board: ${grid.height} rows, ${grid.width} columns (arrow keys: from cell to cell)`);
   visual.className = 'grid-visual';
   visual.dataset.cols = grid.width;
   visual.dataset.rows = grid.height;
@@ -194,8 +214,14 @@ function visualize_grid(grid, changed = new Set()) {
     ];
     div.dataset.items = items.length;
     div.append(...items);
+    for (const item of items) item.setAttribute('aria-hidden', 'true');
+    div.setAttribute('role', 'img');
+    div.setAttribute('aria-label', cell_description(grid, i, changed));
+    div.tabIndex = i === focused_cell ? 0 : -1;
     visual.append(div);
   }
+  if (had_focus) visual.children[focused_cell - 1].focus({ preventScroll: true });
+  watch_keys();
   layout_grid();
   watch_size();
 }
@@ -227,4 +253,93 @@ export function clear_grid() {
   delete visual.dataset.cols;
   delete visual.dataset.rows;
   visual.style.setProperty('border', '0px solid #000');
+}
+
+// ---- Facts and cells ---------------------------------------------------------------------
+//
+// The cell a fact is about: the first two whole numbers that follow each other
+// in its arguments (at any depth) and are a row and column of the board, as in
+// observe(at(2,8,player)), next(2,8,player), observe(fog(1,4)) or
+// memory(step(2,5,3)). Returns the index of the cell (as on the board), or null.
+export function cell_of_atom(atom, width, height) {
+  const visit = (term) => {
+    const { args } = split_atom(term.trim());
+    for (let k = 0; k + 1 < args.length; k++) {
+      const r = number(args[k]);
+      const c = number(args[k + 1]);
+      if (r != null && c != null && r >= 1 && c >= 1 && r <= height && c <= width) return (r - 1) * width + c;
+    }
+    for (const a of args) {
+      const i = visit(a);
+      if (i != null) return i;
+    }
+    return null;
+  };
+  return visit(atom);
+}
+
+// The size of the board that is shown ({ width, height }), or null.
+export function board_size() {
+  const visual = document.getElementById('visual');
+  const width = Number(visual.dataset.cols);
+  const height = Number(visual.dataset.rows);
+  return width && height ? { width, height } : null;
+}
+
+// Highlight cells of the board (indices as in cell_of_atom); none: no highlights.
+export function highlight_cells(indices = []) {
+  const visual = document.getElementById('visual');
+  const set = new Set(indices);
+  [...visual.children].forEach((cell, k) => cell.classList.toggle('linked', set.has(k + 1)));
+}
+
+// Call `fn` with the index of the cell under the mouse, or with the keyboard
+// focus (null when both leave the board).
+export function on_cell_hover(fn) {
+  const visual = document.getElementById('visual');
+  const index = (e) => {
+    const cell = e.target.closest && e.target.closest('.grid-visual-cell');
+    return cell ? [...visual.children].indexOf(cell) + 1 : null;
+  };
+  visual.addEventListener('mouseover', (e) => { if (index(e)) fn(index(e)); });
+  visual.addEventListener('mouseleave', () => fn(visual.contains(document.activeElement) ? focused_cell : null));
+  visual.addEventListener('focusin', (e) => { if (index(e)) fn(index(e)); });
+  visual.addEventListener('focusout', (e) => { if (!visual.contains(e.relatedTarget)) fn(null); });
+}
+
+// The arrow keys (and Home and End) move the focus from cell to cell.
+let keys_watched = false;
+function watch_keys() {
+  if (keys_watched) return;
+  keys_watched = true;
+  const visual = document.getElementById('visual');
+  visual.addEventListener('keydown', (e) => {
+    const width = Number(visual.dataset.cols);
+    const n = visual.children.length;
+    if (!width || !n || e.ctrlKey || e.metaKey || e.altKey) return;
+    const i = focused_cell;
+    const col = (i - 1) % width;
+    const to = {
+      ArrowLeft: col > 0 ? i - 1 : i, ArrowRight: col < width - 1 ? i + 1 : i,
+      ArrowUp: i - width >= 1 ? i - width : i, ArrowDown: i + width <= n ? i + width : i,
+      Home: i - col, End: i - col + width - 1,
+    }[e.key];
+    if (to == null) return;
+    e.preventDefault();
+    move_focus(to);
+  });
+  visual.addEventListener('focusin', (e) => {
+    const cell = e.target.closest('.grid-visual-cell');
+    if (cell) focused_cell = [...visual.children].indexOf(cell) + 1;
+  });
+}
+
+function move_focus(to) {
+  const visual = document.getElementById('visual');
+  const from = visual.children[focused_cell - 1];
+  if (from) from.tabIndex = -1;
+  focused_cell = to;
+  const cell = visual.children[to - 1];
+  cell.tabIndex = 0;
+  cell.focus();
 }

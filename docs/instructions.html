@@ -38,18 +38,30 @@
           <i>Clear level</i> removes it, and <i>Reset level</i> shows the level as it was before the game.</li>
         <li>While a game is paused, and after it ended, the slider under the board shows the board at
           every time, with the move the player made there. The cells that changed since the time before
-          are marked (this can be turned off under the slider).</li>
-        <li>The line under the board says what the board shows (the start of a level, and where it came
-          from, or the last game) and which programs you changed since then.</li>
+          can be marked (turn this on under the slider).</li>
+        <li>Below the buttons, a line says what the board shows (the start of a level, and where it came
+          from, or the last game) and which programs you changed since then. After a change,
+          <i>Play again</i> plays the level again and comes back to the time the board showed.
+          When the player made no move (or several) at the time shown, a note says why, with
+          links to the lines of your strategy.</li>
         <li>The programs of the game rules are <i>locked</i> while you play (see <i>Creating your own
           games</i> below). While they are unlocked, the buttons say <i>Lock rules and generate level</i>,
           <i>Lock rules and play</i> and <i>Lock rules and test</i>: they lock the rules first.</li>
-        <li>The <i>Debug</i> tab shows, for each step, what went into the player's program and what came
-          out, for the step of the board that is shown (with a slider of its own); or all steps at once.</li>
-        <li>In the <i>Control</i> tab, <i>Options</i>: whether changed cells are marked, the example games
-          with solutions, the level editor (in the Debug tab), the Internals tab, and the time limit
-          for clingo.</li>
+        <li>The <i>Debug</i> tab shows, for the step of the board that is shown, what went into the
+          player's program and what came out, with what changed since the step before. Hover over a
+          fact to see its cell on the board, or over a cell to see the facts about it.</li>
+        <li>On a wide screen, the board stays next to the tabs while you scroll.</li>
+        <li>In the <i>Control</i> tab, <i>Options</i>: the board next to the tabs, whether changed cells
+          are marked, the example games with solutions, the level editor (in the Debug tab), the
+          Internals tab, and the time limit for clingo.</li>
       </ul>
+      <p>
+        Keyboard shortcuts: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>&#x2318;</kbd>+<kbd>Enter</kbd> on a Mac)
+        plays, also while you type in an editor. When you are not typing: <kbd>Space</kbd> pauses
+        the game, or plays one step; <kbd>&#x2190;</kbd> and <kbd>&#x2192;</kbd> go back and forth in
+        time (<kbd>Home</kbd> and <kbd>End</kbd>: to the start and the end). On the board,
+        <kbd>Tab</kbd> goes to the cells, and the arrow keys move from cell to cell.
+      </p>
 
       <h3>How are levels generated?</h3>
       <p>
@@ -339,6 +351,8 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         In the <i>Versions</i> tab you can:
       </p>
       <ul>
+        <li>download the <i>game file</i> to hand in (the page says whether you
+          changed anything since you downloaded it);</li>
         <li>keep <i>snapshots</i> of your work, with a name and a note
           (for example, before you try a new idea);</li>
         <li>compare two versions line by line (a snapshot, the original game,

@@ -9,7 +9,7 @@
 //
 // This module does not use the DOM, so the tests can run it in Node.
 import { analyze_program, sig, terms_match, term_to_string } from './analysis.js';
-import { preprocess_program } from './asp.js';
+import { preprocess_program, facts_to_answer_set } from './asp.js';
 
 // What each program gets and passes on (see the Internals tab, docs/internals.html).
 // `inputs` and `outputs` are signatures; '*' as arity means any arity.
@@ -384,4 +384,52 @@ export function completions(field, game) {
     }
   }
   return out;
+}
+
+// ---- Why the player made no move (or several) ----------------------------------------------
+
+// A hint for a step in which the player made no move, or several moves at once:
+// { text, lines } (lines: the lines of the player's program to look at, from 1),
+// or null when the player made exactly one move. `program` is the player's
+// program the step was played with, `moves` the moves it derived ('do(..). do(..).'),
+// and `problem` the problem of the player's program in that step (or null).
+export function move_hint(program, moves, problem) {
+  const made = facts_to_answer_set(moves || '');
+  if (made.length === 1) return null;
+  if (problem) {
+    const status = problem.result.status;
+    if (status === 'error') {
+      const e = (problem.result.errors || []).find((x) => x.source === 'player_move_program');
+      return {
+        text: 'Your strategy has an error, so the player made no move' + (e ? `: ${e.message}` : '.'),
+        lines: e && e.line ? [e.line] : [],
+      };
+    }
+    if (status === 'unsat') {
+      const violated = (problem.result.violated || []).filter((v) => v.source === 'player_move_program');
+      return {
+        text: violated.length
+          ? `Your strategy had no answer set in this step, because ${violated.length > 1 ? 'constraints were' : 'a constraint was'} violated, so the player made no move.`
+          : 'Your strategy had no answer set in this step, so the player made no move.',
+        lines: [...new Set(violated.map((v) => v.line))],
+      };
+    }
+    return { text: `Your strategy did not finish in this step (${problem.text.split('\n')[0]}), so the player made no move.`, lines: [] };
+  }
+  const rules = analyze_program(program).atoms.filter((a) => a.role === 'head' && !a.declared && sig(a) === 'do/1');
+  const lines = [...new Set(rules.map((a) => a.line))];
+  if (made.length === 0) {
+    if (!rules.length) {
+      return { text: 'Your strategy never derives do(...), so the player never moves. Add a rule such as do(move(up)) :- ... .', lines: [] };
+    }
+    return {
+      text: `None of your rules for do(...) applied in this step: their conditions did not hold for what the player saw (see the player input in the Debug tab).`,
+      lines,
+    };
+  }
+  return {
+    text: `The player made ${made.length} moves at once (${made.join(', ')}). A strategy usually makes one move per step: ` +
+      'check that the conditions of your rules for do(...) exclude each other.',
+    lines,
+  };
 }

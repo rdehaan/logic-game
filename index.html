@@ -9,6 +9,14 @@
   <title>A logic game</title>
   <link rel="icon" href="data:,">
 
+  <!-- clingo's worker needs these after the download of clingo.wasm (see download_clingo
+       in js/main.js): fetching them early saves a few round trips on a slow connection -->
+  <link rel="prefetch" href="vendor/clingo-wasm/run.worker.js">
+  <link rel="prefetch" href="vendor/clingo-wasm/worker.js">
+  <link rel="prefetch" href="vendor/clingo-wasm/run.js">
+  <link rel="prefetch" href="vendor/clingo-wasm/threads.js">
+  <link rel="prefetch" href="vendor/clingo-wasm/witnesses.js">
+  <link rel="prefetch" href="vendor/clingo-wasm/clingo.js">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/visual.css">
 
@@ -29,23 +37,27 @@
       <button data-action="start_tutorial" class="control-button" id="tutorial-start">Start the tutorial</button>
       <button data-action="dismiss_tutorial" class="control-button">No, thanks</button>
     </p>
+    <div id="workspace" class="workspace">
+    <div id="board-pane" class="board-pane">
     <p id="game-title" class="game-title"></p>
+    <p id="work-notice" class="work-notice" hidden>
+      <span id="work-notice-text"></span>
+      <button data-action="revert_to_original" class="link-button">Back to the original</button>
+    </p>
+    <div id="loading" class="loading" hidden>
+      <progress id="loading-progress" max="1"></progress>
+      <span id="loading-text">Loading clingo, the solver that runs the programs…</span>
+    </div>
     <div class="visual-container" id="visual-container">
       <div id="visual"></div>
     </div>
     <div id="timeline-box" class="timeline" hidden>
-      <button id="timeline-prev" class="control-button" title="Previous step">&#x25C0;</button>
+      <button id="timeline-prev" class="control-button" title="Previous time (←)">&#x25C0;</button>
       <input type="range" id="timeline" min="1" max="1" value="1" aria-label="Step to show">
-      <button id="timeline-next" class="control-button" title="Next step">&#x25B6;</button>
+      <button id="timeline-next" class="control-button" title="Next time (→)">&#x25B6;</button>
       <span id="timeline-label"></span>
-      <label class="inline-check timeline-option"><input type="checkbox" id="mark-changes" checked> Mark the cells that changed since the time before</label>
+      <label class="inline-check timeline-option"><input type="checkbox" id="mark-changes"> Mark the cells that changed since the time before</label>
     </div>
-    <p id="board-status" class="board-status" aria-live="polite"></p>
-    <p id="board-message" class="board-message" hidden></p>
-    <p id="work-notice" class="work-notice" hidden>
-      <span id="work-notice-text"></span>
-      <button data-action="revert_to_original" class="control-button">Back to the original</button>
-    </p>
 
     <div class="game-controls">
       <div class="control-group">
@@ -54,9 +66,9 @@
         <button data-action="reset_level" class="control-button" id="reset-button" disabled>&#x21BA; Reset level</button>
       </div>
       <div class="control-group">
-        <button data-action="do_play" class="control-button" id="play-button" disabled>&#x23F5; Play</button>
-        <button data-action="do_pause" class="control-button" id="pause-button" disabled>&#x23F8; Pause</button>
-        <button data-action="do_step" class="control-button" id="step-button" title="Play one step, then pause" disabled>&#x23ED; Step</button>
+        <button data-action="do_play" class="control-button" id="play-button" title="Play (Ctrl+Enter)" disabled>&#x23F5; Play</button>
+        <button data-action="do_pause" class="control-button" id="pause-button" title="Pause (Space)" disabled>&#x23F8; Pause</button>
+        <button data-action="do_step" class="control-button" id="step-button" title="Play one step, then pause (Space)" disabled>&#x23ED; Step</button>
         <button data-action="do_stop" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
       </div>
       <div class="control-group">
@@ -76,26 +88,34 @@
       </div>
     </div>
 
+
+    <!-- The messages about the board: below the buttons -->
+    <p id="move-note" class="move-note" hidden></p>
+    <p id="board-status" class="board-status" aria-live="polite"></p>
+    <p id="board-message" class="board-message" hidden></p>
+    </div>
+
+    <div id="tabs-pane" class="tabs-pane">
     <input id="tab1" type="radio" name="tabs" checked>
-    <label for="tab1" name="tabs">Control</label>
+    <label for="tab1" name="tabs" title="Control">Control</label>
 
     <input id="tab2" type="radio" name="tabs">
-    <label for="tab2" name="tabs">Instructions</label>
+    <label for="tab2" name="tabs" title="Instructions">Instructions</label>
 
     <input id="tab3" type="radio" name="tabs">
-    <label for="tab3" name="tabs">Game rules</label>
+    <label for="tab3" name="tabs" title="Game rules">Game rules</label>
 
     <input id="tab4" type="radio" name="tabs">
-    <label for="tab4" name="tabs">Strategy</label>
+    <label for="tab4" name="tabs" title="Strategy">Strategy</label>
 
     <input id="tab5" type="radio" name="tabs">
-    <label for="tab5" name="tabs">Debug</label>
+    <label for="tab5" name="tabs" title="Debug">Debug</label>
 
     <input id="tab7" type="radio" name="tabs">
-    <label for="tab7" name="tabs">Versions</label>
+    <label for="tab7" name="tabs" title="Versions">Versions</label>
 
     <input id="tab6" type="radio" name="tabs">
-    <label for="tab6" name="tabs">Internals</label>
+    <label for="tab6" name="tabs" title="Internals">Internals</label>
 
     <section id="section-control">
       <p>
@@ -158,6 +178,7 @@
 
       <h3>Options</h3>
       <div class="options">
+        <label class="inline-check"><input type="checkbox" id="option-side-by-side" data-option="side_by_side"> On wide screens, show the board next to the tabs (it stays in view while you scroll)</label>
         <label class="inline-check"><input type="checkbox" id="option-mark-changes" data-option="mark_changes"> Mark the cells on the board that changed in the last step</label>
         <label class="inline-check"><input type="checkbox" id="option-solutions" data-option="solutions"> Show the example games with solutions</label>
         <label class="inline-check"><input type="checkbox" id="option-editor" data-option="editor"> Show the level editor (in the Debug tab)</label>
@@ -165,9 +186,10 @@
         <label class="inline-check">Time limit for each call to clingo:
           <input type="number" id="option-timeout" data-option="timeout" min="1" max="600" step="1"> seconds</label>
       </div>
-      <p class="versions-help">These options are kept in this browser. All but the first can also be set
-        in a link (then only for that visit), e.g.
-        <tt>?solutions=true&amp;editor=true&amp;internals=true&amp;timeout=30</tt>.</p>
+      <p class="versions-help">These options are kept in this browser. They can also be set
+        in a link (then only for that visit):
+        <tt>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;timeout=30</tt>
+        (and <tt>=false</tt> to turn one off).</p>
     </section>
 
     <section id="section-instructions" data-include="docs/instructions.html"></section>
@@ -261,7 +283,10 @@
         (the player's moves and the updates to the memory), and the next state
         of the game that nature computed (and how long clingo took).
         If a program had no answer set or contained an error, this is reported as well.
-        The step shown is the one of the board above: move through the game with the slider.
+        The step shown is the one of the board: move through the game with the slider.
+        The facts that went into and came out of each program are shown in a locked
+        editor each, one fact per line. Hover over a fact to see its cell on the board,
+        or over a cell to see the facts about it.
       </p>
       <pre id="debug-messages" class="code debug-messages" hidden></pre>
       <div id="debug-steps" class="debug-steps">
@@ -271,126 +296,147 @@
           <button id="debug-next" class="control-button" title="Next step">&#x25B6;</button>
         </div>
         <p id="debug-step-label" class="debug-step-label"></p>
-        <pre id="debug-step" class="code debug-step"></pre>
+        <label class="inline-check debug-only-changes"><input type="checkbox" id="option-only-changes" data-option="only_changes"> Show only what changed since the step before</label>
+        <div id="debug-step" class="debug-step"></div>
       </div>
-      <label class="inline-check"><input type="checkbox" id="show-all-output"> Show all steps at once (newest first)</label>
-      <pre id="game-output" class="code" hidden></pre>
     </section>
 
     <section id="section-versions">
       <p>
         Your work is saved in this browser automatically, for each game separately.
-        Here you can also keep <i>snapshots</i>: versions of your work that you can
-        compare and go back to. And you can keep your whole project in a file,
-        for example in your Google Drive or OneDrive folder or on a USB stick,
-        to go on working on another computer.
+        To hand in your work, or to keep it safe, download it as a file.
       </p>
 
-      <h3>Snapshots of <span id="versions-title">this game</span></h3>
-      <div class="snapshot-form">
-        <input type="text" id="snapshot-name" maxlength="100" placeholder="Name, e.g. &quot;walks around walls&quot;" aria-label="Name of the snapshot">
-        <textarea id="snapshot-note" rows="2" maxlength="2000" placeholder="Note (optional): what changed, what works, what does not yet" aria-label="Note for the snapshot"></textarea>
-        <div>
-          <button data-action="take_snapshot" class="control-button" id="snapshot-button">Keep a snapshot of the current version</button>
-          <span id="snapshot-status" class="versions-status"></span>
-        </div>
-      </div>
-      <p class="versions-help">
-        The page also keeps snapshots by itself: every 10 minutes while you edit, when you
-        test your strategy (with the result), and before your current version is replaced
-        (by restoring an older version, taking a program from another one, going back to
-        the original, loading a file, or changes to the files of a linked folder).
-        Only the newest 20 of these are kept; give one a name or a note to keep it.
-      </p>
-      <label class="inline-check"><input type="checkbox" id="show-auto" checked> Show the automatic snapshots</label>
-      <ol id="snapshot-list" class="snapshot-list" reversed></ol>
-
-      <h3 id="compare-heading">Compare versions</h3>
-      <div class="compare-controls">
-        <label for="diff-from">From</label> <select id="diff-from"></select>
-        <label for="diff-to">to</label> <select id="diff-to"></select>
-        <label class="inline-check"><input type="checkbox" id="diff-level"> with the level</label>
-      </div>
-      <div id="diff-output" class="diff-output"></div>
-
-      <h3>Keep your work in a file</h3>
-      <p>
-        The <i>project file</i> holds your current version, all snapshots (with
-        their notes and test results) and the original game. Save it wherever you
-        keep your files; load it below on any computer to go on where you left off.
-        Work saved in a browser can get lost (for example when the browser's
-        data is cleared), so download your project now and then.
-      </p>
-      <p id="download-reminder" class="versions-status"></p>
-      <button data-action="download_project" class="control-button">Download project file</button>
-      <button data-action="download_folder" class="control-button" title="One file per program (strategy.lp, nature.lp, ...), in a .zip file">Download as a folder (.zip)</button>
-      <button data-action="download_game" class="control-button" title="Only the programs and the level, like the example games: to hand in, or to give to someone">Download game only</button>
-      <p class="versions-help">
-        <i>As a folder</i>: one plain clingo file per program (<tt>strategy.lp</tt>, <tt>nature.lp</tt>, &hellip;),
-        for your own editor, for git (a change shows up per program), and for the
-        command-line version of the game (see <i>Playing on your own computer</i> in the
-        <a href="?tab=2" class="tab-link" data-tab="2">Instructions</a> tab).
-        Snapshots are not in the folder: use git (or the project file) for versions.
-      </p>
-
-      <h3>Work in a folder on your computer</h3>
-      <div id="folder-supported">
+      <div class="versions-main">
+        <h3>Hand in your work</h3>
         <p>
-          Link the page to a game folder on your computer (for example, a folder in your git repository).
-          Every change you make here is saved into its files, and changes to the files
-          (in your own editor, or by git) show up here within a few seconds.
-          An empty folder gets the current game.
+          The game file has all programs (your strategy too) and the level,
+          like the example games: hand it in, or give it to someone.
         </p>
-        <p id="folder-status" class="versions-status"></p>
-        <button data-action="open_folder" class="control-button" id="open-folder-button">Link a folder&hellip;</button>
-        <button data-action="relink_folder" class="control-button" id="relink-folder-button" hidden></button>
-        <button data-action="unlink_folder" class="control-button" id="unlink-folder-button" hidden>Unlink</button>
+        <button data-action="download_game" class="control-button primary-button">&#x2B73; Download the game file</button>
+        <p id="game-reminder" class="versions-status game-reminder"></p>
+
+        <h3>Load a file or a folder</h3>
+        <p>
+          A game file, a project file, a game folder (or a .zip of it), or a backup of everything.
+          Your current work on that game is kept as a snapshot first.
+        </p>
+        <form id="upload-form" enctype="multipart/form-data">
+          <label for="file-input" class="control-button">Select file</label>
+          <input type="file" id="file-input" accept=".json,.zip,application/json,application/zip" required>
+          <label for="folder-input" class="control-button">Select folder</label>
+          <input type="file" id="folder-input" webkitdirectory>
+        </form>
+        <p id="upload-status"></p>
       </div>
-      <p id="folder-unsupported" class="versions-help" hidden>
-        This browser cannot link the page to a folder (Chrome and Edge can).
-        You can download the game as a folder (.zip) above, and load a folder below.
-      </p>
 
-      <h3>Load a file or a folder</h3>
-      <p>
-        A project file, a game file (like the examples), a game folder (or a .zip of it),
-        or a backup of everything. Your current work on that game is kept as a snapshot first.
-      </p>
-      <form id="upload-form" enctype="multipart/form-data">
-        <label for="file-input" class="control-button">Select file</label>
-        <input type="file" id="file-input" accept=".json,.zip,application/json,application/zip" required>
-        <label for="folder-input" class="control-button">Select folder</label>
-        <input type="file" id="folder-input" webkitdirectory>
-      </form>
-      <p id="upload-status"></p>
+      <details class="versions-more" data-remember="snapshots">
+        <summary>Snapshots of <span id="versions-title">this game</span> <span id="snapshot-count" class="summary-note"></span></summary>
+        <p>
+          Snapshots are versions of your work that you can compare and go back to.
+        </p>
+        <div class="snapshot-form">
+          <input type="text" id="snapshot-name" maxlength="100" placeholder="Name, e.g. &quot;walks around walls&quot;" aria-label="Name of the snapshot">
+          <textarea id="snapshot-note" rows="2" maxlength="2000" placeholder="Note (optional): what changed, what works, what does not yet" aria-label="Note for the snapshot"></textarea>
+          <div>
+            <button data-action="take_snapshot" class="control-button" id="snapshot-button">Keep a snapshot of the current version</button>
+            <span id="snapshot-status" class="versions-status"></span>
+          </div>
+        </div>
+        <p class="versions-help">
+          The page also keeps snapshots by itself: every 10 minutes while you edit, when you
+          test your strategy (with the result), and before your current version is replaced
+          (by restoring an older version, taking a program from another one, going back to
+          the original, loading a file, or changes to the files of a linked folder).
+          Only the newest 20 of these are kept; give one a name or a note to keep it.
+        </p>
+        <label class="inline-check"><input type="checkbox" id="show-auto" checked> Show the automatic snapshots</label>
+        <ol id="snapshot-list" class="snapshot-list" reversed></ol>
 
-      <h3>Share current game</h3>
-      <p>
-        This creates a link that contains the whole game (all programs,
-        including your strategy, but not your snapshots). Whoever opens the link
-        gets their own copy of the game. The game is not uploaded anywhere: it is
-        stored in the link itself.
-      </p>
-      <button data-action="share_game" class="control-button">Create link</button>
-      <p id="share-box" hidden>
-        <input type="text" id="share-link" class="share-link" readonly>
-        <span id="share-status"></span>
-      </p>
+        <h4 id="compare-heading">Compare versions</h4>
+        <div class="compare-controls">
+          <label for="diff-from">From</label> <select id="diff-from"></select>
+          <label for="diff-to">to</label> <select id="diff-to"></select>
+          <label class="inline-check"><input type="checkbox" id="diff-level"> with the level</label>
+        </div>
+        <div id="diff-output" class="diff-output"></div>
+      </details>
 
-      <h3>Everything in this browser</h3>
-      <p id="saved-work-status"></p>
-      <div class="table-wrapper">
-        <table id="saved-games" class="saved-games" hidden>
-          <thead><tr><th>Game</th><th>Last saved</th><th>Snapshots</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p id="storage-used" class="versions-help"></p>
-      <button data-action="download_backup" class="control-button" id="backup-button">Download a backup of everything</button>
-      <button data-action="forget_saved_work" class="control-button" id="forget-button">Forget all saved work</button>
+      <details class="versions-more" data-remember="project">
+        <summary>Keep everything in a file: the project file <span class="summary-note">(to go on working on another computer)</span></summary>
+        <p>
+          The <i>project file</i> holds your current version, all snapshots (with
+          their notes and test results) and the original game. Save it wherever you
+          keep your files (for example in your Google Drive or OneDrive folder, or on a
+          USB stick), and load it above on any computer to go on where you left off.
+          Work saved in a browser can get lost (for example when the browser's
+          data is cleared), so download your project now and then.
+        </p>
+        <p id="download-reminder" class="versions-status"></p>
+        <button data-action="download_project" class="control-button">Download project file</button>
+        <button data-action="download_folder" class="control-button" title="One file per program (strategy.lp, nature.lp, ...), in a .zip file">Download as a folder (.zip)</button>
+        <p class="versions-help">
+          <i>As a folder</i>: one plain clingo file per program (<tt>strategy.lp</tt>, <tt>nature.lp</tt>, &hellip;),
+          for your own editor, for git (a change shows up per program), and for the
+          command-line version of the game (see <i>Playing on your own computer</i> in the
+          <a href="?tab=2" class="tab-link" data-tab="2">Instructions</a> tab).
+          Snapshots are not in the folder: use git (or the project file) for versions.
+        </p>
+      </details>
+
+      <details class="versions-more" data-remember="folder" id="folder-details">
+        <summary>Work in a folder on your computer <span id="folder-summary" class="summary-note"></span></summary>
+        <div id="folder-supported">
+          <p>
+            Link the page to a game folder on your computer (for example, a folder in your git repository).
+            Every change you make here is saved into its files, and changes to the files
+            (in your own editor, or by git) show up here within a few seconds.
+            An empty folder gets the current game.
+          </p>
+          <p id="folder-status" class="versions-status"></p>
+          <button data-action="open_folder" class="control-button" id="open-folder-button">Link a folder&hellip;</button>
+          <button data-action="relink_folder" class="control-button" id="relink-folder-button" hidden></button>
+          <button data-action="unlink_folder" class="control-button" id="unlink-folder-button" hidden>Unlink</button>
+        </div>
+        <p id="folder-unsupported" class="versions-help" hidden>
+          This browser cannot link the page to a folder (Chrome and Edge can).
+          You can download the game as a folder (.zip) with the project file above, and load a folder at the top.
+        </p>
+      </details>
+
+      <details class="versions-more" data-remember="share">
+        <summary>Share a link to this game</summary>
+        <p>
+          This creates a link that contains the whole game (all programs,
+          including your strategy, but not your snapshots). Whoever opens the link
+          gets their own copy of the game. The game is not uploaded anywhere: it is
+          stored in the link itself.
+        </p>
+        <button data-action="share_game" class="control-button">Create link</button>
+        <p id="share-box" hidden>
+          <input type="text" id="share-link" class="share-link" readonly>
+          <span id="share-status"></span>
+        </p>
+      </details>
+
+      <details class="versions-more" data-remember="everything">
+        <summary>Everything in this browser</summary>
+        <p id="saved-work-status"></p>
+        <div class="table-wrapper">
+          <table id="saved-games" class="saved-games" hidden>
+            <thead><tr><th>Game</th><th>Last saved</th><th>Snapshots</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p id="storage-used" class="versions-help"></p>
+        <button data-action="download_backup" class="control-button" id="backup-button">Download a backup of everything</button>
+        <button data-action="forget_saved_work" class="control-button" id="forget-button">Forget all saved work</button>
+      </details>
     </section>
 
     <section id="section-internals" data-include="docs/internals.html"></section>
+    </div>
+    </div>
 
   </main>
 

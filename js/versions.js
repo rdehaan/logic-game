@@ -199,7 +199,10 @@ export function best_test(snapshot) {
 
 // Snapshots in a storage such as window.localStorage. For each game (named by
 // its origin, as in storage.js) the record is
-//   { title, original, downloaded_at, downloaded_game, snapshots: [oldest first] }.
+//   { title, original, downloaded_at, downloaded_game, game_downloaded_at,
+//     game_downloaded, snapshots: [oldest first] }
+// (downloaded_*: the last download of the project file; game_downloaded*: of
+// the game file, which is what players hand in).
 // Changes return the changed snapshot, or null when the storage cannot be used
 // (blocked, or full: see `error`).
 export class VersionStore {
@@ -219,19 +222,21 @@ export class VersionStore {
           original: raw.original ? normalize_game(raw.original) : null,
           downloaded_at: typeof raw.downloaded_at === 'string' ? raw.downloaded_at : null,
           downloaded_game: raw.downloaded_game ? normalize_game(raw.downloaded_game) : null,
+          game_downloaded_at: typeof raw.game_downloaded_at === 'string' ? raw.game_downloaded_at : null,
+          game_downloaded: raw.game_downloaded ? normalize_game(raw.game_downloaded) : null,
           snapshots: Array.isArray(raw.snapshots) ? raw.snapshots.map(clean_snapshot).filter(Boolean) : [],
         };
       }
     } catch {
       // nothing stored, or not readable: an empty record
     }
-    return { title: null, original: null, downloaded_at: null, downloaded_game: null, snapshots: [] };
+    return { title: null, original: null, downloaded_at: null, downloaded_game: null, game_downloaded_at: null, game_downloaded: null, snapshots: [] };
   }
 
   write(origin, record) {
     this.error = null;
     try {
-      if (!record.snapshots.length && !record.downloaded_at) {
+      if (!record.snapshots.length && !record.downloaded_at && !record.game_downloaded_at) {
         this.storage.removeItem(PREFIX + origin);
         return true;
       }
@@ -241,6 +246,10 @@ export class VersionStore {
       if (record.downloaded_at) {
         out.downloaded_at = record.downloaded_at;
         if (record.downloaded_game) out.downloaded_game = compact(record.downloaded_game);
+      }
+      if (record.game_downloaded_at) {
+        out.game_downloaded_at = record.game_downloaded_at;
+        if (record.game_downloaded) out.game_downloaded = compact(record.game_downloaded);
       }
       this.storage.setItem(PREFIX + origin, JSON.stringify(out));
       return true;
@@ -318,6 +327,16 @@ export class VersionStore {
     const record = this.record(origin);
     record.downloaded_at = this.now().toISOString();
     record.downloaded_game = normalize_game(game);
+    if (about.title) record.title = about.title;
+    if (about.original) record.original = normalize_game(about.original);
+    return this.write(origin, record);
+  }
+
+  // Remember that the game file was downloaded (this version of the game).
+  mark_game_downloaded(origin, game, about = {}) {
+    const record = this.record(origin);
+    record.game_downloaded_at = this.now().toISOString();
+    record.game_downloaded = normalize_game(game);
     if (about.title) record.title = about.title;
     if (about.original) record.original = normalize_game(about.original);
     return this.write(origin, record);

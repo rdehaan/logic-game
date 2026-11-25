@@ -276,3 +276,13 @@ test('vendor/clingo-wasm is the clingo-wasm package from package.json', () => {
       `vendor/clingo-wasm/${f} differs from node_modules: run "npm run vendor"`);
   }
 });
+
+test('calls made while clingo is loading wait for it, without their time limit running', async () => {
+  const s = create_solver(clingo, { timeout_ms: 300 });
+  // (a download that takes longer than the time limit of a call)
+  const download = new Promise((resolve) => setTimeout(() => resolve(undefined), 800));
+  const loading = s.init(download);
+  const result = await s.solve(['a.']);
+  assert.deepEqual(result, { status: 'ok', atoms: ['a'] });
+  await loading;
+});

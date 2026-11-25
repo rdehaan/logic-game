@@ -44,11 +44,12 @@ export function create_solver(clingo, { timeout_ms = DEFAULT_TIMEOUT_MS, options
     clearTimeout(timer);
     if (generation !== my_generation) return { status: 'aborted' };
     if (outcome.status === 'timeout') {
-      await clingo.restart();
+      await clingo.restart(wasm_url);
     }
     return outcome;
   }
 
+  let wasm_url;      // (see init)
   const solver = {
     timeout_ms,
     options,
@@ -96,12 +97,22 @@ export function create_solver(clingo, { timeout_ms = DEFAULT_TIMEOUT_MS, options
     // Stop whatever clingo is doing (the pending call returns 'aborted').
     async abort() {
       generation += 1;
-      await clingo.restart();
+      await clingo.restart(wasm_url);
     },
 
-    // Load clingo (the worker and the WebAssembly module) ahead of the first call.
-    async init() {
-      await clingo.init();
+    // Load clingo (the worker and the WebAssembly module) ahead of the first call;
+    // optionally from a URL of the .wasm file, or a promise of one (e.g. a file
+    // the page downloads itself, to show the progress), which is also used
+    // after an abort. Calls made in the meantime wait (without their time
+    // limit running), so that clingo is not loaded twice.
+    init(url = undefined) {
+      const loading = (async () => {
+        const resolved = await url;
+        await clingo.init(resolved);
+        wasm_url = resolved;
+      })();
+      queue = queue.then(() => loading).catch(() => {});
+      return loading;
     },
   };
   return solver;

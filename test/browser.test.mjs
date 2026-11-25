@@ -67,11 +67,18 @@ async function open(t, query = '') {
   return page;
 }
 
-const game_output = (page) => page.textContent('#game-output');
+// The whole game output as text, newest first.
+const game_output = (page) => page.evaluate(() => window.logic_game.game_output());
 
 async function wait_for_verdict(page, pattern = /WIN!|LOSE!|STOPPED!|TIMEOUT!/, timeout = 60000) {
-  await page.waitForFunction((source) => new RegExp(source).test(document.getElementById('game-output').textContent),
+  await page.waitForFunction((source) => new RegExp(source).test(window.logic_game.game_output()),
     pattern.source, { timeout });
+}
+
+// Open the closed sections of the Versions tab (as a player would: by clicking them).
+async function open_sections(page) {
+  const closed = page.locator('#section-versions details:not([open]) > summary');
+  while (await closed.count()) await closed.first().click();
 }
 
 async function set_program(page, key, text) {
@@ -197,7 +204,7 @@ test('pause and resume', async (t) => {
   if (!page) return;
   await page.selectOption('#speed-selector', '1000');
   await page.click('#play-button');
-  await page.waitForFunction(() => /STEP 1 /.test(document.getElementById('game-output').textContent));
+  await page.waitForFunction(() => /STEP 1 /.test(window.logic_game.game_output()));
   await page.click('#pause-button');
   await page.waitForFunction(() => !document.getElementById('play-button').disabled, null, { timeout: 5000 });
   const paused_at = (await game_output(page)).length;
@@ -293,7 +300,8 @@ test('changes are saved in the browser, and come back after a reload', async (t)
   await page.reload();
   await page.waitForSelector('body[data-ready=true]');
   assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), 'do(move(down)).');
-  assert.match(await page.textContent('#work-notice'), /You are working on your own version of Find the flag 3 \(saved /);
+  assert.match(await page.textContent('#work-notice'), /^\s*Your own version, saved in this browser at \d+:\d+.*\.\s*Back to the original\s*$/);
+  assert.equal(await page.textContent('#game-title'), 'Find the flag 3');
   // Other games are not affected
   await page.click('label[for=tab1]');
   await page.selectOption('#example-games', 'examples/flag2.json');
@@ -305,7 +313,7 @@ test('changes are saved in the browser, and come back after a reload', async (t)
   await page.selectOption('#example-games', 'examples/flag3.json');
   await page.click('button[data-action=load_game]');
   await page.waitForSelector('#work-notice:not([hidden])');
-  assert.match(await page.textContent('#work-notice'), /your own version of Find the flag 3 \(saved /);
+  assert.match(await page.textContent('#work-notice'), /Your own version, saved in this browser at /);
   await page.click('button[data-action=revert_to_original]');
   await page.waitForSelector('#work-notice', { state: 'hidden' });
   assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), '');
@@ -317,6 +325,7 @@ test('share links', async (t) => {
   if (!page) return;
   await set_program(page, 'player_move_program', '% shared strategy\ndo(move(down)).');
   await page.click('label[for=tab7]');
+  await open_sections(page);
   await page.click('button[data-action=share_game]');
   await page.waitForSelector('#share-box:not([hidden])');
   const link = await page.inputValue('#share-link');
@@ -350,6 +359,7 @@ test('forgetting all saved work', async (t) => {
   await set_program(page, 'player_move_program', 'do(move(up)).');
   await page.waitForFunction(() => window.logic_game.work.origins().length === 1);
   await page.click('label[for=tab7]');
+  await open_sections(page);
   assert.equal(await page.textContent('#saved-work-status'), 'There is saved work for 1 game.');
   await page.click('#forget-button');
   assert.equal(await page.textContent('#saved-work-status'), 'There is no saved work.');
@@ -406,11 +416,12 @@ test('playing step by step, and looking back', async (t) => {
   assert.equal(await page.isDisabled('#pause-button'), true);
   assert.equal(await page.isEnabled('#stop-button'), true);
   assert.ok(await page.locator('.grid-visual-cell.changed').count() > 0);
-  // The marks of the cells that changed can be turned off
-  assert.equal(await page.locator('.grid-visual-cell.changed').first().evaluate((e) => getComputedStyle(e).boxShadow !== 'none'), true);
-  await page.uncheck('#mark-changes');
+  // The cells that changed are not marked, unless that is turned on
+  assert.equal(await page.isChecked('#mark-changes'), false);
   assert.equal(await page.locator('.grid-visual-cell.changed').first().evaluate((e) => getComputedStyle(e).boxShadow), 'none');
   await page.check('#mark-changes');
+  assert.equal(await page.locator('.grid-visual-cell.changed').first().evaluate((e) => getComputedStyle(e).boxShadow !== 'none'), true);
+  await page.uncheck('#mark-changes');
   // Back one time: the move the player made there
   await page.click('#timeline-prev');
   assert.match(await page.textContent('#timeline-label'), /^Time 2 of 3: the player moved do\(move\(\w+\)\)$/);
@@ -427,17 +438,24 @@ test('playing step by step, and looking back', async (t) => {
   // The Debug tab shows the step of the board, with a slider of its own
   await page.click('label[for=tab5]');
   assert.match(await page.textContent('#debug-step-label'), /^Step 1: the player saw the board of time 0/);
-  assert.match(await page.textContent('#debug-step'), /Player input:/);
+  assert.match(await page.textContent('#debug-step'), /Player input/);
+  // with the facts of each program in a locked editor, one fact per line
+  const output_editors = page.locator('#debug-step .ace_editor.output-editor');
+  assert.ok(await output_editors.count() >= 3);
+  assert.equal(await output_editors.first().evaluate((e) => ace.edit(e).getReadOnly()), true);
+  assert.match(await output_editors.first().evaluate((e) => ace.edit(e).getValue()), /^current_time\(0\)\.\n/);
+  assert.ok(await page.locator('#debug-step .ace_editor .ace_keyword, #debug-step .ace_editor .ace_constant, #debug-step .ace_editor .ace_paren').count() > 0);
   assert.match(await page.textContent('#debug-messages'), /^WIN!/);
-  await page.click('#debug-next');
+  // (next to the board, the slider under the board is used; otherwise the Debug tab has its own)
+  assert.equal(await page.isHidden('.debug-timeline'), true);
+  await page.click('#timeline-next');
   assert.match(await page.textContent('#timeline-label'), /^Time 1 of /);
   assert.match(await page.textContent('#debug-step-label'), /^Step 2:/);
-  // or all steps at once
-  await page.check('#show-all-output');
-  assert.equal(await page.isHidden('#debug-steps'), true);
-  await page.locator('#game-output .output-step', { hasText: '## STEP 3 ##' }).click();
+  await page.evaluate(() => { document.getElementById('option-side-by-side').checked = false; document.getElementById('option-side-by-side').dispatchEvent(new Event('change')); });
+  assert.equal(await page.isVisible('.debug-timeline'), true);
+  await page.click('#debug-next');
   assert.match(await page.textContent('#timeline-label'), /^Time 2 of /);
-  await page.uncheck('#show-all-output');
+  assert.match(await page.textContent('#debug-step-label'), /^Step 3:/);
   // Changing a program after the game: the board says so
   await set_program(page, 'player_move_program', (await value(page, 'player_move_program')) + '\n% changed');
   assert.match(await page.textContent('#board-status'), /^The board shows the last game \(WIN at time \d+\)\. Since then, you changed: Player strategy\./);
@@ -503,7 +521,8 @@ test('options in the Control tab are kept, and can be set in the URL', async (t)
   await page.check('#option-editor');
   await page.fill('#option-timeout', '25');
   await page.dispatchEvent('#option-timeout', 'change');
-  await page.uncheck('#option-mark-changes');
+  assert.equal(await page.isChecked('#option-mark-changes'), false);
+  await page.check('#option-mark-changes');
   assert.equal(await page.isVisible('label[for=tab6]'), true);
   assert.equal(await page.locator('#example-games optgroup[label=Solutions]').count(), 1);
   assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 25000);
@@ -511,16 +530,22 @@ test('options in the Control tab are kept, and can be set in the URL', async (t)
   await page.waitForSelector('body[data-ready=true]');
   assert.equal(await page.isVisible('label[for=tab6]'), true);
   assert.equal(await page.isChecked('#option-editor'), true);
-  assert.equal(await page.isChecked('#mark-changes'), false);
+  assert.equal(await page.isChecked('#mark-changes'), true);
   assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 25000);
   // A link can turn them off (only for that visit)
-  await page.goto(base + '?internals=false&timeout=5');
+  await page.goto(base + '?internals=false&mark_changes=false&solutions=false&editor=false&timeout=5');
   await page.waitForSelector('body[data-ready=true]');
   assert.equal(await page.isHidden('label[for=tab6]'), true);
+  assert.equal(await page.isChecked('#option-mark-changes'), false);
+  assert.equal(await page.isChecked('#mark-changes'), false);
+  assert.equal(await page.isChecked('#option-solutions'), false);
+  assert.equal(await page.locator('#example-games optgroup[label=Solutions]').count(), 0);
+  assert.equal(await page.isChecked('#option-editor'), false);
   assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 5000);
   await page.goto(base);
   await page.waitForSelector('body[data-ready=true]');
   assert.equal(await page.isVisible('label[for=tab6]'), true);
+  assert.equal(await page.isChecked('#option-mark-changes'), true);
   // Turning off the Internals tab while it is open goes to the Control tab
   await page.click('label[for=tab6]');
   await page.click('label[for=tab1]');
@@ -550,10 +575,11 @@ test('testing a strategy on many levels, and playing a level of the test again',
   await page.click('#play-button');
   await wait_for_verdict(page);
   assert.match(await game_output(page), /^LOSE! \(lose\(timeout\)\)/);
-  assert.equal(await page.locator('#game-output .output-step').count(), Number(steps));
+  assert.equal((await game_output(page)).match(/^## STEP \d+ ##$/gm).length, Number(steps));
   // A link to the level gives the same level
   const level_state = await page.evaluate(() => window.logic_game.editors.value('level_state'));
   await page.click('label[for=tab7]');
+  await open_sections(page);
   await page.click('button[data-action=share_game]');
   await page.waitForFunction(() => document.getElementById('share-link').value !== '');
   const link = await page.inputValue('#share-link');
@@ -680,6 +706,211 @@ async function hover_help(page, key, row, column) {
   }, [key, row, column]);
 }
 
+test('below the board: why the player made no move, with a link to the rule', async (t) => {
+  const page = await open(t, '?file=flag3');
+  if (!page) return;
+  // (the flag is not below the player: the rule never applies)
+  await set_program(page, 'player_move_program', '% go down to the flag\ndo(move(down)) :- observe(at(R1,C,player)), observe(at(R2,C,flag)), R1 < R2.');
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  await page.fill('#timeline', '1');
+  await page.dispatchEvent('#timeline', 'input');
+  assert.match(await page.textContent('#timeline-label'), /the player made no move$/);
+  assert.match(await page.textContent('#move-note'), /^None of your rules for do\(\.\.\.\) applied in this step.* See line 2 of your strategy\.$/);
+  // (below the buttons)
+  const buttons = await page.locator('.game-controls').boundingBox();
+  assert.ok((await page.locator('#move-note').boundingBox()).y > buttons.y + buttons.height - 1);
+  // The line number goes to the rule
+  await page.locator('#move-note button', { hasText: '2' }).click();
+  assert.equal(await page.isChecked('#tab4'), true);
+  assert.equal(await page.evaluate(() => window.logic_game.editors.get('player_move_program').getCursorPosition().row), 1);
+  // After a change, the note says that it is about the game that was played
+  await set_program(page, 'player_move_program', 'do(move(left)).');
+  await page.click('#timeline-next');
+  await page.click('#timeline-prev');
+  assert.match(await page.textContent('#move-note'), /You changed your strategy since this game/);
+  // No note for a step with one move
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  await page.fill('#timeline', '1');
+  await page.dispatchEvent('#timeline', 'input');
+  assert.equal(await page.isHidden('#move-note'), true);
+});
+
+test('the Debug tab marks what changed since the step before, or shows only that', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions&tab=5');
+  if (!page) return;
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  await page.fill('#timeline', '2');
+  await page.dispatchEvent('#timeline', 'input');
+  // (step 2: the player moved, so its place and the time are new)
+  const value = (i) => page.locator('#debug-step .output-editor').nth(i).evaluate((e) => ace.edit(e).getValue());
+  assert.match(await page.textContent('.debug-legend'), /^Compared with the step before/);
+  assert.match(await value(0), /^current_time\(1\)\.\n.*setting\(grid_width/s);
+  assert.ok(await page.locator('#debug-step .output-editor').first().locator('.fact-new').count() >= 2);
+  assert.match(await page.locator('.debug-gone').first().textContent(), /^Gone since the step before: current_time\(0\)\. .*observe\(at\(\d+,\d+,player\)\)\.$/);
+  // Only what changed
+  await page.check('#option-only-changes');
+  assert.match(await value(0), /^current_time\(1\)\.\nobserve\(at\(\d+,\d+,player\)\)\.$/);
+  assert.match(await page.locator('.debug-unchanged').first().textContent(), /^⋯ \d+ unchanged facts not shown$/);
+  assert.match(await page.locator('.debug-gone').first().textContent(), /^Gone since the step before: current_time\(0\)\. observe\(at\(\d+,\d+,player\)\)\.$/);
+  // The first step has nothing to compare with
+  await page.fill('#timeline', '1');
+  await page.dispatchEvent('#timeline', 'input');
+  assert.equal(await page.locator('.debug-legend').count(), 0);
+  assert.match(await value(0), /setting\(grid_width/);
+  // (an option, also in a link)
+  await page.goto(base + '?only_changes=false&tab=5');
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isChecked('#option-only-changes'), false);
+});
+
+test('facts and the board: hovering over a fact shows its cell, and over a cell its facts', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions&tab=5');
+  if (!page) return;
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  await page.fill('#timeline', '1');
+  await page.dispatchEvent('#timeline', 'input');
+  // Over the fact of the player in the player input: its cell on the board
+  const point = await page.evaluate(() => {
+    const editor = ace.edit(document.querySelector('#debug-step .output-editor'));
+    editor.container.scrollIntoView({ block: 'center' });
+    const lines = editor.getValue().split('\n');
+    const row = lines.findIndex((l) => /^observe\(at\(\d+,\d+,player\)\)\.$/.test(l));
+    const c = editor.renderer.textToScreenCoordinates(row, 3);
+    const [, r, col] = /at\((\d+),(\d+)/.exec(lines[row]);
+    return { x: c.pageX + 2, y: c.pageY + editor.renderer.lineHeight / 2, index: (Number(r) - 1) * 8 + Number(col) };
+  });
+  await page.mouse.move(point.x, point.y);
+  await page.waitForFunction(() => document.querySelectorAll('.grid-visual-cell.linked').length === 1);
+  assert.equal(await page.evaluate(() => [...document.getElementById('visual').children].findIndex((c) => c.classList.contains('linked')) + 1), point.index);
+  // (and the facts about that cell)
+  assert.ok(await page.locator('#debug-step .fact-linked').count() >= 1);
+  // Away from the editors: no highlights
+  await page.mouse.move(1, 1);
+  await page.waitForFunction(() => !document.querySelector('.grid-visual-cell.linked'));
+  // Over a cell: the facts about it
+  await page.locator('.grid-visual-cell').nth(point.index - 1).hover();
+  await page.waitForFunction(() => document.querySelectorAll('#debug-step .fact-linked').length >= 1);
+  await page.mouse.move(1, 1);
+  await page.waitForFunction(() => document.querySelectorAll('#debug-step .fact-linked').length === 0);
+});
+
+test('after a change, Play again plays the level again and comes back to the same time', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions');
+  if (!page) return;
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.equal(await page.locator('.replay-button').count(), 0);
+  await page.fill('#timeline', '3');
+  await page.dispatchEvent('#timeline', 'input');
+  assert.match(await page.textContent('#timeline-label'), /^Time 2 of /);
+  await set_program(page, 'player_move_program', (await value(page, 'player_move_program')) + '\n% changed');
+  assert.match(await page.textContent('#board-status'), /Since then, you changed: Player strategy\./);
+  await page.click('.replay-button');
+  await page.waitForFunction(() => /WIN!|LOSE!/.test(window.logic_game.game_output()) && !document.getElementById('play-button').disabled);
+  assert.match(await page.textContent('#timeline-label'), /^Time 2 of /);
+  assert.equal(await page.locator('.replay-button').count(), 0);
+});
+
+test('keyboard shortcuts: play, step, pause, and moving through the timeline', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions');
+  if (!page) return;
+  await page.selectOption('#speed-selector', '0');
+  await page.locator('h1').click();      // (the focus on the page, not in a field)
+  // Space: one step at a time
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => document.getElementById('timeline-label').textContent === 'Time 1 of 1');
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => document.getElementById('timeline-label').textContent === 'Time 2 of 2');
+  // Ctrl+Enter: play on
+  await page.keyboard.press('Control+Enter');
+  await wait_for_verdict(page);
+  await page.waitForFunction(() => !document.getElementById('play-button').disabled);
+  // The timeline: Home, End and the arrow keys
+  await page.keyboard.press('Home');
+  assert.match(await page.textContent('#timeline-label'), /^Time 0 of (\d+)/);
+  await page.keyboard.press('ArrowRight');
+  assert.match(await page.textContent('#timeline-label'), /^Time 1 of /);
+  await page.keyboard.press('ArrowLeft');
+  assert.match(await page.textContent('#timeline-label'), /^Time 0 of /);
+  await page.keyboard.press('End');
+  const end = await page.textContent('#timeline-label');
+  assert.match(end, /^Time (\d+) of \1/);
+  // While typing in an editor, Space and the arrows are the editor's; Ctrl+Enter plays
+  await page.click('label[for=tab4]');
+  const before = await value(page, 'player_move_program');
+  await page.evaluate(() => { const e = window.logic_game.editors.get('player_move_program'); e.focus(); e.navigateFileEnd(); });
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(await page.textContent('#timeline-label'), end);
+  await page.keyboard.press('Control+Enter');
+  await page.waitForFunction(() => /STEP 1 /.test(window.logic_game.game_output()));
+  assert.equal(await value(page, 'player_move_program'), before);
+});
+
+test('accessibility: the tabs and the cells of the board can be used with the keyboard', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions');
+  if (!page) return;
+  // The tabs: reachable, and the arrow keys go from tab to tab
+  assert.equal(await page.getAttribute('label[for=tab4]', 'title'), 'Strategy');
+  await page.focus('#tab1');
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.isChecked('#tab2'), true);
+  assert.equal(await page.isVisible('#section-instructions'), true);
+  // The board: every cell says what it holds
+  const label = (i) => page.locator('#visual .grid-visual-cell').nth(i).getAttribute('aria-label');
+  assert.equal(await label(0), 'Row 1, column 1: empty');
+  const player = await page.evaluate(() => [...document.querySelectorAll('#visual .grid-visual-cell')].findIndex((c) => /: player$/.test(c.getAttribute('aria-label'))));
+  assert.ok(player >= 0);
+  // One cell can be reached with Tab; the arrow keys move from cell to cell
+  assert.equal(await page.locator('#visual [tabindex="0"]').count(), 1);
+  await page.focus('#visual [tabindex="0"]');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Row 2, column 2: empty');
+  await page.keyboard.press('End');
+  assert.match(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), /^Row 2, column 8: /);
+  // The focused cell is highlighted (and its facts, as when hovering)
+  assert.equal(await page.locator('.grid-visual-cell.linked').count(), 1);
+  // After a game, the focus stays on its cell while going through time
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  await page.focus('#visual [tabindex="0"]');
+  const where = await page.evaluate(() => document.activeElement.getAttribute('aria-label').split(':')[0]);
+  await page.click('#timeline-prev');
+  await page.focus('#visual [tabindex="0"]');
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label').split(':')[0]), where);
+});
+
+test('a slow download of clingo shows its progress, and clingo is downloaded once', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const page = await browser.newPage({ serviceWorkers: 'block' });
+  t.after(() => page.close());
+  let downloads = 0;
+  await page.route('**/clingo.wasm', async (route) => {
+    downloads++;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto(base + '?file=flag3');
+  await page.waitForSelector('#loading:not([hidden])');
+  assert.match(await page.textContent('#loading-text'), /^Loading clingo, the solver that runs the programs/);
+  await page.waitForSelector('body[data-ready=true]', { timeout: 30000 });
+  assert.equal(await page.isHidden('#loading'), true);
+  assert.ok(await page.locator('#visual .grid-visual-cell').count() > 0);
+  assert.equal(downloads, 1);
+});
+
 test('help about special predicates in the editors', async (t) => {
   const page = await open(t, '?tab=4');
   if (!page) return;
@@ -698,6 +929,7 @@ test('help about special predicates in the editors', async (t) => {
   await page.keyboard.type('\nreme');
   await page.waitForSelector('.ace_autocomplete', { state: 'visible', timeout: 5000 });
   assert.match(await page.textContent('.ace_autocomplete'), /remember\/1/);
+  await page.waitForTimeout(300);      // (until the list is updated for all typed letters)
   await page.keyboard.press('Enter');
   assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program').split('\n').pop()), 'remember(');
   // No suggestions while typing a variable
@@ -718,9 +950,48 @@ async function wait_saved(page, text) {
   }, text);
 }
 
+test('the Versions tab: the game file to hand in first, the rest in sections that stay open', async (t) => {
+  const page = await open(t, '?file=flag3&tab=7');
+  if (!page) return;
+  // At first, only the main things are shown
+  assert.equal(await page.isVisible('button[data-action=download_game]'), true);
+  assert.equal(await page.isVisible('#file-input + label, label[for=file-input]'), true);
+  assert.equal(await page.locator('#section-versions details[open]').count(), 0);
+  assert.equal(await page.isVisible('#snapshot-button'), false);
+  assert.equal(await page.textContent('#game-reminder'), '');
+  // A change: not downloaded yet
+  // (the Versions tab is updated when the work is saved, shortly after a change)
+  const reminder = (pattern) => page.waitForFunction((source) => new RegExp(source).test(document.getElementById('game-reminder').textContent), pattern.source);
+  await set_program(page, 'player_move_program', 'do(move(down)).');
+  await reminder(/^You have not downloaded the game file of Find the flag 3 yet\.$/);
+  // Downloaded: the game file is the current version
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('button[data-action=download_game]')]);
+  assert.equal(download.suggestedFilename(), 'find-the-flag-3.json');
+  assert.match(await page.textContent('#game-reminder'), /^You downloaded the game file on .*: that is your current version\.$/);
+  // Changed after the download: download it again
+  await set_program(page, 'player_move_program', 'do(move(up)).');
+  await reminder(/^You changed Find the flag 3 since you downloaded the game file on .*: download it again/);
+  assert.equal(await page.locator('#game-reminder.attention').count(), 1);
+  // The snapshots: their number in the heading; an opened section stays open
+  await page.click('summary:has-text("Snapshots of")');
+  await page.fill('#snapshot-name', 'up');
+  await page.click('#snapshot-button');
+  assert.equal(await page.textContent('#snapshot-count'), '(1)');
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isVisible('#snapshot-button'), true);
+  assert.equal(await page.isVisible('button[data-action=share_game]'), false);
+  // Comparing opens the section of the comparison
+  await page.click('summary:has-text("Snapshots of")');
+  assert.equal(await page.isVisible('#snapshot-button'), false);
+  await page.evaluate(() => window.logic_game.versions_tab.compare('original'));
+  assert.equal(await page.isVisible('#diff-output'), true);
+});
+
 test('snapshots: keep, compare, take one program, restore', async (t) => {
   const page = await open(t, '?file=flag3&tab=7');
   if (!page) return;
+  await open_sections(page);
   page.on('dialog', (dialog) => dialog.accept());
   await set_program(page, 'player_move_program', 'do(move(down)).');
   await set_program(page, 'goal_program', 'win :- at(R,C,player), at(R,C,flag).');
@@ -794,6 +1065,7 @@ test('test results are kept with the version, and going back to the original kee
 test('project files: download, and continue in another browser', async (t) => {
   const page = await open(t, '?file=flag2&tab=7');
   if (!page) return;
+  await open_sections(page);
   await set_program(page, 'player_move_program', '% my work\ndo(move(down)).');
   await wait_saved(page, '% my work\ndo(move(down)).');
   await page.fill('#snapshot-name', 'first');
@@ -812,13 +1084,15 @@ test('project files: download, and continue in another browser', async (t) => {
   other.on('dialog', (dialog) => dialog.accept());
   await other.goto(base + '?file=flag2&tab=7');
   await other.waitForSelector('body[data-ready=true]');
+  await open_sections(other);
   await set_program(other, 'player_move_program', 'other work.');
   await wait_saved(other, 'other work.');
   await other.setInputFiles('#file-input', { name: 'p.json', mimeType: 'application/json', buffer: file });
   await other.waitForFunction(() => /Done loading the project Find the flag 2 \(1 snapshot\)/.test(document.getElementById('upload-status').textContent));
   assert.equal(await value(other, 'player_move_program'), '% my work\ndo(move(up)).');
   assert.deepEqual((await snapshot_names(other)).sort(), ['Automatic snapshot before loading a file', 'first']);
-  assert.match(await other.textContent('#work-notice'), /your own version of Find the flag 2/);
+  assert.match(await other.textContent('#work-notice'), /Your own version, saved in this browser/);
+  assert.equal(await other.textContent('#game-title'), 'Find the flag 2');
   // A plain game file still loads as before; a file that is not a game is refused
   await other.setInputFiles('#file-input', { name: 'x.json', mimeType: 'application/json', buffer: Buffer.from('{"a": 1}') });
   await other.waitForFunction(() => /Loading failed: this is not a game or project file/.test(document.getElementById('upload-status').textContent));
@@ -827,6 +1101,7 @@ test('project files: download, and continue in another browser', async (t) => {
 test('everything in this browser: the list, a backup, and opening a game from the list', async (t) => {
   const page = await open(t, '?file=flag1&tab=7');
   if (!page) return;
+  await open_sections(page);
   page.on('dialog', (dialog) => dialog.accept());
   await set_program(page, 'player_move_program', 'one.');
   await wait_saved(page, 'one.');
@@ -849,6 +1124,7 @@ test('everything in this browser: the list, a backup, and opening a game from th
   other.on('dialog', (dialog) => dialog.accept());
   await other.goto(base + '?tab=7');
   await other.waitForSelector('body[data-ready=true]');
+  await open_sections(other);
   await other.setInputFiles('#file-input', { name: 'backup.json', mimeType: 'application/json', buffer: fs.readFileSync(await download.path()) });
   await other.waitForFunction(() => /Done loading: 2 games/.test(document.getElementById('upload-status').textContent));
   await other.locator('#saved-games tbody tr', { hasText: 'mine.json' }).getByText('Open').click();
@@ -953,6 +1229,7 @@ test('the first games can be loaded from the Control tab, and the tutorial start
 test('game folders: download as a .zip, and load a folder or a .zip', async (t) => {
   const page = await open(t, '?file=flag2&tab=7');
   if (!page) return;
+  await open_sections(page);
   await set_program(page, 'player_move_program', '% from a folder\ndo(move(down)).');
   await wait_saved(page, '% from a folder\ndo(move(down)).');
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('button[data-action=download_folder]')]);
@@ -968,6 +1245,7 @@ test('game folders: download as a .zip, and load a folder or a .zip', async (t) 
   const other = await context.newPage();
   await other.goto(base + '?tab=7');
   await other.waitForSelector('body[data-ready=true]');
+  await open_sections(other);
   await other.setInputFiles('#file-input', { name: 'find-the-flag-2.zip', mimeType: 'application/zip', buffer: zipped });
   await other.waitForFunction(() => /Done loading: find-the-flag-2\.zip \(Find the flag 2\)/.test(document.getElementById('upload-status').textContent));
   assert.equal(await value(other, 'player_move_program'), '% from a folder\ndo(move(down)).');
@@ -1042,6 +1320,7 @@ test('game folders: a linked folder gets every change, and changes to its files 
   await with_test_folder(page);
   await page.goto(base + '?file=flag3&tab=7');
   await page.waitForSelector('body[data-ready=true]');
+  await open_sections(page);
   assert.equal(await page.isVisible('#folder-supported'), true);
   await set_program(page, 'player_move_program', 'do(move(down)).');
   await wait_saved(page, 'do(move(down)).');
@@ -1052,7 +1331,7 @@ test('game folders: a linked folder gets every change, and changes to its files 
   assert.match(await folder_file(page, 'level-generation.lp'), /RANDINT/);
   assert.ok(await folder_file(page, 'level/state.lp'));
   assert.equal(JSON.parse(await folder_file(page, 'game.json')).title, 'linked');
-  assert.match(await page.textContent('#work-notice'), /Linked to the folder linked on your computer/);
+  assert.match(await page.textContent('#work-notice'), /^\s*Linked to the folder linked: changes are saved into its files/);
   assert.equal(await page.textContent('#game-title'), 'linked');
   // Changes in the page go into the files
   await set_program(page, 'player_move_program', 'do(move(up)).');
@@ -1105,7 +1384,8 @@ test('boards of all sizes fit, with square cells, on a large screen and on a pho
     t.skip(skip);
     return;
   }
-  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+  // (1280: the board next to the tabs; 1920 also, and smaller after resizing; 390: a phone)
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 1920, height: 1080, resize: true }, { width: 390, height: 844, resize: true }]) {
     const page = await browser.newPage({ serviceWorkers: 'block', viewport });
     t.after(() => page.close());
     await page.goto(base);
@@ -1125,17 +1405,68 @@ test('boards of all sizes fit, with square cells, on a large screen and on a pho
       const what = `${w}x${h} on ${viewport.width}x${viewport.height}`;
       assert.ok(Math.abs(r.cell_w - r.cell_h) < 0.5, `${what}: cells are not square (${r.cell_w} x ${r.cell_h})`);
       assert.ok(r.board_right <= viewport.width, `${what}: the board is wider than the screen`);
-      assert.ok(r.board_height <= viewport.height * 0.7 + 4, `${what}: the board is higher than 70% of the screen`);
+      assert.ok(r.board_height <= viewport.height * (viewport.width >= 1100 ? 0.55 : 0.7) + 4, `${what}: the board is too high for the screen`);
       assert.ok(r.page_width <= viewport.width, `${what}: the page is wider than the screen`);
       assert.equal(r.overflow, false, `${what}: items do not fit in a cell`);
       assert.ok(r.cell_w >= 6, what);
     }
     // The board follows the size of the window
+    if (!viewport.resize) continue;
     await page.evaluate(async () => (await import('./js/grid-visual.js')).show_grid('setting(grid_width(8)). setting(grid_height(6)).'));
     const before = await page.locator('#visual').boundingBox();
-    await page.setViewportSize({ width: Math.round(viewport.width * 0.6), height: viewport.height });
+    await page.setViewportSize({ width: Math.round(viewport.width * 0.7), height: viewport.height });
     await page.waitForFunction((w) => document.getElementById('visual').getBoundingClientRect().width < w, before.width);
   }
+});
+
+test('the board next to the tabs on wide screens (an option), and above them otherwise', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const page = await browser.newPage({ serviceWorkers: 'block', viewport: { width: 1440, height: 900 } });
+  t.after(() => page.close());
+  await page.goto(base + '?tab=3&internals=true');
+  await page.waitForSelector('body[data-ready=true]');
+  const layout = () => page.evaluate(() => {
+    const board = document.getElementById('board-pane').getBoundingClientRect();
+    const tabs = document.getElementById('tabs-pane').getBoundingClientRect();
+    const labels = [...document.querySelectorAll('label[name=tabs]')].filter((l) => l.offsetParent);
+    return {
+      side_by_side: board.right <= tabs.left && board.top < tabs.bottom,
+      // (the selected tab is a pixel higher)
+      one_row: Math.max(...labels.map((l) => l.getBoundingClientRect().top)) - Math.min(...labels.map((l) => l.getBoundingClientRect().top)) < 10,
+      board_top: board.top, page_width: document.documentElement.scrollWidth,
+    };
+  });
+  let r = await layout();
+  assert.equal(r.side_by_side, true);
+  assert.equal(r.one_row, true);
+  // The board stays in view while the tabs scroll
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await page.waitForFunction(() => window.scrollY > 300);
+  r = await layout();
+  assert.ok(r.board_top >= -1 && r.board_top < 50, `the board is not in view (${r.board_top})`);
+  // The tabs stay on one row in a narrower window, also when a tab is marked
+  await set_program(page, 'player_move_program', 'foo :- bar(X).');
+  for (const width of [1100, 1180, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(500);
+    r = await layout();
+    assert.equal(r.side_by_side, true, `${width}`);
+    assert.equal(r.one_row, true, `${width}: the tabs are on more than one row`);
+    assert.ok(r.page_width <= width, `${width}: the page is wider than the screen`);
+  }
+  // Below 1100 pixels (and when the option is off), the board is above the tabs
+  await page.setViewportSize({ width: 1000, height: 900 });
+  assert.equal((await layout()).side_by_side, false);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.click('label[for=tab1]');
+  await page.uncheck('#option-side-by-side');
+  assert.equal((await layout()).side_by_side, false);
+  await page.goto(base + '?side_by_side=true');
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal((await layout()).side_by_side, true);
 });
 
 test('a test result stays with the game that was tested; loading another game stops the test', async (t) => {
@@ -1161,6 +1492,7 @@ test('a test result stays with the game that was tested; loading another game st
 test('taking a level program from another version removes a level that does not fit any more', async (t) => {
   const page = await open(t, '?file=flag2&tab=7');
   if (!page) return;
+  await open_sections(page);
   page.on('dialog', (dialog) => dialog.accept());
   await page.click('#snapshot-button');
   // A new level generation program (with a new level)
@@ -1171,6 +1503,7 @@ test('taking a level program from another version removes a level that does not 
   await page.waitForFunction(() => /generated at/.test(document.getElementById('board-status').textContent));
   // Take the old level generation program: the rules stay locked, the level goes
   await page.click('label[for=tab7]');
+  await open_sections(page);
   await page.locator('#snapshot-list li[data-id]').first().getByText('Compare with current').click();
   await page.locator('.diff-program[data-field=level_gen_program]').getByRole('button').click();
   await page.waitForFunction(() => window.logic_game.editors.value('level_state') === '');

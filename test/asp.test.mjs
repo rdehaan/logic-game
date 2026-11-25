@@ -5,7 +5,7 @@ import {
   compose, preprocess_program, filter_answer_set, answer_set_to_facts,
   answer_set_to_fact_lines, parse_clingo_errors, locate_errors, facts_to_answer_set, split_atom,
 } from '../js/asp.js';
-import { compute_grid_ds, label_text, css_color } from '../js/grid-visual.js';
+import { compute_grid_ds, label_text, css_color, cell_of_atom } from '../js/grid-visual.js';
 import { seeded_rng } from './helpers.mjs';
 
 test('compose keeps track of the lines of each part', () => {
@@ -123,4 +123,20 @@ test('reading facts and atoms back', () => {
   assert.deepEqual(split_atom('at(1,f(2,3),"a,b")'), { name: 'at', args: ['1', 'f(2,3)', '"a,b"'] });
   assert.deepEqual(split_atom('win'), { name: 'win', args: [] });
   assert.deepEqual(split_atom('e((1,2))'), { name: 'e', args: ['(1,2)'] });
+});
+
+test('the cell that a fact is about (for highlighting it on the board)', () => {
+  const cell = (atom) => cell_of_atom(atom, 8, 6);      // (8 columns, 6 rows)
+  assert.equal(cell('observe(at(1,1,player))'), 1);
+  assert.equal(cell('observe(at(2,8,player))'), 16);
+  assert.equal(cell('next(6,8,flag)'), 48);
+  assert.equal(cell('observe(fog(3,4))'), 20);
+  assert.equal(cell('memory(step(4,4,6))'), 28);
+  assert.equal(cell('decorate(bgcolor,2,3,red)'), 11);
+  // Not on the board, or no cell at all
+  assert.equal(cell('observe(at(7,1,player))'), null);
+  assert.equal(cell('setting(grid_width(8))'), null);
+  assert.equal(cell('current_time(3)'), null);
+  assert.equal(cell('do(move(up))'), null);
+  assert.equal(cell('memory(at_step(4))'), null);
 });

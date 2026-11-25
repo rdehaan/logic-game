@@ -81,6 +81,22 @@ export class VersionsTab {
     $('show-auto').addEventListener('change', () => this.render_list());
     for (const id of ['diff-from', 'diff-to', 'diff-level']) $(id).addEventListener('change', () => this.render_diff());
     $('snapshot-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.take_snapshot(); });
+    // The sections that are opened stay open (in this browser)
+    for (const details of document.querySelectorAll('details[data-remember]')) {
+      const key = 'logic-game:open:' + details.dataset.remember;
+      try {
+        if (this.storage && this.storage.getItem(key) === 'true') details.open = true;
+      } catch {
+        // (closed)
+      }
+      details.addEventListener('toggle', () => {
+        try {
+          if (this.storage) this.storage.setItem(key, String(details.open));
+        } catch {
+          // (only for this visit)
+        }
+      });
+    }
   }
 
   get visible() {
@@ -185,6 +201,7 @@ export class VersionsTab {
     $('diff-from').value = from_value;
     $('diff-to').value = to_value;
     this.render_diff();
+    $('compare-heading').closest('details').open = true;
     $('compare-heading').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
@@ -225,6 +242,8 @@ export class VersionsTab {
     }
     const game = this.app.game();
     const all = this.snapshots();
+    const named = all.filter((s) => !s.auto).length;
+    $('snapshot-count').textContent = all.length ? `(${all.length}${named && named < all.length ? `, ${named} kept by you` : ''})` : '';
     const show_auto = $('show-auto').checked;
     const items = [];
 
@@ -414,7 +433,33 @@ export class VersionsTab {
     this.refresh();
   }
 
+  // Under the button to download the game file (what players hand in):
+  // whether the current version was downloaded.
+  render_game_reminder() {
+    const elem = $('game-reminder');
+    const c = this.app.current();
+    elem.classList.remove('attention');
+    if (!c) {
+      elem.textContent = '';
+      return;
+    }
+    const record = this.versions.record(c.origin);
+    const game = this.app.game();
+    if (!record.game_downloaded_at) {
+      elem.textContent = same_game(game, c.original) ? '' : `You have not downloaded the game file of ${c.title} yet.`;
+      return;
+    }
+    if (record.game_downloaded && same_game(game, record.game_downloaded)) {
+      elem.textContent = `You downloaded the game file on ${when(record.game_downloaded_at)}: that is your current version.`;
+      return;
+    }
+    elem.textContent = `You changed ${c.title} since you downloaded the game file on ${when(record.game_downloaded_at)}: ` +
+      'download it again to hand in your current version.';
+    elem.classList.add('attention');
+  }
+
   render_reminder() {
+    this.render_game_reminder();
     const elem = $('download-reminder');
     const c = this.app.current();
     if (!c) {

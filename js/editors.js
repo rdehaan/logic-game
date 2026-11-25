@@ -40,7 +40,7 @@ ace.config.set('basePath', 'vendor/ace');
 ace.config.setModuleUrl('ace/mode/gringo', 'js/mode-gringo.js');
 
 function make_editor(id) {
-  const editor = ace.edit(id);
+  const editor = ace.edit(id);      // (an id, or the element itself)
   editor.setTheme('ace/theme/textmate');
   editor.setOptions({
     useSoftTabs: true,
@@ -65,6 +65,19 @@ export function make_example_editors() {
     editor.setReadOnly(true);
     editor.resize();
   });
+}
+
+// A locked editor (highlighted, but not editable) in `elem`, for the facts that
+// went into and came out of a program in a step of a game (the Debug tab).
+// Call destroy() on it when it is no longer shown.
+export function make_output_editor(elem, text) {
+  const editor = make_editor(elem);
+  editor.setReadOnly(true);
+  editor.setOptions({ highlightActiveLine: false, highlightGutterLine: false, showPrintMargin: false, minLines: 1 });
+  editor.renderer.$cursorLayer.element.style.display = 'none';
+  editor.container.classList.add('locked', 'output-editor');
+  editor.setValue(text, -1);
+  return editor;
 }
 
 // A line above an editor that says which special predicates the program gets and passes on.

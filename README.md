@@ -10,8 +10,8 @@ programs too. For players and students:
   harder step by step;
 - the editors mark errors while typing, and warn about mistakes with the special predicates;
 - *Test your strategy* plays many random levels, and every level can be played again exactly;
-- the **Versions** tab keeps snapshots of your work, compares versions line by line, and
-  downloads and loads your project (also as a folder with one file per program, for git);
+- the **Versions** tab downloads the game file to hand in, keeps snapshots of your work,
+  compares versions line by line, and downloads and loads your project (also as a folder with one file per program, for git);
 - a **command-line version** ([docs/CLI.md](docs/CLI.md)) plays the same games on your own
   computer, with your own editor and git.
 
@@ -69,18 +69,32 @@ winning conditions) are locked and unlocked together, at the top of the Game rul
 can only be generated, and a game only played, with locked rules, so it is always clear which
 programs a game was played with. While they are unlocked, the buttons say *Lock rules and
 generate level*, *Lock rules and play* and *Lock rules and test*. Locking keeps the level, unless the auxiliary or level
-generation program changed since it was made. The line under the board says what the board
+generation program changed since it was made. The line below the buttons says what the board
 shows (the start of a level and where it came from, or the last game), and which programs
-changed since then. In the Debug tab, the report of one step at a time is shown (the step of
-the board, with a slider), or all of them.
+changed since then; after a change, *Play again* plays the level again and comes back to the
+time the board showed. Whether the game is the player's own version (saved in the browser) is a
+short line under the title of the game. In the Debug tab, the report of one step at a time is shown (the step of
+the board, with a slider): the facts that went into and came out of each program, in a locked
+(highlighted, not editable) editor each, one fact per line. Compared with the step before, new
+facts are marked and the facts that are gone are listed; *Show only what changed*
+(`?only_changes=true`) hides the facts that stayed the same. Hovering over a fact highlights its
+cell on the board, and hovering over a cell highlights the facts about it (`cell_of_atom` in
+`js/grid-visual.js`: the first row and column among the arguments, at any depth).
+
+Keyboard: Ctrl+Enter (Cmd+Enter on a Mac) plays, also in the editors; when not typing, Space
+pauses or plays one step, and the arrow keys (Home, End) move through the timeline. The tabs
+can be reached with Tab (the arrow keys go from tab to tab), and so can the board: every cell
+has a description for screen readers (`Row 2, column 8: player`), the arrow keys move from cell
+to cell, and the cell with the focus is highlighted with its facts, as when hovering.
 
 ## Options
 
-In the Control tab (kept in the browser), and in the URL for one visit:
-`?solutions=true` (the example games with solutions), `?editor=true` (the level editor in the
-Debug tab), `?internals=true` (the Internals tab), `?timeout=30` (the time limit for each call
-to clingo, in seconds). Whether the cells that changed in the last step are marked is only an
-option in the Control tab (and under the slider below the board).
+In the Control tab (kept in the browser), and in the URL for one visit (`=false` turns one off):
+`?side_by_side=false` (on screens of 1100 pixels and wider, the board, its slider and buttons
+stay in view on the left while the tabs scroll on the right; on by default), `?mark_changes=true` (mark the cells on the board that changed in the last step; off by default,
+also under the slider below the board), `?solutions=true` (the example games with solutions),
+`?editor=true` (the level editor in the Debug tab), `?internals=true` (the Internals tab),
+`?timeout=30` (the time limit for each call to clingo, in seconds).
 
 Other URL options: `?file=flag3` (load an example), `?tutorial=true` (start the tutorial), and
 `?tab=N` (open a tab). The tabs are numbered by their place in `index.html`, not by the order in
@@ -95,6 +109,9 @@ The page tries to explain what went wrong:
   derives `do/1`, uses `at/3` instead of `observe(at(...))`, misspells `remember/1`, uses the
   wrong number of arguments, or makes moves that nature's program does not react to;
 - when a program has no answer set, the constraints that are violated are named;
+- when the player made no move (or several) at the time the board shows, a note below the
+  buttons says why: an error in the strategy, no answer set, no rule for `do/1` that applied, or
+  rules that apply at the same time, with links to the lines (`move_hint` in `js/hints.js`);
 - problems with the level (no board size, objects outside of the board) are shown under the board;
 - all errors and warnings are listed in the Debug tab, and a lost game points to them.
 
@@ -110,7 +127,11 @@ or shared as a link (`#game=...&seed=n`).
 
 ## Saving, versions and sharing
 
-Everything about keeping work is in the *Versions* tab:
+Everything about keeping work is in the *Versions* tab. It starts with what students need most:
+*Download the game file* (a plain game file, like the examples: what they hand in), with a line
+under it that says whether the current version was downloaded, and *Load a file or a folder*.
+The rest is in sections that open when clicked (and stay open, in that browser): snapshots with
+comparing, the project file, working in a folder, share links, and everything in the browser.
 - Changes are saved in the browser automatically (localStorage), separately for each game
   (example, uploaded file or shared link); loading that game again brings them back, with a
   button to go back to the original.
@@ -127,8 +148,7 @@ Everything about keeping work is in the *Versions* tab:
 - *Project file*: one JSON file (`"format": "logic-game-project"`) with the current version, the
   original game and all snapshots; students keep it anywhere (e.g. in a Google Drive folder)
   and load it again on another computer. A *backup* file holds all games of the browser.
-  *Download game only* gives a plain game file (like the examples), and such files can be loaded
-  too; *Download as a folder (.zip)* gives a game folder (see below).
+  Game files can be loaded too; *Download as a folder (.zip)* gives a game folder (see below).
 - *Everything in this browser*: all games with saved work or snapshots, to open, download or
   forget, and how much of the browser's storage they use.
 - *Share current game* makes a link that contains the whole game, compressed, after `#game=`;
@@ -190,6 +210,14 @@ After the first visit, the game also works without a network connection (`sw.js`
 files it needs are stored in the browser. Online, the files still come from the network
 first, so a new version of the site is used right away. When the page loads a new file,
 add it to `PRECACHE` in `sw.js` (a test checks this).
+
+On the first visit, the page downloads clingo (`clingo.wasm`, 2.6 MB, the largest file by far)
+itself, with a progress bar over the board, and hands the downloaded file to clingo's worker
+(`download_clingo` in `js/main.js`). Calls to clingo wait until it is loaded, without their time
+limit running (`init` in `js/solver.js`), so that a slow connection does not make clingo
+load twice. The small files the worker needs afterwards are prefetched (`index.html`).
+Measured with a throttled connection: about 4 s on 10 Mbit/s, 17 s on 2 Mbit/s; later visits
+take about 0.4 s.
 
 ## Development
 

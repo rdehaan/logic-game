@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyze_program, parse_term, terms_match, relax_constraints, tokenize } from '../js/analysis.js';
-import { game_hints, board_problems, special_help, completions, SPECIAL_DOCS, INTERFACES } from '../js/hints.js';
+import { game_hints, board_problems, special_help, completions, SPECIAL_DOCS, INTERFACES, move_hint } from '../js/hints.js';
 import { load_examples } from './helpers.mjs';
 
 const sigs = (text, role) => [...new Set(analyze_program(text).atoms.filter((a) => a.role === role).map((a) => `${a.name}/${a.arity}`))].sort();
@@ -189,4 +189,29 @@ test('completions: the special predicates, then what the programs define', () =>
     'cell/2:auxiliary:cell(', 'go/1:defined here:go(', 'done/0:defined here:done',
   ]);
   assert.match(list[0].doc, /^observe\(X\): what the player observes/);
+});
+
+test('why the player made no move, or several', () => {
+  const program = 'do(move(down)) :- observe(at(R1,C,player)), observe(at(R2,C,flag)), R1 < R2.\n% a comment\ndo(move(left)) :- memory(left).';
+  // One move: nothing to explain
+  assert.equal(move_hint(program, 'do(move(down)).', null), null);
+  // No move: the rules for do/1 did not apply
+  let hint = move_hint(program, '', null);
+  assert.match(hint.text, /^None of your rules for do\(\.\.\.\) applied in this step/);
+  assert.deepEqual(hint.lines, [1, 3]);
+  // ... or there are none
+  hint = move_hint('remember(x).', '', null);
+  assert.match(hint.text, /^Your strategy never derives do\(\.\.\.\)/);
+  assert.deepEqual(hint.lines, []);
+  // Several moves at once
+  hint = move_hint(program, 'do(move(down)). do(move(left)).', null);
+  assert.equal(hint.text.split('.')[0] + '.', 'The player made 2 moves at once (do(move(down)), do(move(left))).');
+  assert.deepEqual(hint.lines, [1, 3]);
+  // A problem of the player's program: an error, no answer set, or too slow
+  const error = { program: 'Player program', text: 'error', result: { status: 'error', errors: [{ source: 'player_move_program', line: 2, col: 5, message: 'syntax error, unexpected .' }] } };
+  assert.deepEqual(move_hint(program, '', error), { text: 'Your strategy has an error, so the player made no move: syntax error, unexpected .', lines: [2] });
+  const unsat = { program: 'Player program', text: 'no answer set', result: { status: 'unsat', violated: [{ source: 'player_move_program', line: 4 }, { source: 'aux_program', line: 1 }] } };
+  assert.deepEqual(move_hint(program, '', unsat), { text: 'Your strategy had no answer set in this step, because a constraint was violated, so the player made no move.', lines: [4] });
+  const slow = { program: 'Player program', text: 'clingo took longer than 10 seconds\nmore', result: { status: 'timeout' } };
+  assert.match(move_hint(program, '', slow).text, /^Your strategy did not finish in this step \(clingo took longer than 10 seconds\)/);
 });

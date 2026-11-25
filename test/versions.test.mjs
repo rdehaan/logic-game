@@ -206,3 +206,21 @@ test('saved work keeps the original game and its title', () => {
   assert.equal(saved.original.aux_program, 'a.');
   assert.equal(saved.title, 'x.json');
 });
+
+test('downloads of the game file and of the project file are remembered separately', () => {
+  const store = new VersionStore(new MemoryStorage(), clock());
+  const game = { player_move_program: 'do(move(up)).' };
+  assert.equal(store.record('example:a').game_downloaded_at, null);
+  assert.equal(store.mark_game_downloaded('example:a', game, { title: 'A' }), true);
+  let record = store.record('example:a');
+  assert.equal(record.game_downloaded_at, '2026-01-01T00:01:00.000Z');
+  assert.equal(record.game_downloaded.player_move_program, 'do(move(up)).');
+  assert.equal(record.title, 'A');
+  assert.equal(record.downloaded_at, null);
+  // (a record with only a download is kept)
+  assert.deepEqual(store.origins(), ['example:a']);
+  store.mark_downloaded('example:a', { player_move_program: 'do(move(down)).' });
+  record = store.record('example:a');
+  assert.equal(record.game_downloaded.player_move_program, 'do(move(up)).');
+  assert.equal(record.downloaded_game.player_move_program, 'do(move(down)).');
+});

@@ -158,10 +158,14 @@ function make_steps(app) {
     },
     {
       title: 'Keep your work',
-      target: () => (tab_open(7) ? $('snapshot-button') : tab_label(7)),
-      text: `<p>Your work is saved in this browser automatically. In the <b>Versions</b> tab you can keep
-        <i>snapshots</i> of versions that work, compare versions, and download your project as a file
-        (for example to your Google Drive), to work on it on another computer.</p>
+      target: () => {
+        if (!tab_open(7)) return tab_label(7);
+        $('snapshot-button').closest('details').open = true;      // (the section of the snapshots)
+        return $('snapshot-button');
+      },
+      text: `<p>Your work is saved in this browser automatically. In the <b>Versions</b> tab you can
+        download the game file (to hand in), keep <i>snapshots</i> of versions that work, compare
+        versions, and download your project as a file, to work on it on another computer.</p>
         <p>Open the <b>Versions</b> tab, and keep a snapshot of your winning strategy.</p>`,
       done: () => app.snapshots() > 0,
       optional: true,

@@ -5,9 +5,10 @@
 import clingo from '../vendor/clingo-wasm/index.web.js';
 import { create_solver } from './solver.js';
 import { GAME_FIELDS, SOURCE_NAMES, GameSession, generate_level, normalize_game, test_strategy, replay_rng } from './engine.js';
-import { Editors, make_example_editors } from './editors.js';
-import { show_grid, clear_grid, display_win, display_lose } from './grid-visual.js';
-import { board_problems } from './hints.js';
+import { Editors, make_example_editors, make_output_editor } from './editors.js';
+import { facts_to_answer_set, answer_set_to_fact_lines } from './asp.js';
+import { show_grid, clear_grid, display_win, display_lose, cell_of_atom, board_size, highlight_cells, on_cell_hover } from './grid-visual.js';
+import { board_problems, move_hint } from './hints.js';
 import { WorkStore, encode_game, decode_game, game_id, same_game } from './storage.js';
 import { VersionStore, read_file, file_stem } from './versions.js';
 import { VersionsTab } from './versions-tab.js';
@@ -68,60 +69,208 @@ function set_engine_status(text, is_error = false) {
 // ---- Game output -------------------------------------------------------------
 //
 // The reports of the steps of the last game. The Debug tab shows one step at a
-// time (the step of the board that is shown), or all of them at once.
+// time (the step of the board that is shown): the facts that went into and
+// came out of each program, in a locked editor each.
 
-const game_output_elem = $('game-output');
 let step_reports = new Map();     // step -> report
 let output_messages = [];         // the other messages (verdicts, problems), newest first
 
 function clear_game_output() {
-  game_output_elem.textContent = '';
   step_reports = new Map();
   output_messages = [];
   update_debug_view();
 }
-// New text goes at the top (most recent step first). Each piece is its own
-// text node, so that adding a step does not rewrite the whole output.
-// A step's report can be clicked to show the board at that step.
+
 function add_to_game_output(text, step = null) {
-  if (step == null) {
-    game_output_elem.prepend(document.createTextNode(text + '\n'));
-    output_messages.unshift(text);
-    update_debug_view();
+  if (step == null) output_messages.unshift(text);
+  else step_reports.set(step, text);
+  update_debug_view();
+}
+
+// The whole game output as text, newest first (for the tests, and the console).
+function game_output_text() {
+  const steps = [...step_reports.entries()].sort((a, b) => b[0] - a[0]).map(([, text]) => text + '\n');
+  return [...output_messages.map((m) => m + '\n'), ...steps].join('');
+}
+
+// The parts of the report of a step: [{ label, facts }] for the facts that
+// went into or came out of a program ('- Player input:' and the facts on the
+// next line), and [{ text }] for the other lines (problems, times).
+function report_parts(report) {
+  const parts = [];
+  let current = null;
+  for (const line of report.replace(/^## STEP \d+ ##\n/, '').split('\n')) {
+    const label = /^- ([^:]+):$/.exec(line);
+    if (label) {
+      current = { label: label[1], facts: '' };
+      parts.push(current);
+    } else if (line.startsWith('- ')) {
+      current = { text: line.slice(2) };
+      parts.push(current);
+    } else if (current && current.text != null && line.trim()) {
+      current.text += '\n' + line;
+    } else if (current && current.facts != null && line.trim()) {
+      current.facts += line + ' ';
+    }
+  }
+  return parts;
+}
+
+const AceRange = ace.require('ace/range').Range;
+let debug_editors = [];
+let debug_shown = null;      // the report (or text) that the Debug tab shows
+
+// Facts and the board: hovering over a fact in the Debug tab highlights its
+// cell on the board, and hovering over a cell highlights the facts about it.
+function link_facts_to_board(editor, atoms) {
+  editor.fact_atoms = atoms;
+  editor.linked_markers = [];
+  const cell_at = (row) => {
+    const size = board_size();
+    return size && atoms[row] ? cell_of_atom(atoms[row], size.width, size.height) : null;
+  };
+  editor.container.addEventListener('mousemove', (e) => {
+    const { row } = editor.renderer.screenToTextCoordinates(e.clientX, e.clientY);
+    link_cell(cell_at(row));
+  });
+  editor.container.addEventListener('mouseleave', () => link_cell(null));
+}
+
+// Highlight a cell (an index, or null for none) and the facts about it.
+let linked_cell = null;
+function link_cell(cell) {
+  if (cell === linked_cell) {
+    highlight_cells(cell == null ? [] : [cell]);      // (the board may have been drawn again)
     return;
   }
-  step_reports.set(step, text);
-  const span = document.createElement('span');
-  span.className = 'output-step';
-  span.textContent = text + '\n';
-  span.title = 'Click to see the board at this step';
-  // (the board that the player saw in this step)
-  span.addEventListener('click', () => show_snapshot(snapshots.findIndex((x) => x.time === step - 1)));
-  game_output_elem.prepend(span);
+  linked_cell = cell;
+  const size = board_size();
+  for (const editor of debug_editors) {
+    for (const id of editor.linked_markers) editor.session.removeMarker(id);
+    editor.linked_markers = [];
+    if (cell == null || !size) continue;
+    editor.fact_atoms.forEach((atom, row) => {
+      if (cell_of_atom(atom, size.width, size.height) === cell) {
+        editor.linked_markers.push(editor.session.addMarker(new AceRange(row, 0, row, 1), 'fact-linked', 'fullLine'));
+      }
+    });
+  }
+  highlight_cells(cell == null ? [] : [cell]);
+}
+on_cell_hover(link_cell);
+
+// Show a report in the Debug tab: a locked editor for each program's facts
+// (one fact per line), and the other lines as text. With the report of the
+// step before (`previous`), the facts that are new are marked, and the ones
+// that are gone are listed under the editor.
+function show_debug_step(report, text = '', previous = null) {
+  const only = Boolean(previous && options.only_changes);
+  const key = report != null ? (only ? '\u0001' : '') + report : '\0' + text;
+  if (key === debug_shown) return;
+  debug_shown = key;
+  for (const editor of debug_editors) editor.destroy();
+  debug_editors = [];
+  linked_cell = null;
+  const elem = $('debug-step');
+  elem.replaceChildren();
+  if (report == null) {
+    const p = document.createElement('p');
+    p.className = 'debug-text';
+    p.textContent = text;
+    elem.append(p);
+    return;
+  }
+  const before = new Map();
+  if (previous) {
+    for (const part of report_parts(previous)) if (part.facts != null) before.set(part.label, facts_to_answer_set(part.facts));
+    const legend = document.createElement('p');
+    legend.className = 'debug-legend';
+    legend.innerHTML = only
+      ? 'Only what changed since the step before: <span class="fact-new-sample">new facts</span>, and facts that are gone (listed under each part).'
+      : 'Compared with the step before: <span class="fact-new-sample">new facts</span> are marked, and facts that are gone are listed under each part.';
+    elem.append(legend);
+  }
+  for (const part of report_parts(report)) {
+    if (part.text != null) {
+      const p = document.createElement('p');
+      p.className = 'debug-text';
+      p.textContent = part.text;
+      elem.append(p);
+      continue;
+    }
+    const h = document.createElement('h4');
+    h.className = 'debug-program';
+    h.textContent = part.label;
+    elem.append(h);
+    const all = facts_to_answer_set(part.facts);
+    const old = before.get(part.label);
+    // (only what changed: the new facts, and how many did not change)
+    const was_all = new Set(old || []);
+    const atoms = only ? all.filter((atom) => !was_all.has(atom)) : all;
+    const unchanged = all.length - atoms.length;
+    if (!atoms.length) {
+      const p = document.createElement('p');
+      p.className = 'debug-empty';
+      p.textContent = !all.length ? '(nothing)' : `(no changes: ${unchanged} fact${unchanged > 1 ? 's' : ''} as in the step before)`;
+      elem.append(p);
+    } else {
+      const div = document.createElement('div');
+      elem.append(div);
+      const editor = make_output_editor(div, answer_set_to_fact_lines(atoms));
+      debug_editors.push(editor);
+      link_facts_to_board(editor, atoms);
+      if (old) {
+        const was = new Set(old);
+        atoms.forEach((atom, row) => {
+          if (was.has(atom)) return;
+          editor.session.addMarker(new AceRange(row, 0, row, 1), 'fact-new', 'fullLine');
+          editor.session.addGutterDecoration(row, 'fact-new-gutter');
+        });
+      }
+      if (only && unchanged) {
+        const p = document.createElement('p');
+        p.className = 'debug-unchanged';
+        p.textContent = `\u22EF ${unchanged} unchanged fact${unchanged > 1 ? 's' : ''} not shown`;
+        elem.append(p);
+      }
+    }
+    if (old) {
+      const now = new Set(all);
+      const gone = old.filter((atom) => !now.has(atom));
+      if (gone.length) {
+        const p = document.createElement('p');
+        p.className = 'debug-gone';
+        p.append('Gone since the step before: ');
+        gone.forEach((atom, i) => {
+          if (i) p.append(' ');
+          const del = document.createElement('del');
+          del.textContent = atom + '.';
+          p.append(del);
+        });
+        elem.append(p);
+      }
+    }
+  }
 }
 
 // The Debug tab: the messages, and the report of the step of the board that is shown.
 function update_debug_view() {
-  const all = $('show-all-output').checked;
-  game_output_elem.hidden = !all;
-  $('debug-steps').hidden = all;
   $('debug-messages').textContent = output_messages.join('\n').trim();
-  $('debug-messages').hidden = all || output_messages.length === 0;
+  $('debug-messages').hidden = output_messages.length === 0;
   const snap = snapshots[shown_snapshot];
   const report = snap ? step_reports.get(snap.time + 1) : null;
-  const elem = $('debug-step');
   if (!snapshots.length) {
     $('debug-step-label').textContent = '';
-    elem.textContent = output_messages.length ? '' : 'Play a game (or use Step) to see here what happens in each step.';
+    show_debug_step(null, output_messages.length ? '' : 'Play a game (or use Step) to see here what happens in each step.');
   } else if (!snap) {
     $('debug-step-label').textContent = '';
-    elem.textContent = 'The game is being played…';
+    show_debug_step(null, 'The game is being played…');
   } else if (report) {
-    $('debug-step-label').textContent = `Step ${snap.time + 1}: the player saw the board of time ${snap.time} (shown above), and decided on a move.`;
-    elem.textContent = report.replace(/^## STEP \d+ ##\n/, '');
+    $('debug-step-label').textContent = `Step ${snap.time + 1}: the player saw the board of time ${snap.time} (on the board), and decided on a move.`;
+    show_debug_step(report, '', step_reports.get(snap.time) || null);
   } else {
     $('debug-step-label').textContent = `Time ${snap.time}: the end of the game.`;
-    elem.textContent = shown_snapshot === snapshots.length - 1 && final_verdict ? (output_messages[0] || '') : 'This step has not been played yet.';
+    show_debug_step(null, shown_snapshot === snapshots.length - 1 && final_verdict ? (output_messages[0] || '') : 'This step has not been played yet.');
   }
   // The slider of the Debug tab follows the one under the board
   const slider = $('debug-timeline');
@@ -133,10 +282,6 @@ function update_debug_view() {
   $('debug-steps').classList.toggle('empty', snapshots.length === 0);
 }
 
-$('show-all-output').addEventListener('change', () => {
-  set_option('all_output', $('show-all-output').checked);
-  update_debug_view();
-});
 $('debug-timeline').addEventListener('input', () => show_snapshot(Number($('debug-timeline').value) - 1));
 $('debug-prev').addEventListener('click', () => show_snapshot(shown_snapshot - 1));
 $('debug-next').addEventListener('click', () => show_snapshot(shown_snapshot + 1));
@@ -205,8 +350,10 @@ function update_controls() {
   set_label(play_button, '⏵', game_paused ? 'Resume' : level_locked ? 'Play' : 'Lock rules and play');
   set_button(play_button, can_play, !has_level ? 'There is no level: generate one first.' : why);
   set_button(step_button, can_play, !has_level ? 'There is no level: generate one first.' : why);
-  if (can_play) step_button.title = 'Play one step, then pause';
+  if (can_play) step_button.title = 'Play one step, then pause (Space)';
+  if (can_play) play_button.title = (game_paused ? 'Go on with the game' : 'Play') + ' (Ctrl+Enter)';
   set_button(pause_button, busy && !single_step, 'There is no game going on.');
+  if (!pause_button.disabled) pause_button.title = 'Pause (Space)';
   set_button(stop_button, playing, 'There is no game going on.');
   const test_button = $('test-button');
   set_button(test_button, !playing && !testing && !generating, why);
@@ -229,6 +376,7 @@ function update_controls() {
 function update_board_status() {
   const elem = $('board-status');
   const parts = [];
+  let replay = false;      // (offer to play the level again)
   const has_level = Boolean(editors.value('level_state'));
   if (generating) {
     parts.push('Generating a level…');
@@ -247,7 +395,10 @@ function update_board_status() {
       const verdict = final_verdict ? final_verdict.toUpperCase() : 'stopped';
       let text = `The board shows the last game (${verdict} at time ${t}).`;
       const changed = changed_since(run_basis);
-      if (changed.length) text += ` Since then, you changed: ${changed.map((k) => SOURCE_NAMES[k]).join(', ')}. Play again to see what the game does now.`;
+      if (changed.length) {
+        text += ` Since then, you changed: ${changed.map((k) => SOURCE_NAMES[k]).join(', ')}.`;
+        replay = level_locked;
+      }
       parts.push(text);
     } else if (level_basis) {
       const from = level_basis.source === 'generated' ? `generated at ${level_basis.at.toLocaleTimeString()}`
@@ -260,6 +411,14 @@ function update_board_status() {
     if (!level_locked) parts.push('The game rules are unlocked, so they can be changed: lock them to play.');
   }
   elem.textContent = parts.join(' ');
+  if (replay) {
+    const button = document.createElement('button');
+    button.className = 'control-button replay-button';
+    button.textContent = '\u23F5 Play again';
+    button.title = 'Play this level again with your changes, and come back to the time the board shows now';
+    button.addEventListener('click', play_again);
+    elem.append(' ', button);
+  }
   elem.classList.toggle('attention', !level_locked || (!playing && changed_since(run_basis).length > 0 && snapshots.length > 0));
 }
 
@@ -409,6 +568,7 @@ function show_snapshot(index) {
   shown_snapshot = index;
   const snap = snapshots[index];
   show_grid(snap.view, index > 0 ? snapshots[index - 1].view : null);
+  if (linked_cell != null) highlight_cells([linked_cell]);
   if (index === snapshots.length - 1 && final_verdict) {
     if (final_verdict === 'win') display_win(); else display_lose();
   }
@@ -436,7 +596,38 @@ function update_timeline() {
   } else {
     $('timeline-label').textContent = '';
   }
+  show_move_note(snap);
   update_debug_view();
+}
+
+// Under the timeline: why the player made no move (or several) at the time shown,
+// with links to the lines of the strategy to look at.
+function show_move_note(snap) {
+  const note = $('move-note');
+  const hint = snap && snap.moves != null && run_basis ? move_hint(run_basis.player_move_program, snap.moves, snap.player_problem) : null;
+  note.hidden = !hint;
+  if (!hint) {
+    note.replaceChildren();
+    return;
+  }
+  const parts = [document.createTextNode(hint.text)];
+  if (hint.lines.length) {
+    parts.push(document.createTextNode(` See line${hint.lines.length > 1 ? 's' : ''} `));
+    hint.lines.forEach((line, i) => {
+      if (i) parts.push(document.createTextNode(i === hint.lines.length - 1 ? ' and ' : ', '));
+      const link = document.createElement('button');
+      link.className = 'link-button';
+      link.textContent = String(line);
+      link.title = 'Show this line of your strategy';
+      link.addEventListener('click', () => editors.go_to('player_move_program', { line, col: 1 }));
+      parts.push(link);
+    });
+    parts.push(document.createTextNode(' of your strategy.'));
+  }
+  if (changed_since(run_basis).includes('player_move_program')) {
+    parts.push(document.createTextNode(' (You changed your strategy since this game: play again to see what it does now.)'));
+  }
+  note.replaceChildren(...parts);
 }
 
 $('timeline').addEventListener('input', () => show_snapshot(Number($('timeline').value) - 1));
@@ -450,6 +641,7 @@ const results = { games: 0, verdict: null };
 
 function end_playing() {
   const stopped = stop_requested;
+  if (stopped) return_to_time = null;
   results.games++;
   results.verdict = stopped ? 'stopped' : final_verdict || 'lose';
   single_step = false;
@@ -508,6 +700,21 @@ async function do_play() {
   await play_loop();
 }
 
+// Play the level again (after a change), and then show the time that was
+// shown before (or the end, if the game is over earlier now).
+let return_to_time = null;
+async function play_again() {
+  return_to_time = snapshots[shown_snapshot] ? snapshots[shown_snapshot].time : null;
+  await do_play();
+}
+
+// The snapshot to show when a game is over.
+function end_snapshot() {
+  const index = return_to_time == null ? -1 : snapshots.findIndex((x) => x.time === return_to_time);
+  return_to_time = null;
+  return index >= 0 ? index : snapshots.length - 1;
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function play_loop() {
@@ -527,6 +734,7 @@ async function play_loop() {
     else shown_snapshot = -1;
     const step = await session.step();
     snapshots.at(-1).moves = step.verdict ? null : (step.moves || '');
+    snapshots.at(-1).player_problem = (step.problems || []).find((p) => p && p.program === 'Player program') || null;
     editors.show_run_problems(step.problems);
     if (stop_requested) continue;
     if (step.report) add_to_game_output(step.report, session.time_step);
@@ -534,7 +742,7 @@ async function play_loop() {
       final_verdict = step.verdict;
       add_to_game_output(step.verdict === 'win' ? step.message : step.message + problems_tip());
       end_playing();
-      show_snapshot(snapshots.length - 1);
+      show_snapshot(end_snapshot());
       return;
     }
     record_snapshot(session.time_step, session.view());
@@ -616,8 +824,7 @@ function save_work_now() {
       show_work_notice(null);
     } else {
       const saved = work.load(current.origin);
-      show_work_notice(saved ? `You are working on your own version of ${current.title}` +
-        ` (saved ${new Date(saved.saved_at).toLocaleString()}), saved in this browser.` : null);
+      show_work_notice(saved ? `Your own version, saved in this browser ${short_when(saved.saved_at)}.` : null);
     }
     versions_tab.after_save();
   }
@@ -644,8 +851,7 @@ async function open_game(game, origin, title) {
   try {
     if (saved) {
       await set_game(saved.game);
-      const when = saved.saved_at ? ' (saved ' + new Date(saved.saved_at).toLocaleString() + ')' : '';
-      show_work_notice(`You are working on your own version of ${title}${when}, saved in this browser.`);
+      show_work_notice(`Your own version, saved in this browser${saved.saved_at ? ' ' + short_when(saved.saved_at) : ''}.`);
     } else {
       await set_game(game);
       show_work_notice(null);
@@ -660,10 +866,18 @@ function show_game_title() {
   $('game-title').textContent = current ? current.title.replace(/^the /, (m) => m[0].toUpperCase() + m.slice(1)) : '';
 }
 
+// When work was saved, shortly: 'at 19:48' today, otherwise 'on 24 Nov, 19:48'.
+function short_when(iso) {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return 'at ' + time;
+  return 'on ' + d.toLocaleDateString([], { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) + ', ' + time;
+}
+
 function show_work_notice(text) {
   show_game_title();
   if (linked()) {
-    $('work-notice-text').textContent = `Linked to the folder ${folder_link.name} on your computer: changes are saved into its files, and changes to its files are loaded here.`;
+    $('work-notice-text').textContent = `Linked to the folder ${folder_link.name}: changes are saved into its files, and changes to its files are loaded here.`;
     $('work-notice').hidden = false;
     $('work-notice').querySelector('button').hidden = true;
     return;
@@ -693,6 +907,7 @@ function update_folder_controls() {
   $('unlink-folder-button').hidden = !folder_link;
   $('open-folder-button').textContent = folder_link ? 'Link another folder\u2026' : 'Link a folder\u2026';
   if (folder_link) folder_status(`Linked to the folder ${folder_link.name}. Changes are saved into its files.`);
+  $('folder-summary').textContent = folder_link ? `(linked to ${folder_link.name})` : '';
 }
 
 function download_folder() {
@@ -1050,7 +1265,12 @@ async function load_game_from_file(event) {
 }
 
 function download_game() {
-  save(file_stem(current ? current.title : 'game') + '.json', JSON.stringify(editors.game(), null, 2));
+  const game = editors.game();
+  save(file_stem(current ? current.title : 'game') + '.json', JSON.stringify(game, null, 2));
+  if (current) {
+    versions.mark_game_downloaded(current.origin, game, { title: current.title, original: current.original });
+    versions_tab.refresh();
+  }
 }
 
 function save(filename, data, type = 'application/json') {
@@ -1279,6 +1499,47 @@ const actions = {
   unlink_folder: () => unlink_folder(true),
   dismiss_folder_notice: () => { $('folder-notice').hidden = true; },
 };
+// ---- Keyboard shortcuts ------------------------------------------------------------
+//
+// Ctrl+Enter (Cmd+Enter on a Mac): play, also while typing in an editor.
+// When not typing: Space pauses, or plays one step; the arrow keys (and Home
+// and End) move through the timeline under the board.
+
+function shortcut_play() {
+  if (!$('play-button').disabled) do_play();
+}
+
+for (const key of GAME_FIELDS) {
+  editors.get(key).commands.addCommand({
+    name: 'play', bindKey: { win: 'Ctrl-Enter', mac: 'Command-Enter' }, exec: shortcut_play,
+  });
+}
+
+// Whether the keyboard is busy elsewhere: typing, a list, a button (Space), the board (its own arrow keys).
+function keys_taken(target) {
+  return Boolean(target.closest && target.closest('input, textarea, select, button, [contenteditable], .ace_editor, #visual, .modal'));
+}
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    if (e.target.closest && e.target.closest('.ace_editor')) return;      // (the editor's own command)
+    e.preventDefault();
+    shortcut_play();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey || keys_taken(e.target)) return;
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (playing && !game_paused) do_pause();
+    else if (!$('step-button').disabled) do_step();
+  } else if (snapshots.length && !(playing && !game_paused)) {
+    const to = { ArrowLeft: shown_snapshot - 1, ArrowRight: shown_snapshot + 1, Home: 0, End: snapshots.length - 1 }[e.key];
+    if (to == null) return;
+    e.preventDefault();
+    show_snapshot(Math.max(0, Math.min(snapshots.length - 1, to)));
+  }
+});
+
 document.querySelectorAll('[data-action]').forEach((elem) => {
   const action = actions[elem.dataset.action];
   if (!action) throw new Error('unknown action ' + elem.dataset.action);
@@ -1304,11 +1565,12 @@ window.addEventListener('storage', (e) => {
 // ---- Options --------------------------------------------------------------------------
 //
 // Set in the Control tab (and kept in this browser), or in the URL, e.g.
-// ?solutions=true&editor=true&internals=true&timeout=30 (then only for this visit).
+// ?side_by_side=true&mark_changes=true&solutions=true&editor=true&internals=true&timeout=30
+// (then only for this visit). Every checkbox option can be set in the URL.
 
 const params = new URLSearchParams(window.location.search);
 const OPTIONS_KEY = 'logic-game:options';
-const DEFAULT_OPTIONS = { mark_changes: true, solutions: false, editor: false, internals: false, timeout: solver.timeout_ms / 1000, all_output: false };
+const DEFAULT_OPTIONS = { side_by_side: true, only_changes: false, mark_changes: false, solutions: false, editor: false, internals: false, timeout: solver.timeout_ms / 1000 };
 
 function stored_options() {
   try {
@@ -1319,8 +1581,8 @@ function stored_options() {
 }
 
 const options = { ...DEFAULT_OPTIONS, ...stored_options() };
-for (const key of ['solutions', 'editor', 'internals']) {
-  if (params.has(key)) options[key] = params.get(key) === 'true';
+for (const [key, value] of Object.entries(DEFAULT_OPTIONS)) {
+  if (typeof value === 'boolean' && params.has(key)) options[key] = ['true', '1', 'yes', ''].includes(params.get(key));
 }
 if (Number(params.get('timeout')) > 0) options.timeout = Number(params.get('timeout'));
 
@@ -1337,6 +1599,12 @@ function set_option(key, value) {
 const solutions_group = document.querySelector('#example-games optgroup[label="Solutions"]');
 
 function apply_options() {
+  if (document.body.classList.contains('side-by-side') !== Boolean(options.side_by_side)) {
+    document.body.classList.toggle('side-by-side', Boolean(options.side_by_side));
+    // (the editors do not notice by themselves that they changed width)
+    editors.resize();
+    for (const editor of debug_editors) editor.resize();
+  }
   $('visual-container').classList.toggle('hide-changes', !options.mark_changes);
   $('mark-changes').checked = options.mark_changes;
   $('level-editor').style.display = options.editor ? '' : 'none';
@@ -1346,7 +1614,6 @@ function apply_options() {
   if (options.solutions && !solutions_group.isConnected) example_games.append(solutions_group);
   if (!options.solutions && solutions_group.isConnected) solutions_group.remove();
   solver.timeout_ms = Math.max(1, Number(options.timeout) || DEFAULT_OPTIONS.timeout) * 1000;
-  $('show-all-output').checked = options.all_output;
   for (const input of document.querySelectorAll('[data-option]')) {
     if (input.type === 'checkbox') input.checked = Boolean(options[input.dataset.option]);
     else if (document.activeElement !== input) input.value = String(options[input.dataset.option]);
@@ -1373,6 +1640,44 @@ if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && options.inte
 
 // ---- Start ---------------------------------------------------------------------------
 
+// Download clingo (its WebAssembly module, the largest file of the site), with
+// the progress over the board. Returns a URL of the downloaded file for
+// solver.init, or undefined if that did not work (then clingo loads it itself).
+const CLINGO_WASM = 'vendor/clingo-wasm/clingo.wasm';
+async function download_clingo() {
+  const box = $('loading');
+  const bar = $('loading-progress');
+  const text = $('loading-text');
+  const mb = (n) => (n / 1e6).toFixed(1);
+  // (only shown when the download takes a while, so a quick visit does not flicker)
+  const show = setTimeout(() => { box.hidden = false; }, 300);
+  try {
+    const response = await fetch(CLINGO_WASM);
+    if (!response.ok || !response.body) return undefined;
+    // (a compressed file is smaller than its contents: then the total is not known)
+    const total = response.headers.get('content-encoding') ? 0 : Number(response.headers.get('content-length')) || 0;
+    const reader = response.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.length;
+      if (total) bar.value = loaded / total;
+      else bar.removeAttribute('value');
+      text.textContent = total ? `Loading clingo, the solver that runs the programs: ${mb(loaded)} of ${mb(total)} MB` :
+        `Loading clingo, the solver that runs the programs: ${mb(loaded)} MB`;
+    }
+    text.textContent = 'Starting clingo…';
+    return URL.createObjectURL(new Blob(chunks, { type: 'application/wasm' }));
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(show);
+  }
+}
+
 async function start() {
   lock_level_generation();
   const file = params.get('file');
@@ -1390,11 +1695,12 @@ async function start() {
       load_status.innerText = 'Loading failed: ' + e.message;
     });
   try {
-    await solver.init();
+    await solver.init(download_clingo());
     set_engine_status('');
   } catch (e) {
     set_engine_status('clingo could not be loaded: ' + e.message, true);
   }
+  $('loading').hidden = true;
   await loading;
   try {
     await fragments;
@@ -1427,4 +1733,4 @@ window.addEventListener('hashchange', async () => {
 });
 
 // (for debugging in the browser console)
-window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial };
+window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial, game_output: game_output_text };
