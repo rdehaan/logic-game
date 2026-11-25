@@ -799,6 +799,35 @@ test('facts and the board: hovering over a fact shows its cell, and over a cell 
   await page.waitForFunction(() => document.querySelectorAll('#debug-step .fact-linked').length >= 1);
   await page.mouse.move(1, 1);
   await page.waitForFunction(() => document.querySelectorAll('#debug-step .fact-linked').length === 0);
+  // In the other tabs, a cell is not highlighted when hovering over it
+  await page.click('label[for=tab4]');
+  await page.locator('.grid-visual-cell').nth(point.index - 1).hover();
+  await page.waitForTimeout(200);
+  assert.equal(await page.locator('.grid-visual-cell.linked').count(), 0);
+  // (and leaving the Debug tab while hovering takes the highlight away)
+  await page.click('label[for=tab5]');
+  await page.locator('.grid-visual-cell').nth(point.index - 1).hover();
+  await page.waitForFunction(() => document.querySelectorAll('.grid-visual-cell.linked').length === 1);
+  await page.evaluate(() => { document.getElementById('tab4').checked = true; document.getElementById('tab4').dispatchEvent(new Event('change')); });
+  assert.equal(await page.locator('.grid-visual-cell.linked').count(), 0);
+});
+
+test('moving through the steps keeps the page where it was scrolled to', async (t) => {
+  const page = await open(t, '?file=flag11-with-solutions-a&tab=5');
+  if (!page) return;
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.selectOption('#speed-selector', '-1');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.press('Home');
+  for (let i = 0; i < 5; i++) {
+    await page.evaluate(() => window.scrollTo(0, 500));
+    await page.keyboard.press('ArrowRight');
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const y = await page.evaluate(() => window.scrollY);
+    assert.ok(Math.abs(y - 500) < 30, `scrolled to ${y} after step ${i + 2}`);
+  }
 });
 
 test('after a change, Play again plays the level again and comes back to the same time', async (t) => {
@@ -876,7 +905,11 @@ test('accessibility: the tabs and the cells of the board can be used with the ke
   assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Row 2, column 2: empty');
   await page.keyboard.press('End');
   assert.match(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), /^Row 2, column 8: /);
-  // The focused cell is highlighted (and its facts, as when hovering)
+  // The focused cell has an outline; its facts are only highlighted in the Debug tab (as when hovering)
+  assert.equal(await page.evaluate(() => document.activeElement.matches(':focus-visible')), true);
+  assert.equal(await page.locator('.grid-visual-cell.linked').count(), 0);
+  await page.click('label[for=tab5]');
+  await page.focus('#visual [tabindex="0"]');
   assert.equal(await page.locator('.grid-visual-cell.linked').count(), 1);
   // After a game, the focus stays on its cell while going through time
   await page.selectOption('#speed-selector', '0');
@@ -1137,6 +1170,32 @@ test('everything in this browser: the list, a backup, and opening a game from th
 
 // ---- The tutorial ---------------------------------------------------------------------
 
+test('reset everything: a fresh start, as on a first visit', async (t) => {
+  const page = await open(t, '?tab=4&mark_changes=true');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.click('#tutorial-invite button[data-action=dismiss_tutorial]');
+  await page.click('label[for=tab1]');
+  await page.check('#option-solutions');
+  await set_program(page, 'player_move_program', 'do(move(up)).');
+  await page.waitForFunction(() => window.logic_game.work.origins().length === 1);
+  await page.click('label[for=tab7]');
+  await open_sections(page);
+  await page.fill('#snapshot-name', 'kept');
+  await page.click('#snapshot-button');
+  await page.evaluate(() => localStorage.setItem('someone-else', 'stays'));
+  await Promise.all([page.waitForNavigation(), page.click('#reset-everything-button')]);
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(new URL(page.url()).search, '');
+  assert.deepEqual(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('logic-game:'))), []);
+  assert.equal(await page.evaluate(() => localStorage.getItem('someone-else')), 'stays');
+  assert.notEqual(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), 'do(move(up)).');
+  assert.equal(await page.isChecked('#tab1'), true);
+  assert.equal(await page.isChecked('#option-solutions'), false);
+  assert.equal(await page.isVisible('#tutorial-invite'), true);
+  assert.deepEqual(page.errors, []);
+});
+
 test('new players are invited to the tutorial, once', async (t) => {
   const page = await open(t);
   if (!page) return;
@@ -1173,6 +1232,13 @@ test('the tutorial: from the first move to a winning strategy', async (t) => {
   await next();
   assert.match(await page.getAttribute('#visual-container', 'class'), /tutorial-target/);
   await next();
+  // (the highlight of the Play button is not cut off by the pane of the board, which can scroll)
+  const room = await page.evaluate(() => {
+    const pane = document.getElementById('board-pane').getBoundingClientRect();
+    const play = document.getElementById('play-button').getBoundingClientRect();
+    return Math.min(play.left - pane.left, pane.right - play.right, play.top - pane.top);
+  });
+  assert.ok(room >= 6, `only ${room}px around the Play button`);
   // Steps that wait for the player
   assert.equal(await page.isDisabled('.tutorial-next'), true);
   await page.click('#play-button');

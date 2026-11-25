@@ -173,10 +173,6 @@ input[name="tabs"]:checked + label {
   border-bottom: 1px solid #fff;
 }
 
-label[for="tab2"] {
-  color: orange;
-}
-
 #tab1:checked ~ #section-control,
 #tab2:checked ~ #section-instructions,
 #tab3:checked ~ #section-game-rules,
@@ -1153,7 +1149,10 @@ pre.debug-messages {
     top: 0;
     max-height: 100vh;
     overflow-y: auto;
-    padding-top: 10px;
+    /* (room at the sides for outlines, such as the tutorial's highlight, which
+       the scrolling pane would cut off) */
+    padding: 10px 8px 0;
+    margin: 0 -8px;
   }
 
   body.side-by-side .tabs-pane {

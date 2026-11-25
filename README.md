@@ -79,7 +79,8 @@ the board, with a slider): the facts that went into and came out of each program
 facts are marked and the facts that are gone are listed; *Show only what changed*
 (`?only_changes=true`) hides the facts that stayed the same. Hovering over a fact highlights its
 cell on the board, and hovering over a cell highlights the facts about it (`cell_of_atom` in
-`js/grid-visual.js`: the first row and column among the arguments, at any depth).
+`js/grid-visual.js`: the first row and column among the arguments, at any depth); this is only
+done while the Debug tab is open.
 
 Keyboard: Ctrl+Enter (Cmd+Enter on a Mac) plays, also in the editors; when not typing, Space
 pauses or plays one step, and the arrow keys (Home, End) move through the timeline. The tabs
@@ -151,6 +152,9 @@ comparing, the project file, working in a folder, share links, and everything in
   Game files can be loaded too; *Download as a folder (.zip)* gives a game folder (see below).
 - *Everything in this browser*: all games with saved work or snapshots, to open, download or
   forget, and how much of the browser's storage they use.
+  *Reset everything* is a fresh start: it removes every `logic-game:` key from localStorage (work,
+  snapshots, options, tutorial, open sections) and the remembered folder (IndexedDB), and loads
+  the page again without the query.
 - *Share current game* makes a link that contains the whole game, compressed, after `#game=`;
   that part of a URL never reaches the server, so nothing is uploaded.
 

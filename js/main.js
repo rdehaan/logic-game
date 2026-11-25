@@ -121,7 +121,8 @@ let debug_editors = [];
 let debug_shown = null;      // the report (or text) that the Debug tab shows
 
 // Facts and the board: hovering over a fact in the Debug tab highlights its
-// cell on the board, and hovering over a cell highlights the facts about it.
+// cell on the board, and hovering over a cell highlights the facts about it
+// (only while the Debug tab is open: elsewhere the highlights would only confuse).
 function link_facts_to_board(editor, atoms) {
   editor.fact_atoms = atoms;
   editor.linked_markers = [];
@@ -157,12 +158,23 @@ function link_cell(cell) {
   }
   highlight_cells(cell == null ? [] : [cell]);
 }
-on_cell_hover(link_cell);
+on_cell_hover((cell) => link_cell($('tab5').checked ? cell : null));
 
 // Show a report in the Debug tab: a locked editor for each program's facts
 // (one fact per line), and the other lines as text. With the report of the
 // step before (`previous`), the facts that are new are marked, and the ones
 // that are gone are listed under the editor.
+// Keep the height of `elem` while its contents are made again, until the new
+// contents are drawn (the editors get their height in the next frame): else the
+// page is shorter for a moment, and the browser scrolls up (e.g. at every step).
+function keep_height(elem) {
+  elem.style.minHeight = elem.offsetHeight + 'px';
+  const n = (elem.keep_height_count = (elem.keep_height_count || 0) + 1);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (elem.keep_height_count === n) elem.style.minHeight = '';
+  }));
+}
+
 function show_debug_step(report, text = '', previous = null) {
   const only = Boolean(previous && options.only_changes);
   const key = report != null ? (only ? '\u0001' : '') + report : '\0' + text;
@@ -172,6 +184,7 @@ function show_debug_step(report, text = '', previous = null) {
   debug_editors = [];
   linked_cell = null;
   const elem = $('debug-step');
+  keep_height(elem);
   elem.replaceChildren();
   if (report == null) {
     const p = document.createElement('p');
@@ -1071,6 +1084,28 @@ async function forget_saved_work() {
   versions_tab.refresh();
 }
 
+// A fresh start: forget everything the page keeps in this browser (all work and
+// snapshots, the options, the tutorial, the linked folder, which sections are
+// open), and load the page again, as on a first visit.
+async function reset_everything() {
+  if (!window.confirm('Reset everything, for a fresh start? This forgets all your work in this browser, with all snapshots, ' +
+    'your options, the tutorial and the linked folder, and loads the page again as on a first visit. ' +
+    '(Download a backup first to keep your work.)')) return;
+  await stop_game_if_playing();
+  clearTimeout(save_timer);
+  save_timer = null;
+  unlink_folder(false);
+  try {
+    const keys = [];
+    for (let i = 0; i < storage.length; i++) if (storage.key(i).startsWith('logic-game:')) keys.push(storage.key(i));
+    for (const key of keys) storage.removeItem(key);
+  } catch {
+    // (no storage: nothing was kept)
+  }
+  await forget_folder();
+  window.location.replace(window.location.pathname);
+}
+
 // Put (some fields of) a game into the editors, as if the player typed it, and save it.
 async function replace_game(game, fields = GAME_FIELDS) {
   await stop_game_if_playing();
@@ -1285,13 +1320,9 @@ function save(filename, data, type = 'application/json') {
 
 // ---- Tabs ------------------------------------------------------------------------
 
-function reset_tab_color() {
-  document.querySelector('label[for="tab2"]').style.color = '#bbb';
-}
-
 // Refreshing after changing tabs
 function change_tabs() {
-  reset_tab_color();
+  if (!$('tab5').checked) link_cell(null);
   editors.resize();
   upload_status.innerText = '';
   load_status.innerText = '';
@@ -1489,7 +1520,7 @@ async function start_tutorial() {
 const actions = {
   do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
   lock_level_generation, unlock_level_generation, lock_rules, unlock_rules, update_interface: show_edited_level, load_game, download_game,
-  share_game, revert_to_original, forget_saved_work, run_test, cancel_test,
+  share_game, revert_to_original, forget_saved_work, reset_everything, run_test, cancel_test,
   take_snapshot: () => versions_tab.take_snapshot(),
   download_project: () => versions_tab.download_project(),
   download_backup: () => versions_tab.download_backup(),
@@ -1635,7 +1666,6 @@ apply_options();
 const tab = params.get('tab');
 if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && options.internals)) {
   $('tab' + tab).checked = true;
-  reset_tab_color();
 }
 
 // ---- Start ---------------------------------------------------------------------------
