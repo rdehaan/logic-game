@@ -21,6 +21,7 @@ const REASONS = {
   load: 'before loading a file',
   editing: 'while editing',
   tested: 'when testing the strategy',
+  folder: 'before loading changes from the folder',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -454,7 +455,7 @@ export class VersionsTab {
     $('forget-button').disabled = rows.length === 0;
     $('backup-button').disabled = rows.length === 0;
     const used = storage_used(this.storage);
-    $('storage-used').textContent = used ? `This uses about ${(used / 1e6).toFixed(used < 1e5 ? 2 : 1)} MB of the browser's storage (browsers allow about 5 MB).` : '';
+    $('storage-used').textContent = !used ? '' : `This uses ${used < 1e4 ? 'less than 0.01' : 'about ' + (used / 1e6).toFixed(used < 1e5 ? 2 : 1)} MB of the browser's storage (browsers allow about 5 MB).`;
   }
 
   forget(origin, title) {

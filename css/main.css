@@ -203,11 +203,6 @@ label[for="tab2"] {
     margin-left: 0;
     margin-right: 0;
   }
-
-  .grid-visual {
-    min-width: 0;
-    width: 100% !important;
-  }
 }
 
 input[type="file"] {
@@ -1113,4 +1108,9 @@ pre.debug-messages {
 
 .options input[type="number"] {
   width: 5em;
+}
+
+.versions-help tt,
+.versions-help code {
+  overflow-wrap: anywhere;
 }

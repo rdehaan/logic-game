@@ -9,6 +9,10 @@ import { WorkStore, encode_game, decode_game, game_id, same_game } from './stora
 import { VersionStore, read_file, file_stem } from './versions.js';
 import { VersionsTab } from './versions-tab.js';
 import { Tutorial, first_games_html } from './tutorial.js';
+import { files_to_game, game_to_files, make_zip, read_zip, strip_common_dir } from './folder.js';
+import {
+  FolderLink, folder_links_supported, folder_is_empty, remember_folder, remembered_folder, forget_folder, permission,
+} from './folder-link.js';
 import './modal.js';
 
 const solver = create_solver(clingo);
@@ -593,9 +597,14 @@ function save_work_now() {
   save_timer = null;
   if (current) {
     work.save(current.origin, editors.game(), current.original, current.title);
-    const saved = work.load(current.origin);
-    show_work_notice(saved ? `You are working on your own version of ${current.title}` +
-      ` (saved ${new Date(saved.saved_at).toLocaleString()}), saved in this browser.` : null);
+    if (linked()) {
+      folder_link.save(editors.game(), current.title);
+      show_work_notice(null);
+    } else {
+      const saved = work.load(current.origin);
+      show_work_notice(saved ? `You are working on your own version of ${current.title}` +
+        ` (saved ${new Date(saved.saved_at).toLocaleString()}), saved in this browser.` : null);
+    }
     versions_tab.after_save();
   }
 }
@@ -613,6 +622,7 @@ let loading_game = false;
 // Load a game; if there is saved work for it, load that instead.
 async function open_game(game, origin, title) {
   if (save_timer) save_work_now();
+  if (folder_link && folder_link.origin !== origin) unlink_folder(false);
   game = normalize_game(game);
   current = { origin, title, original: game };
   const saved = work.load(origin);
@@ -638,8 +648,174 @@ function show_game_title() {
 
 function show_work_notice(text) {
   show_game_title();
+  if (linked()) {
+    $('work-notice-text').textContent = `Linked to the folder ${folder_link.name} on your computer: changes are saved into its files, and changes to its files are loaded here.`;
+    $('work-notice').hidden = false;
+    $('work-notice').querySelector('button').hidden = true;
+    return;
+  }
+  $('work-notice').querySelector('button').hidden = false;
   $('work-notice-text').textContent = text || '';
   $('work-notice').hidden = !text;
+}
+
+// ---- Game folders on the player's computer ------------------------------------------------
+//
+// A folder with one file per program (see folder.js): downloaded as a .zip,
+// loaded (as a folder or a .zip), or linked (folder-link.js: Chrome and Edge).
+// The game of a folder is saved in the browser under the origin 'folder:<name>'.
+
+let folder_link = null;
+const linked = () => Boolean(folder_link && current && current.origin === folder_link.origin);
+
+function folder_status(text, is_error = false) {
+  $('folder-status').textContent = text;
+  $('folder-status').classList.toggle('error', is_error);
+}
+
+function update_folder_controls() {
+  $('folder-supported').hidden = !folder_links_supported();
+  $('folder-unsupported').hidden = folder_links_supported();
+  $('unlink-folder-button').hidden = !folder_link;
+  $('open-folder-button').textContent = folder_link ? 'Link another folder\u2026' : 'Link a folder\u2026';
+  if (folder_link) folder_status(`Linked to the folder ${folder_link.name}. Changes are saved into its files.`);
+}
+
+function download_folder() {
+  const title = current ? current.title : 'game';
+  const stem = file_stem(title);
+  const files = game_to_files(editors.game(), { title });
+  const zip = make_zip(Object.fromEntries(Object.entries(files).map(([p, text]) => [stem + '/' + p, text])));
+  save(stem + '.zip', zip, 'application/zip');
+}
+
+// Open the game of a folder ({ path: text }) that was loaded (not linked).
+async function open_folder_contents(contents, name) {
+  const { game, title } = files_to_game(contents);
+  forget_link();
+  const origin = 'folder:' + name;
+  // (the folder is newer than the work on it in this browser: that is kept as a snapshot)
+  const saved = work.load(origin);
+  if (saved && !same_game(saved.game, game)) versions.add(origin, saved.game, { auto: true, reason: 'load' }, { title: saved.title, original: saved.original });
+  work.forget(origin);
+  await open_game(game, origin, title || name);
+  lock_level_generation();
+  return title || name;
+}
+
+async function load_folder(event) {
+  const list = [...event.target.files];
+  event.target.value = '';
+  if (!list.length) return;
+  await stop_game_if_playing();
+  try {
+    const { dir, paths } = strip_common_dir(list.map((f) => f.webkitRelativePath || f.name));
+    const contents = {};
+    for (let i = 0; i < list.length; i++) {
+      if (/(^|\/)\./.test(paths[i]) || list[i].size > 2e6) continue;     // (e.g. .git, and large files)
+      if (/\.(lp|json)$/i.test(paths[i])) contents[paths[i]] = await list[i].text();
+    }
+    const title = await open_folder_contents(contents, dir || 'folder');
+    upload_status.innerText = `Done loading: the folder ${dir || ''} (${title}).`;
+  } catch (e) {
+    upload_status.innerText = 'Loading failed: ' + e.message;
+  }
+}
+
+// Link a folder that the player picks.
+async function open_folder() {
+  let dir;
+  try {
+    dir = await window.showDirectoryPicker({ id: 'logic-game', mode: 'readwrite' });
+  } catch (e) {
+    if (e.name !== 'AbortError') folder_status('The folder could not be opened: ' + e.message, true);
+    return;
+  }
+  await link_folder(dir);
+}
+
+async function link_folder(dir) {
+  await stop_game_if_playing();
+  try {
+    if (!(await permission(dir))) {
+      folder_status(`No permission to use the folder ${dir.name}.`, true);
+      return;
+    }
+    const link = new FolderLink(dir, {
+      on_change: folder_changed,
+      on_error: (e) => folder_status(`The folder ${dir.name}: ${e.message}`, true),
+    });
+    link.origin = 'folder:' + dir.name;
+    if (await folder_is_empty(dir)) {
+      const title = current ? current.title : dir.name;
+      if (!window.confirm(`The folder ${dir.name} is empty. Save the current game (${title}) into it, one file per program, and link it?`)) return;
+      if (save_timer) save_work_now();
+      const game = editors.game();
+      await link.save(game, dir.name);
+      await link.load();
+      if (folder_link) unlink_folder(false);
+      folder_link = link;
+      work.forget(link.origin);
+      await open_game(game, link.origin, dir.name);
+    } else {
+      const { game, title } = await link.load();
+      if (folder_link) unlink_folder(false);
+      folder_link = link;
+      const saved = work.load(link.origin);
+      if (saved && !same_game(saved.game, game)) versions.add(link.origin, saved.game, { auto: true, reason: 'load' }, { title: saved.title, original: saved.original });
+      work.forget(link.origin);
+      forget_link();
+      await open_game(game, link.origin, title);
+    }
+    lock_level_generation();
+    link.watch();
+    remember_folder(dir);
+    $('folder-notice').hidden = true;
+    update_folder_controls();
+    show_work_notice(null);
+  } catch (e) {
+    folder_status(`The folder ${dir.name} could not be linked: ${e.message}`, true);
+  }
+}
+
+// Files of the linked folder were changed outside the page.
+async function folder_changed(game, fields) {
+  if (!linked()) return;
+  await stop_game_if_playing();
+  versions_tab.auto_snapshot('folder');
+  await replace_game(game, fields);
+  const names = fields.map((f) => SOURCE_NAMES[f]).join(', ');
+  folder_status(`Loaded the changes to ${names} from the folder ${folder_link.name} (${new Date().toLocaleTimeString()}).`);
+}
+
+function unlink_folder(forget = true) {
+  if (!folder_link) return;
+  folder_link.unwatch();
+  const name = folder_link.name;
+  folder_link = null;
+  if (forget) forget_folder();
+  update_folder_controls();
+  folder_status(`Unlinked the folder ${name}. The game is still saved in this browser.`);
+  show_work_notice(null);
+}
+
+// After a reload: offer to link the folder of last time again (the browser asks for permission).
+let remembered = null;
+async function offer_folder() {
+  if (!folder_links_supported()) return;
+  remembered = await remembered_folder();
+  if (!remembered) return;
+  $('relink-folder-button').hidden = false;
+  $('relink-folder-button').textContent = `Link the folder ${remembered.name} again`;
+  $('folder-notice-text').textContent = `Last time, the page was linked to your game folder ${remembered.name}.`;
+  $('folder-notice').hidden = false;
+}
+
+async function relink_folder() {
+  if (!remembered) return;
+  $('folder-notice').hidden = true;
+  $('relink-folder-button').hidden = true;
+  await link_folder(remembered);
 }
 
 async function revert_to_original() {
@@ -689,6 +865,7 @@ function title_of(origin) {
   if (origin.startsWith('file:')) return origin.slice(5);
   if (origin.startsWith('shared:')) return 'a shared game';
   if (origin.startsWith('tutorial:')) return 'the tutorial game';
+  if (origin.startsWith('folder:')) return origin.slice(7);
   return origin;
 }
 
@@ -803,6 +980,15 @@ async function load_game_from_file(event) {
   if (!file) return;
   await stop_game_if_playing();
   try {
+    if (/\.zip$/i.test(file.name)) {
+      const all = await read_zip(new Uint8Array(await file.arrayBuffer()));
+      const { dir, paths } = strip_common_dir(Object.keys(all));
+      const contents = Object.fromEntries(Object.keys(all).map((k, i) => [paths[i], all[k]]));
+      const title = await open_folder_contents(contents, dir || file.name.replace(/\.zip$/i, ''));
+      upload_status.innerText = `Done loading: ${file.name} (${title}).`;
+      event.target.value = '';
+      return;
+    }
     const content = read_file(await file.text(), file.name);
     if (content.kind === 'backup') {
       const n = content.projects.length;
@@ -837,8 +1023,8 @@ function download_game() {
   save(file_stem(current ? current.title : 'game') + '.json', JSON.stringify(editors.game(), null, 2));
 }
 
-function save(filename, data) {
-  const blob = new Blob([data], { type: 'application/json' });
+function save(filename, data, type = 'application/json') {
+  const blob = new Blob([data], { type });
   const elem = document.createElement('a');
   elem.href = URL.createObjectURL(blob);
   elem.download = filename;
@@ -1058,6 +1244,9 @@ const actions = {
   download_backup: () => versions_tab.download_backup(),
   start_tutorial,
   dismiss_tutorial: () => tutorial.dismiss_invite(),
+  download_folder, open_folder, relink_folder,
+  unlink_folder: () => unlink_folder(true),
+  dismiss_folder_notice: () => { $('folder-notice').hidden = true; },
 };
 document.querySelectorAll('[data-action]').forEach((elem) => {
   const action = actions[elem.dataset.action];
@@ -1066,6 +1255,7 @@ document.querySelectorAll('[data-action]').forEach((elem) => {
 });
 speed_selector.addEventListener('change', select_speed);
 $('file-input').addEventListener('change', load_game_from_file);
+$('folder-input').addEventListener('change', load_folder);
 document.querySelectorAll('input[name="tabs"]').forEach((tab) => tab.addEventListener('change', change_tabs));
 // Links to a tab (they also work as plain links, e.g. opened in a new window)
 document.addEventListener('click', (e) => {
@@ -1185,6 +1375,8 @@ async function start() {
   // The tutorial: with ?tutorial=true, or offered to new players (not to those who open a shared game)
   if (params.get('tutorial') === 'true') start_tutorial();
   else if (!window.location.hash && !work.origins().length && !versions.origins().length) tutorial.invite();
+  update_folder_controls();
+  if (!window.location.hash && params.get('tutorial') !== 'true') await offer_folder();
   // Keep the files of the game, so that it also works offline (see sw.js)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch((e) => console.warn('no offline use:', e));

@@ -7,6 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { createServer } from '../tools/serve.mjs';
 import { ROOT } from './helpers.mjs';
 
@@ -945,4 +946,178 @@ test('the first games can be loaded from the Control tab, and the tutorial start
   await page.click('label[for=tab1]');
   await page.click('#first-games button[data-example=flag6]');
   await page.waitForFunction(() => /trees/.test(window.logic_game.editors.value('level_gen_program')));
+});
+
+// ---- Game folders ---------------------------------------------------------------------
+
+test('game folders: download as a .zip, and load a folder or a .zip', async (t) => {
+  const page = await open(t, '?file=flag2&tab=7');
+  if (!page) return;
+  await set_program(page, 'player_move_program', '% from a folder\ndo(move(down)).');
+  await wait_saved(page, '% from a folder\ndo(move(down)).');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('button[data-action=download_folder]')]);
+  assert.equal(download.suggestedFilename(), 'find-the-flag-2.zip');
+  const { read_zip } = await import('../js/folder.js');
+  const zipped = fs.readFileSync(await download.path());
+  const files = await read_zip(new Uint8Array(zipped));
+  assert.equal(files['find-the-flag-2/strategy.lp'], '% from a folder\ndo(move(down)).\n');
+  assert.equal(JSON.parse(files['find-the-flag-2/game.json']).title, 'Find the flag 2');
+  // Another browser loads the .zip
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const other = await context.newPage();
+  await other.goto(base + '?tab=7');
+  await other.waitForSelector('body[data-ready=true]');
+  await other.setInputFiles('#file-input', { name: 'find-the-flag-2.zip', mimeType: 'application/zip', buffer: zipped });
+  await other.waitForFunction(() => /Done loading: find-the-flag-2\.zip \(Find the flag 2\)/.test(document.getElementById('upload-status').textContent));
+  assert.equal(await value(other, 'player_move_program'), '% from a folder\ndo(move(down)).');
+  assert.equal(await other.textContent('#game-title'), 'Find the flag 2');
+  // and a folder (as the command-line version makes it)
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'logic-game-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const folder = path.join(dir, 'my-game');
+  fs.mkdirSync(path.join(folder, 'level'), { recursive: true });
+  for (const [p, text] of Object.entries(files)) fs.writeFileSync(path.join(folder, p.replace(/^find-the-flag-2\//, '')), text);
+  fs.writeFileSync(path.join(folder, 'strategy.lp'), 'do(move(right)).\n');
+  fs.mkdirSync(path.join(folder, '.git'));
+  fs.writeFileSync(path.join(folder, '.git', 'HEAD'), 'ref: refs/heads/main\n');
+  await other.setInputFiles('#folder-input', folder);
+  await other.waitForFunction(() => /Done loading: the folder my-game/.test(document.getElementById('upload-status').textContent));
+  assert.equal(await value(other, 'player_move_program'), 'do(move(right)).');
+});
+
+// A folder in the browser's own file system stands in for a folder that the player picks.
+async function with_test_folder(page) {
+  await page.addInitScript(() => {
+    window.showDirectoryPicker = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('linked', { create: true });
+  });
+}
+
+async function folder_file(page, p) {
+  return page.evaluate(async (name) => {
+    let dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('linked');
+    const parts = name.split('/');
+    for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
+    try {
+      return await (await (await dir.getFileHandle(parts.at(-1))).getFile()).text();
+    } catch {
+      return null;
+    }
+  }, p);
+}
+
+async function wait_folder_file(page, p, text) {
+  for (let i = 0; i < 100 && await folder_file(page, p) !== text; i++) await page.waitForTimeout(100);
+  assert.equal(await folder_file(page, p), text);
+}
+
+async function write_folder_file(page, p, text) {
+  await page.evaluate(async ([name, contents]) => {
+    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('linked');
+    const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+    await w.write(contents);
+    await w.close();
+  }, [p, text]);
+}
+
+test('game folders: a linked folder gets every change, and changes to its files are loaded', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  page.errors = [];
+  page.on('pageerror', (e) => page.errors.push(e.message));
+  page.on('dialog', (dialog) => dialog.accept());
+  await with_test_folder(page);
+  await page.goto(base + '?file=flag3&tab=7');
+  await page.waitForSelector('body[data-ready=true]');
+  assert.equal(await page.isVisible('#folder-supported'), true);
+  await set_program(page, 'player_move_program', 'do(move(down)).');
+  await wait_saved(page, 'do(move(down)).');
+  // An empty folder gets the current game
+  await page.click('#open-folder-button');
+  await page.waitForFunction(() => /Linked to the folder linked/.test(document.getElementById('folder-status').textContent));
+  assert.equal(await folder_file(page, 'strategy.lp'), 'do(move(down)).\n');
+  assert.match(await folder_file(page, 'level-generation.lp'), /RANDINT/);
+  assert.ok(await folder_file(page, 'level/state.lp'));
+  assert.equal(JSON.parse(await folder_file(page, 'game.json')).title, 'linked');
+  assert.match(await page.textContent('#work-notice'), /Linked to the folder linked on your computer/);
+  assert.equal(await page.textContent('#game-title'), 'linked');
+  // Changes in the page go into the files
+  await set_program(page, 'player_move_program', 'do(move(up)).');
+  await wait_folder_file(page, 'strategy.lp', 'do(move(up)).\n');
+  // and changes to the files (e.g. by git) come into the page, after a snapshot of the page's version
+  await write_folder_file(page, 'strategy.lp', '% changed outside\ndo(move(left)).\n');
+  await page.waitForFunction(() => window.logic_game.editors.value('player_move_program') === '% changed outside\ndo(move(left)).', null, { timeout: 10000 });
+  assert.match(await page.textContent('#folder-status'), /Loaded the changes to Player strategy from the folder linked/);
+  const snapshots = await page.evaluate(() => window.logic_game.versions.list('folder:linked'));
+  assert.equal(snapshots.at(-1).reason, 'folder');
+  assert.equal(snapshots.at(-1).game.player_move_program, 'do(move(up)).');
+  // A change to a file (e.g. git checkout) at the same time as a change in the page:
+  // the file is not overwritten, and the page's version is kept as a snapshot
+  await write_folder_file(page, 'strategy.lp', '% checked out\ndo(move(left)).\n');
+  await set_program(page, 'player_move_program', 'typed at the same time.');
+  await page.waitForFunction(() => window.logic_game.editors.value('player_move_program') === '% checked out\ndo(move(left)).', null, { timeout: 10000 });
+  assert.equal(await folder_file(page, 'strategy.lp'), '% checked out\ndo(move(left)).\n');
+  assert.equal((await page.evaluate(() => window.logic_game.versions.list('folder:linked'))).at(-1).game.player_move_program, 'typed at the same time.');
+  await write_folder_file(page, 'strategy.lp', '% changed outside\ndo(move(left)).\n');
+  await page.waitForFunction(() => window.logic_game.editors.value('player_move_program') === '% changed outside\ndo(move(left)).', null, { timeout: 10000 });
+  // After a reload, the page offers to link the folder again
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.waitForSelector('#folder-notice:not([hidden])');
+  assert.match(await page.textContent('#folder-notice'), /linked to your game folder linked/);
+  await page.click('#folder-notice button[data-action=relink_folder]');
+  await page.waitForFunction(() => /Linked to the folder linked/.test(document.getElementById('folder-status').textContent));
+  assert.equal(await value(page, 'player_move_program'), '% changed outside\ndo(move(left)).');
+  // Unlinking: the files are not changed any more
+  await page.click('#unlink-folder-button');
+  await set_program(page, 'player_move_program', 'do(wait).');
+  await wait_saved(page, 'do(wait).');
+  await page.waitForTimeout(500);
+  assert.equal(await folder_file(page, 'strategy.lp'), '% changed outside\ndo(move(left)).\n');
+  assert.deepEqual(page.errors, []);
+});
+
+// ---- The board at all sizes -----------------------------------------------------------
+
+test('boards of all sizes fit, with square cells, on a large screen and on a phone', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    const page = await browser.newPage({ serviceWorkers: 'block', viewport });
+    t.after(() => page.close());
+    await page.goto(base);
+    await page.waitForSelector('body[data-ready=true]');
+    for (const [w, h] of [[1, 1], [3, 2], [8, 6], [4, 20], [30, 4], [40, 30]]) {
+      const r = await page.evaluate(async ([w, h]) => {
+        const { show_grid } = await import('./js/grid-visual.js');
+        show_grid(`setting(grid_width(${w})). setting(grid_height(${h})). observe(at(1,1,player)). observe(at(1,1,flag)). observe(at(${h},${w},flag)).`);
+        const v = document.getElementById('visual');
+        const board = v.getBoundingClientRect();
+        const cell = v.children[0].getBoundingClientRect();
+        return {
+          board_right: board.right, board_height: board.height, cell_w: cell.width, cell_h: cell.height,
+          page_width: document.documentElement.scrollWidth, overflow: [...v.children].some((c) => c.scrollWidth > c.clientWidth + 1),
+        };
+      }, [w, h]);
+      const what = `${w}x${h} on ${viewport.width}x${viewport.height}`;
+      assert.ok(Math.abs(r.cell_w - r.cell_h) < 0.5, `${what}: cells are not square (${r.cell_w} x ${r.cell_h})`);
+      assert.ok(r.board_right <= viewport.width, `${what}: the board is wider than the screen`);
+      assert.ok(r.board_height <= viewport.height * 0.7 + 4, `${what}: the board is higher than 70% of the screen`);
+      assert.ok(r.page_width <= viewport.width, `${what}: the page is wider than the screen`);
+      assert.equal(r.overflow, false, `${what}: items do not fit in a cell`);
+      assert.ok(r.cell_w >= 6, what);
+    }
+    // The board follows the size of the window
+    await page.evaluate(async () => (await import('./js/grid-visual.js')).show_grid('setting(grid_width(8)). setting(grid_height(6)).'));
+    const before = await page.locator('#visual').boundingBox();
+    await page.setViewportSize({ width: Math.round(viewport.width * 0.6), height: viewport.height });
+    await page.waitForFunction((w) => document.getElementById('visual').getBoundingClientRect().width < w, before.width);
+  }
 });

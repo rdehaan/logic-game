@@ -29,6 +29,7 @@ shows how long clingo took for each program in each step.
 | `js/versions.js` | Snapshots, differences between versions, project and backup files (no DOM) |
 | `js/versions-tab.js` | The Versions tab |
 | `js/folder.js` | The folder format (one `.lp` file per program), and zip files (no DOM) |
+| `js/folder-link.js` | Linking the page to a game folder on disk (Chrome and Edge) |
 | `js/text-board.js` | The board as text, for the command-line version (no DOM) |
 | `bin/logic-game.mjs`, `cli/` | The command-line version |
 | `js/tutorial.js` | The tutorial for new players (a guided first game), and the list of the first games |
@@ -141,6 +142,17 @@ logic-game test ~/my-game --levels 50        # how often does the strategy win?
 logic-game convert game.json ~/my-game       # between folders, .zip, game and project files
 logic-game help
 ```
+
+In the browser (Versions tab): *Download as a folder (.zip)*, and *Select folder* (or a `.zip`)
+to load one. In Chrome and Edge, *Link a folder…* links the page to a game folder on disk
+(`js/folder-link.js`, with the File System Access API): every change in the page is written
+into the files, and changes to the files (by an editor, or by `git checkout`) are loaded into
+the page within a few seconds, after an automatic snapshot of the page's version. A file that
+changed on disk is never overwritten by the page. After a reload, the page offers to link the
+folder again (the browser asks for permission).
+
+The full guide to the command-line version is [docs/CLI.md](docs/CLI.md); the Instructions
+tab of the page has the basics (*Playing on your own computer*).
 
 `play`, `test` and `check` exit with code 3 when the game is not won, a level of the test is
 not won, or there are errors, so they can be used in scripts and in CI.

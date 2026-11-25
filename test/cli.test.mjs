@@ -118,3 +118,22 @@ test('cli: converting between game files, project files, folders and zip files',
   const examples = await run('examples');
   assert.match(examples.stdout, /^flag1\nflag1-with-solutions\nflag2\n/);
 });
+
+test('cli: every command and option is in the guide (docs/CLI.md) and in the help', async () => {
+  const guide = fs.readFileSync(path.join(ROOT, 'docs', 'CLI.md'), 'utf8');
+  const help = (await run('help')).stdout;
+  const source = fs.readFileSync(BIN, 'utf8');
+  const options = [...source.matchAll(/^ {2}'?([\w-]+)'?: \{ type:/gm)].map((m) => m[1]).filter((o) => o !== 'help');
+  assert.ok(options.length > 10);
+  for (const o of options) {
+    assert.ok(help.includes('--' + o), `--${o} is not in the help`);
+    assert.ok(guide.includes('--' + o), `--${o} is not in docs/CLI.md`);
+  }
+  for (const command of ['new', 'play', 'test', 'check', 'convert', 'examples']) {
+    assert.ok(guide.includes('logic-game ' + command), `${command} is not in docs/CLI.md`);
+  }
+  // and the Instructions tab has the basics, with a link to the guide
+  const instructions = fs.readFileSync(path.join(ROOT, 'docs', 'instructions.html'), 'utf8');
+  assert.match(instructions, /logic-game play/);
+  assert.match(instructions, /docs\/CLI\.md/);
+});

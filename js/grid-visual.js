@@ -124,30 +124,80 @@ export function changed_cells(grid, previous) {
   return out;
 }
 
+// The size of the board: square cells, as large as fits in the width of the
+// page and in about 70% of the height of the screen (at least MIN_CELL pixels:
+// a board that is larger than that can be scrolled).
+const MIN_CELL = 6;
+const MAX_CELL = 96;
+
+function cell_size(width, height) {
+  const container = document.getElementById('visual-container');
+  const available_width = Math.max(100, (container ? container.clientWidth : window.innerWidth) - 4);
+  const available_height = Math.max(160, Math.min(window.innerHeight * 0.7, 640));
+  const size = Math.floor(Math.min(available_width / width, available_height / height, MAX_CELL));
+  return Math.max(MIN_CELL, size);
+}
+
+// Size the board, and the items in its cells (to fit in a cell, also when
+// there are several items in it).
+function layout_grid() {
+  const visual = document.getElementById('visual');
+  const width = Number(visual.dataset.cols);
+  const height = Number(visual.dataset.rows);
+  if (!width || !height) return;
+  const size = cell_size(width, height);
+  visual.style.setProperty('--cell-size', size + 'px');
+  visual.style.gridTemplateColumns = `repeat(${width}, ${size}px)`;
+  visual.style.gridTemplateRows = `repeat(${height}, ${size}px)`;
+  visual.classList.toggle('small-cells', size < 16);
+  for (const cell of visual.children) {
+    const n = Number(cell.dataset.items) || 1;
+    // (items side by side, in as many rows as needed)
+    const per_row = Math.ceil(Math.sqrt(n));
+    cell.style.fontSize = Math.max(2, Math.floor(size * 0.62 / per_row)) + 'px';
+  }
+}
+
+let resize_observer = null;
+function watch_size() {
+  if (resize_observer || typeof ResizeObserver === 'undefined') return;
+  const container = document.getElementById('visual-container');
+  let last = null;
+  resize_observer = new ResizeObserver(() => {
+    const w = container.clientWidth;
+    if (w !== last) {
+      last = w;
+      layout_grid();
+    }
+  });
+  resize_observer.observe(container);
+  window.addEventListener('resize', layout_grid);
+}
+
 function visualize_grid(grid, changed = new Set()) {
   const visual = document.getElementById('visual');
   visual.replaceChildren();
   visual.className = 'grid-visual';
-  visual.style.setProperty('--num-cols', grid.width);
-  visual.style.setProperty('--num-rows', grid.height);
+  visual.dataset.cols = grid.width;
+  visual.dataset.rows = grid.height;
+  visual.style.removeProperty('width');
   visual.style.setProperty('border', '1px solid #000');
-  visual.style.setProperty('width', '80%');
-  visual.style.setProperty('aspect-ratio', grid.width / grid.height);
-  const font_size = Math.min(20 / grid.height, 2.5);
-
   for (let i = 1; i <= grid.height * grid.width; i++) {
     const div = document.createElement('div');
     div.className = changed.has(i) ? 'grid-visual-cell changed' : 'grid-visual-cell';
-    div.style.setProperty('--font-size', font_size + 'vw');
     if (grid.fog.has(i)) div.style.backgroundColor = '#ddd';
     const bg = css_color(grid.bg.get(i));
     if (bg) div.style.backgroundColor = bg;
-    const inner = document.createElement('div');
-    for (const item of (grid.cells.get(i) || []).toSorted()) inner.append(item_element(grid, item, ''));
-    for (const item of (grid.hidden.get(i) || []).toSorted()) inner.append(item_element(grid, item, 'grid-visual-hidden'));
-    div.append(inner);
+    const items = [
+      ...(grid.cells.get(i) || []).toSorted().map((item) => item_element(grid, item, '')),
+      ...(grid.hidden.get(i) || []).toSorted().map((item) => item_element(grid, item, 'grid-visual-hidden')),
+    ];
+    div.dataset.items = items.length;
+    div.append(...items);
     visual.append(div);
   }
+  layout_grid();
+  watch_size();
 }
 
 // Visual effects for when a game is won or lost
@@ -174,6 +224,7 @@ export function clear_grid() {
   const visual = document.getElementById('visual');
   visual.replaceChildren();
   visual.className = '';
-  visual.style.setProperty('width', '0');
+  delete visual.dataset.cols;
+  delete visual.dataset.rows;
   visual.style.setProperty('border', '0px solid #000');
 }

@@ -19,6 +19,11 @@
   <h1>A Logic Game</h1>
 
   <main>
+    <p id="folder-notice" class="tutorial-invite" hidden>
+      <span id="folder-notice-text"></span>
+      <button data-action="relink_folder" class="control-button">Link it again</button>
+      <button data-action="dismiss_folder_notice" class="control-button">No, thanks</button>
+    </p>
     <p id="tutorial-invite" class="tutorial-invite" hidden>
       <span>New here? A short tutorial shows you how to play (about five minutes).</span>
       <button data-action="start_tutorial" class="control-button" id="tutorial-start">Start the tutorial</button>
@@ -314,16 +319,44 @@
       </p>
       <p id="download-reminder" class="versions-status"></p>
       <button data-action="download_project" class="control-button">Download project file</button>
+      <button data-action="download_folder" class="control-button" title="One file per program (strategy.lp, nature.lp, ...), in a .zip file">Download as a folder (.zip)</button>
       <button data-action="download_game" class="control-button" title="Only the programs and the level, like the example games: to hand in, or to give to someone">Download game only</button>
+      <p class="versions-help">
+        <i>As a folder</i>: one plain clingo file per program (<tt>strategy.lp</tt>, <tt>nature.lp</tt>, &hellip;),
+        for your own editor, for git (a change shows up per program), and for the
+        command-line version of the game (see <i>Playing on your own computer</i> in the
+        <a href="?tab=2" class="tab-link" data-tab="2">Instructions</a> tab).
+        Snapshots are not in the folder: use git (or the project file) for versions.
+      </p>
 
-      <h3>Load a file</h3>
+      <h3>Work in a folder on your computer</h3>
+      <div id="folder-supported">
+        <p>
+          Link the page to a game folder on your computer (for example, a folder in your git repository).
+          Every change you make here is saved into its files, and changes to the files
+          (in your own editor, or by git) show up here within a few seconds.
+          An empty folder gets the current game.
+        </p>
+        <p id="folder-status" class="versions-status"></p>
+        <button data-action="open_folder" class="control-button" id="open-folder-button">Link a folder&hellip;</button>
+        <button data-action="relink_folder" class="control-button" id="relink-folder-button" hidden></button>
+        <button data-action="unlink_folder" class="control-button" id="unlink-folder-button" hidden>Unlink</button>
+      </div>
+      <p id="folder-unsupported" class="versions-help" hidden>
+        This browser cannot link the page to a folder (Chrome and Edge can).
+        You can download the game as a folder (.zip) above, and load a folder below.
+      </p>
+
+      <h3>Load a file or a folder</h3>
       <p>
-        A project file, a game file (like the examples), or a backup of everything.
-        Your current work on that game is kept as a snapshot first.
+        A project file, a game file (like the examples), a game folder (or a .zip of it),
+        or a backup of everything. Your current work on that game is kept as a snapshot first.
       </p>
       <form id="upload-form" enctype="multipart/form-data">
         <label for="file-input" class="control-button">Select file</label>
-        <input type="file" id="file-input" accept=".json,application/json" required>
+        <input type="file" id="file-input" accept=".json,.zip,application/json,application/zip" required>
+        <label for="folder-input" class="control-button">Select folder</label>
+        <input type="file" id="folder-input" webkitdirectory>
       </form>
       <p id="upload-status"></p>
 

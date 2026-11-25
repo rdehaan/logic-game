@@ -1,41 +1,44 @@
 .visual-container {
-  text-align: center;
   display: flex;
   justify-content: center;
   padding-bottom: 1em;
+  /* (a board with more cells than fit can be scrolled) */
+  overflow-x: auto;
 }
 
+/* The board: the sizes of the cells are set by grid-visual.js (layout_grid) */
 .grid-visual {
-  --num-cols: 2;
-  --num-rows: 6;
-  --font-size: 1em;
+  --cell-size: 40px;
   display: grid;
-  grid-template-columns: repeat(var(--num-cols), 1fr);
-  grid-template-rows: repeat(var(--num-rows), 1fr);
-  min-width: 320px;
-  max-height: 400px;
-  width: 40%;
-  aspect-ratio: 16/9;
+  box-sizing: content-box;
+  flex: none;
   font-family: FontAwesome;
   border: 1px solid #000;
 }
+
 .grid-visual-cell {
-  text-align: center;
-  display: table;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
   border: 1px solid #000;
-}
-.grid-visual-cell div {
-  display: table-row;
+  line-height: 1;
   text-align: center;
-  vertical-align: middle;
-  font-size: calc(var(--font-size, 1em) + 5pt);
-}
-.grid-visual-cell div span {
-  display: table-cell;
-  text-align: center;
-  vertical-align: middle;
 }
 
-.grid-visual-cell div span.grid-visual-hidden {
+.grid-visual.small-cells .grid-visual-cell {
+  border-width: 0.5px;
+}
+
+.grid-visual-cell span {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.grid-visual-cell span.grid-visual-hidden {
   opacity: 0.35;
 }

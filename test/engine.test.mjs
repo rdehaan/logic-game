@@ -268,7 +268,7 @@ for (const { name, game } of examples.filter((e) => e.name.includes('with-soluti
 test('vendor/clingo-wasm is the clingo-wasm package from package.json', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   const version = fs.readFileSync(path.join(ROOT, 'vendor', 'clingo-wasm', 'VERSION'), 'utf8').split('\n')[0];
-  assert.equal(version, `clingo-wasm ${pkg.devDependencies['clingo-wasm']}`,
+  assert.equal(version, `clingo-wasm ${pkg.dependencies['clingo-wasm']}`,
     'run "npm run vendor" after changing the version of clingo-wasm');
   const dist = path.join(ROOT, 'node_modules', 'clingo-wasm', 'dist');
   for (const f of ['index.web.js', 'clingo.js', 'clingo.wasm']) {
