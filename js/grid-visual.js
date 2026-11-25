@@ -1,305 +1,158 @@
 // Drawing the board from the facts that the player observes (and the decorations).
+//
+// The board is built from DOM elements, never from HTML text: labels and
+// colours come from the programs of a game, and a game can come from anyone
+// (e.g. through a share link), so they must not be able to inject HTML or
+// scripts into the page. Labels are shown as text, and colours are only
+// accepted as hex_RGB / hex_RRGGBB (and with alpha) or as plain colour names.
+//
 // compute_grid_ds() does not use the DOM (the tests run it in Node).
+import { facts_to_answer_set, split_atom } from './asp.js';
 
-// Auxiliary function to parse an atom into its elements
-export function flatparse_atom(atom) {
+const number = (text) => (/^-?\d+$/.test(text) ? Number(text) : null);
 
-  var bracket_count = 0;
-  var cur_substr_init = 0;
-  var elements = Array();
-  for (let i = 0; i < atom.length; i++) {
-    if (atom[i] == "(") {
-      if (bracket_count == 0) {
-        elements.push(atom.substring(cur_substr_init, i));
-        cur_substr_init = i+1;
-      }
-      bracket_count += 1;
-    } else if (atom[i] == ")") {
-      if (bracket_count == 1) {
-        elements.push(atom.substring(cur_substr_init, i));
-        cur_substr_init = i+1;
-      }
-      if (bracket_count != 0) {
-        bracket_count -= 1;
-      }
-    } else if (atom[i] == ",") {
-      if (bracket_count == 1) {
-        elements.push(atom.substring(cur_substr_init, i));
-        cur_substr_init = i+1;
-      }
+// The board described by a program of facts, or null if it has no size:
+// { height, width, cells: Map(index -> [object]), fog: Set(index),
+//   bg: Map(index -> colour), hidden: Map(index -> [object]),
+//   labels: Map(object -> label), colors: Map(object -> colour) }
+// (cells are numbered from 1, row by row).
+export function compute_grid_ds(facts) {
+  const atoms = facts_to_answer_set(facts).map(split_atom);
+  const setting = (key) => {
+    for (const a of atoms) {
+      if (a.name !== 'setting' || a.args.length !== 1) continue;
+      const inner = split_atom(a.args[0]);
+      if (inner.name === key && inner.args.length === 1 && number(inner.args[0]) != null) return number(inner.args[0]);
     }
-  }
-  return elements;
-}
-
-// Auxiliary function to split an answer set (string) into its atoms
-export function split_answer_set(answer_set) {
-
-  var bracket_count = 0;
-  var cur_substr_init = 0;
-  var elements = Array();
-  for (let i = 0; i < answer_set.length; i++) {
-    if (answer_set[i] == "(") {
-      bracket_count += 1;
-    } else if (answer_set[i] == ")") {
-      if (bracket_count != 0) {
-        bracket_count -= 1;
-      }
-    } else if (answer_set[i] == ".") {
-      elements.push(answer_set.substring(cur_substr_init, i));
-      cur_substr_init = i+1;
-    } else if (answer_set[i] == " ") {
-      if (i > cur_substr_init) {
-        elements.push(answer_set.substring(cur_substr_init, i));
-      }
-      cur_substr_init = i+1;
-    }
-  }
-  if (answer_set.length > cur_substr_init) {
-    elements.push(answer_set.substring(cur_substr_init, answer_set.length));
-  }
-  return elements;
-}
-
-// Auxiliary function to filter atoms from answer set
-export function get_atoms_beginning_with(answer_set, prefix) {
-
-  var selected_atoms = Array();
-  var atoms = split_answer_set(answer_set)
-  for (const atom of atoms) {
-    if (atom.startsWith(prefix)) {
-      selected_atoms.push(atom);
-    }
-  }
-  return selected_atoms;
-}
-
-// Compute a grid data structure from an answer set
-export function compute_grid_ds(answer_set) {
-
-  var matches;
-  var atoms;
-  var match, row, col, num, item, color, label;
-  // match = answer_set.match(/setting\(grid_height\((\d+)\)\)/);
-  // var height = Number(match[1]);
-  // match = answer_set.match(/setting\(grid_width\((\d+)\)\)/);
-  // var width = Number(match[1]);
-  matches = get_atoms_beginning_with(answer_set, "setting(grid_height(");
-  if (matches.length == 0) {
     return null;
-  }
-  var height = Number(flatparse_atom(flatparse_atom(matches[0])[1])[1]);
-  matches = get_atoms_beginning_with(answer_set, "setting(grid_width(");
-  if (matches.length == 0) {
-    return null;
-  }
-  var width = Number(flatparse_atom(flatparse_atom(matches[0])[1])[1]);
-  if (!(height > 0) || !(width > 0)) {
-    return null;
-  }
+  };
+  const height = setting('grid_height');
+  const width = setting('grid_width');
+  if (!(height > 0) || !(width > 0)) return null;
 
-  var grid_ds = {};
-  var fog = {};
-  grid_ds["height"] = height;
-  grid_ds["width"] = width;
-  for (let row=1; row <= height; row++) {
-    for (let col=1; col <= width; col++) {
-      let num = coord_to_num(height, width, row, col);
-      grid_ds[num] = [];
-      fog[num] = false;
+  const grid = {
+    height, width,
+    cells: new Map(), fog: new Set(), bg: new Map(), hidden: new Map(), labels: new Map(), colors: new Map(),
+  };
+  // The index of a cell, or null if (row, col) is not on the board
+  const cell = (row, col) => {
+    const r = number(row);
+    const c = number(col);
+    if (r == null || c == null || r < 1 || c < 1 || r > height || c > width) return null;
+    return (r - 1) * width + c;
+  };
+  const add = (map, key, value) => {
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(value);
+  };
+
+  for (const a of atoms) {
+    if (a.name === 'observe' && a.args.length === 1) {
+      const inner = split_atom(a.args[0]);
+      if (inner.name === 'at' && inner.args.length === 3) {
+        const i = cell(inner.args[0], inner.args[1]);
+        if (i != null) add(grid.cells, i, inner.args[2]);
+      } else if (inner.name === 'fog' && inner.args.length === 2) {
+        const i = cell(inner.args[0], inner.args[1]);
+        if (i != null) grid.fog.add(i);
+      }
+    } else if (a.name === 'decorate') {
+      const [kind, ...rest] = a.args;
+      if (kind === 'bgcolor' && rest.length === 3) {
+        const i = cell(rest[0], rest[1]);
+        if (i != null) grid.bg.set(i, rest[2]);
+      } else if (kind === 'item' && rest.length === 3) {
+        const i = cell(rest[0], rest[1]);
+        if (i != null) add(grid.hidden, i, rest[2]);
+      } else if (kind === 'label' && rest.length === 2) {
+        grid.labels.set(rest[0], rest[1]);
+      } else if (kind === 'color' && rest.length === 2) {
+        grid.colors.set(rest[0], rest[1]);
+      }
     }
   }
-
-  atoms = get_atoms_beginning_with(answer_set, "observe(at(");
-  for (const atom of atoms) {
-    match = flatparse_atom(flatparse_atom(atom)[1]);
-    row = Number(match[1]);
-    col = Number(match[2]);
-    num = coord_to_num(height, width, row, col);
-    item = match[3];
-    if (grid_ds[num]) {
-      grid_ds[num].push(item);
-    }
-  }
-
-  atoms = get_atoms_beginning_with(answer_set, "observe(fog(");
-  for (const atom of atoms) {
-    match = flatparse_atom(flatparse_atom(atom)[1]);
-    row = Number(match[1]);
-    col = Number(match[2]);
-    num = coord_to_num(height, width, row, col);
-    fog[num] = true;
-  }
-  grid_ds["fog"] = fog;
-
-  var bg = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(bgcolor,");
-  for (const atom of atoms) {
-    match = flatparse_atom(atom);
-    row = Number(match[2]);
-    col = Number(match[3]);
-    color = match[4];
-    num = coord_to_num(height, width, row, col);
-    bg[num] = color;
-  }
-  grid_ds["bg"] = bg;
-
-  var hidden = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(item,");
-  for (const atom of atoms) {
-    match = flatparse_atom(atom);
-    row = Number(match[2]);
-    col = Number(match[3]);
-    item = match[4];
-    num = coord_to_num(height, width, row, col);
-    if (!hidden[num]) {
-      hidden[num] = [];
-    }
-    hidden[num].push(item);
-  }
-  grid_ds["hidden"] = hidden;
-
-  var labels = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(label,");
-  for (const atom of atoms) {
-    match = flatparse_atom(atom);
-    item = match[2];
-    label = match[3];
-    labels[item] = label;
-  }
-  grid_ds["labels"] = labels;
-
-  var colors = {};
-  atoms = get_atoms_beginning_with(answer_set, "decorate(color,");
-  for (const atom of atoms) {
-    match = flatparse_atom(atom);
-    item = match[2];
-    color = match[3];
-    colors[item] = color;
-  }
-  grid_ds["colors"] = colors;
-
-  return grid_ds;
+  return grid;
 }
 
-// Auxiliary functions
-function coord_to_num(height, width, row, col) {
-  return (row-1)*width + col;
-}
-function num_to_row(height, width, num) {
-  return Math.floor((num-1)/width)+1;
-}
-function num_to_col(height, width, num) {
-  return (num-1) % width + 1;
-}
-
-// Auxiliary function to produce the HTML for a single item in a cell
-function item_to_html(grid_ds, item, css_class) {
-  var label = grid_ds["labels"][item];
-  var color = grid_ds["colors"][item];
-  var label_html = "?";
-  if (label) {
-    if (label.match(/font_(\w+)/)) {
-      label = label.replace(/font_(\w+)/, "$1");
-      label = String.fromCharCode(parseInt(label,16));
-    }
-    label_html = label;
-    if (label == "empty") {
-      label_html = "";
-    }
+// The text to show for a label: font_XXXX is the character with code XXXX
+// (e.g. an icon of Font Awesome), 'empty' is nothing, a string is its
+// contents, anything else is shown as it is.
+export function label_text(label) {
+  if (label == null) return '?';
+  if (label === 'empty') return '';
+  const font = /^font_([0-9a-fA-F]{1,6})$/.exec(label);
+  if (font) {
+    const code = parseInt(font[1], 16);
+    return code <= 0x10FFFF ? String.fromCodePoint(code) : '?';
   }
-  var attributes = "";
-  if (css_class) {
-    attributes += " class='" + css_class + "'";
-  }
-  if (color) {
-    if (color.match(/^hex_[0-9a-fA-F]+$/)) {
-      color = color.replace(/hex_(\w+)/, "$1");
-      color = "#" + color;
-    }
-    attributes += " style='color: " + color + "; '";
-  }
-  return "<span" + attributes + ">" + label_html + "</span>";
+  const string = /^"((?:\\.|[^"\\])*)"$/.exec(label);
+  if (string) return string[1].replace(/\\(.)/g, '$1');
+  return label;
 }
 
-// Visualize the grid
-function visualize_grid(grid_ds) {
-  var visual_elem = document.getElementById("visual");
-  visual_elem.innerHTML = '';
-  visual_elem.className = 'grid-visual';
+// A colour as CSS, or null if it is not a colour that is accepted:
+// hex_RGB, hex_RGBA, hex_RRGGBB, hex_RRGGBBAA, or a plain colour name.
+export function css_color(color) {
+  if (color == null) return null;
+  const hex = /^hex_([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(color);
+  if (hex) return '#' + hex[1];
+  if (/^[a-z]+$/.test(color)) return color;
+  return null;
+}
 
-  let height = grid_ds["height"];
-  let width = grid_ds["width"];
-  let num_cells = height * width;
+function item_element(grid, item, css_class) {
+  const span = document.createElement('span');
+  span.textContent = label_text(grid.labels.get(item));
+  if (css_class) span.className = css_class;
+  const color = css_color(grid.colors.get(item));
+  if (color) span.style.color = color;
+  return span;
+}
 
-  visual_elem.style.setProperty("--num-cols", width);
-  visual_elem.style.setProperty("--num-rows", height);
-  visual_elem.style.setProperty("border", "1px solid #000");
-  visual_elem.style.setProperty("width", "80%");
+function visualize_grid(grid) {
+  const visual = document.getElementById('visual');
+  visual.replaceChildren();
+  visual.className = 'grid-visual';
+  visual.style.setProperty('--num-cols', grid.width);
+  visual.style.setProperty('--num-rows', grid.height);
+  visual.style.setProperty('border', '1px solid #000');
+  visual.style.setProperty('width', '80%');
+  visual.style.setProperty('aspect-ratio', grid.width / grid.height);
+  const font_size = Math.min(20 / grid.height, 2.5);
 
-  let ratio = width/height;
-  visual_elem.style.setProperty("aspect-ratio", ratio);
-
-  for (let num = 1; num <= num_cells ; num++) {
-    var div = document.createElement("div");
+  for (let i = 1; i <= grid.height * grid.width; i++) {
+    const div = document.createElement('div');
     div.className = 'grid-visual-cell';
-    visual_elem.appendChild(div);
-
-    if (grid_ds["fog"][num]) {
-      div.style.setProperty("background-color", "#ddd");
-    }
-    var bgcolor = grid_ds["bg"][num];
-    if (bgcolor) {
-      if (bgcolor.match(/^hex_[0-9a-fA-F]+$/)) {
-        bgcolor = bgcolor.replace(/hex_(\w+)/, "$1");
-        bgcolor = "#" + bgcolor;
-      }
-      div.style.setProperty("background-color", bgcolor);
-    }
-
-    var font_size = (20 / height);
-    if (font_size > 2.5) {
-      font_size = 2.5;
-    }
-    div.style.setProperty("--font-size", font_size + "vw");
-    var items = (grid_ds[num] || []).toSorted();
-    var hidden_items = (grid_ds["hidden"][num] || []).toSorted();
-    var html = "<div>";
-    for (const item of items) {
-      html += item_to_html(grid_ds, item, "");
-    }
-    for (const item of hidden_items) {
-      html += item_to_html(grid_ds, item, "grid-visual-hidden");
-    }
-    html += '</div>';
-    div.innerHTML = html;
+    div.style.setProperty('--font-size', font_size + 'vw');
+    if (grid.fog.has(i)) div.style.backgroundColor = '#ddd';
+    const bg = css_color(grid.bg.get(i));
+    if (bg) div.style.backgroundColor = bg;
+    const inner = document.createElement('div');
+    for (const item of (grid.cells.get(i) || []).toSorted()) inner.append(item_element(grid, item, ''));
+    for (const item of (grid.hidden.get(i) || []).toSorted()) inner.append(item_element(grid, item, 'grid-visual-hidden'));
+    div.append(inner);
+    visual.append(div);
   }
 }
 
-// Visual effects for when a game is won
+// Visual effects for when a game is won or lost
 export function display_win() {
-  var visual_elem = document.getElementById("visual");
-  visual_elem.style.setProperty("border", "3px solid #AADB1E");
+  document.getElementById('visual').style.setProperty('border', '3px solid #AADB1E');
 }
-// Visual effects for when a game is lost
 export function display_lose() {
-  var visual_elem = document.getElementById("visual");
-  visual_elem.style.setProperty("border", "3px solid #E10600");
+  document.getElementById('visual').style.setProperty('border', '3px solid #E10600');
 }
 
-// Wrapper
-export function show_grid(answer_set) {
-  var grid_ds = compute_grid_ds(answer_set);
-  if (grid_ds) {
-    visualize_grid(grid_ds);
-  } else {
-    clear_grid();
-  }
+export function show_grid(facts) {
+  const grid = compute_grid_ds(facts);
+  if (grid) visualize_grid(grid);
+  else clear_grid();
 }
+
 export function clear_grid() {
-  var visual_elem = document.getElementById("visual");
-  visual_elem.innerHTML = '';
-  visual_elem.className = '';
-  visual_elem.style.setProperty("width", "0");
-  visual_elem.style.setProperty("border", "0px solid #000");
+  const visual = document.getElementById('visual');
+  visual.replaceChildren();
+  visual.className = '';
+  visual.style.setProperty('width', '0');
+  visual.style.setProperty('border', '0px solid #000');
 }

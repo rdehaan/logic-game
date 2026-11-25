@@ -5,7 +5,7 @@ import {
   compose, preprocess_program, filter_answer_set, answer_set_to_facts,
   answer_set_to_fact_lines, parse_clingo_errors, locate_errors, facts_to_answer_set, split_atom,
 } from '../js/asp.js';
-import { compute_grid_ds, split_answer_set, flatparse_atom } from '../js/grid-visual.js';
+import { compute_grid_ds, label_text, css_color } from '../js/grid-visual.js';
 import { seeded_rng } from './helpers.mjs';
 
 test('compose keeps track of the lines of each part', () => {
@@ -85,20 +85,35 @@ test('parse_clingo_errors falls back to the summary', () => {
 
 test('the board is computed from the observed facts', () => {
   const facts = 'setting(grid_height(2)). setting(grid_width(3)). observe(at(1,2,player)). ' +
-    'observe(fog(2,3)). decorate(label,player,font_f007). decorate(item,2,1,flag).';
-  assert.deepEqual(split_answer_set('a(1,2). b.'), ['a(1,2)', 'b']);
-  assert.deepEqual(flatparse_atom('at(1,f(2,3),x)'), ['at', '1', 'f(2,3)', 'x']);
+    'observe(fog(2,3)). decorate(label,player,font_f007). decorate(item,2,1,flag). decorate(bgcolor,1,1,hex_aac).';
   const grid = compute_grid_ds(facts);
   assert.equal(grid.height, 2);
   assert.equal(grid.width, 3);
-  assert.deepEqual(grid[2], ['player']);
-  assert.equal(grid.fog[6], true);
-  assert.deepEqual(grid.hidden[4], ['flag']);
-  assert.equal(grid.labels.player, 'font_f007');
+  assert.deepEqual(grid.cells.get(2), ['player']);
+  assert.equal(grid.fog.has(6), true);
+  assert.deepEqual(grid.hidden.get(4), ['flag']);
+  assert.equal(grid.labels.get('player'), 'font_f007');
+  assert.equal(grid.bg.get(1), 'hex_aac');
   // No grid size: nothing to draw (instead of an exception)
   assert.equal(compute_grid_ds('observe(at(1,1,player)).'), null);
-  // Items outside of the grid are ignored
-  assert.deepEqual(compute_grid_ds('setting(grid_height(1)). setting(grid_width(1)). observe(at(5,5,x)).')[1], []);
+  assert.equal(compute_grid_ds('setting(grid_height(0)). setting(grid_width(3)).'), null);
+  // Objects outside of the grid are ignored
+  assert.equal(compute_grid_ds('setting(grid_height(1)). setting(grid_width(1)). observe(at(5,5,x)).').cells.size, 0);
+  // Objects with nested terms
+  assert.deepEqual(compute_grid_ds('setting(grid_height(1)). setting(grid_width(1)). observe(at(1,1,cow(2))).').cells.get(1), ['cow(2)']);
+});
+
+test('labels and colours cannot inject anything into the page', () => {
+  assert.equal(label_text('font_f024'), '\uf024');
+  assert.equal(label_text('empty'), '');
+  assert.equal(label_text(undefined), '?');
+  assert.equal(label_text('a'), 'a');
+  assert.equal(label_text('"<img src=x onerror=alert(1)>"'), '<img src=x onerror=alert(1)>');   // shown as text
+  assert.equal(label_text('font_110000'), '?');
+  assert.equal(css_color('hex_8b0000'), '#8b0000');
+  assert.equal(css_color('hex_aac'), '#aac');
+  assert.equal(css_color('green'), 'green');
+  for (const bad of ['"red; background: url(x)"', 'hex_12345', 'url(x)', 'red;x', 'hex_zzz']) assert.equal(css_color(bad), null, bad);
 });
 
 test('reading facts and atoms back', () => {

@@ -366,3 +366,22 @@ test('the speeds As fast as possible and Instant', async (t) => {
   }
   assert.match(await game_output(page), /- Time in clingo: winning conditions \d+ ms/);
 });
+
+test('a game cannot inject HTML or scripts into the page through the board', async (t) => {
+  const page = await open(t, '?editor=true&tab=5');
+  if (!page) return;
+  await page.evaluate(() => { window.injected = false; });
+  await set_program(page, 'level_settings', 'setting(grid_width(2)).\nsetting(grid_height(1)).\n' +
+    'decorate(label,player,"<img src=x onerror=window.injected=true>").\n' +
+    'decorate(color,player,"red\\" onmouseover=\\"window.injected=true").\n' +
+    'decorate(bgcolor,1,2,"red; background-image: url(https://example.com/x.png)").');
+  await set_program(page, 'level_state', 'at(1,1,player).');
+  await page.click('button[data-action=update_interface]');
+  await page.waitForFunction(() => document.querySelectorAll('#visual .grid-visual-cell').length === 2);
+  await page.waitForTimeout(300);
+  assert.equal(await page.locator('#visual img').count(), 0);
+  assert.equal(await page.textContent('#visual .grid-visual-cell span'), '<img src=x onerror=window.injected=true>');
+  await page.hover('#visual .grid-visual-cell span');
+  assert.equal(await page.evaluate(() => window.injected), false);
+  assert.deepEqual(page.external, []);
+});
