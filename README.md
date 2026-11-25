@@ -28,9 +28,11 @@ shows how long clingo took for each program in each step.
 | `js/storage.js` | Saved work (in the browser) and share links (no DOM) |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
-| `js/ace.js`, `js/mode-gringo.js` | The Ace editor, and syntax highlighting for ASP |
+| `js/mode-gringo.js` | Syntax highlighting for ASP in the Ace editor |
+| `js/editor-help.js` | Help in the editors: what a special predicate means (on hover), and autocompletion |
 | `sw.js` | Service worker: keeps the files of the game, so that it also works offline |
 | `vendor/clingo-wasm/` | An unmodified copy of the clingo-wasm npm package (see `VERSION`) |
+| `vendor/ace/` | The Ace editor, from the ace-builds npm package |
 | `vendor/fonts/` | Open Sans and Font Awesome, from their npm packages (the page loads nothing from other sites) |
 | `examples/` | The example games |
 | `test/` | The tests |
@@ -113,5 +115,5 @@ npm test
 ```
 
 and commit `package.json`, `package-lock.json` and `vendor/`. (The same works for
-`@fortawesome/fontawesome-free` and `@fontsource/open-sans`.)
+`ace-builds`, `@fortawesome/fontawesome-free` and `@fontsource/open-sans`.)
 A test fails if `vendor/clingo-wasm/` does not match the version in `package.json`.

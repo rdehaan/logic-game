@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyze_program, parse_term, terms_match, relax_constraints, tokenize } from '../js/analysis.js';
-import { game_hints, board_problems } from '../js/hints.js';
+import { game_hints, board_problems, special_help, completions, SPECIAL_DOCS, INTERFACES } from '../js/hints.js';
 import { load_examples } from './helpers.mjs';
 
 const sigs = (text, role) => [...new Set(analyze_program(text).atoms.filter((a) => a.role === role).map((a) => `${a.name}/${a.arity}`))].sort();
@@ -167,4 +167,26 @@ test('problems with the board', () => {
   assert.deepEqual(board_problems('setting(grid_width(3)). setting(grid_height(1)).', 'at(1,1,player).\nat(2,4,flag).'),
     ['at(2,4,flag) is outside of the board (rows 1-1, columns 1-3).']);
   assert.deepEqual(board_problems('setting(grid_width(3)). setting(grid_height(1)).', 'at(1,1,player).'), []);
+});
+
+test('help about special predicates, per program', () => {
+  assert.match(special_help('player_move_program', 'do/1').text, /This program passes it on to nature's program\.$/);
+  assert.match(special_help('nature_program', 'do/1').text, /This program gets it from the game\.$/);
+  assert.match(special_help('player_move_program', 'at/3').text, /The player's program does not get it/);
+  assert.equal(special_help('goal_program', 'win/0').title, 'win');
+  assert.equal(special_help('player_move_program', 'foo/1'), null);
+  // every special predicate of every program has help
+  for (const iface of Object.values(INTERFACES)) {
+    for (const s of [...iface.inputs, ...iface.outputs]) assert.ok(SPECIAL_DOCS[s] || SPECIAL_DOCS[s.replace(/\/\d+$/, '/*')], s);
+  }
+});
+
+test('completions: the special predicates, then what the programs define', () => {
+  const list = completions('player_move_program', { aux_program: 'cell(R,C) :- setting(row(R)), setting(col(C)).', player_move_program: 'go(X) :- observe(X).\ndone.' });
+  assert.deepEqual(list.map((c) => `${c.caption}:${c.meta}:${c.value}`), [
+    'observe/1:gets:observe(', 'setting/1:gets:setting(', 'current_time/1:gets:current_time(', 'memory/1:gets:memory(',
+    'do/1:passes on:do(', 'remember/1:passes on:remember(', 'forget/1:passes on:forget(',
+    'cell/2:auxiliary:cell(', 'go/1:defined here:go(', 'done/0:defined here:done',
+  ]);
+  assert.match(list[0].doc, /^observe\(X\): what the player observes/);
 });

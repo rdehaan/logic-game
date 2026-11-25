@@ -308,3 +308,80 @@ export function board_problems(view, level_state = '') {
   }
   return problems;
 }
+
+// ---- Help about the special predicates (for the editors) --------------------------------
+
+// What each special predicate means.
+export const SPECIAL_DOCS = {
+  'at/3': 'at(R,C,O): object O is in row R, column C (the current state of the game).',
+  'at_time/4': 'at_time(T,R,C,O): object O was in row R, column C at time T (the history of the game).',
+  'state_time/1': 'state_time(T): time T is part of the history of the game.',
+  'current_time/1': 'current_time(T): the current time (0 at the start, one more after every step).',
+  'setting/1': 'setting(S): a setting of the level, such as setting(grid_width(W)) or setting(grid_height(H)).',
+  'decorate/*': 'decorate(...): instructions for drawing the board, such as decorate(label,O,font_f024); never passed to the player.',
+  'debug/*': 'debug(...): kept in the level state for debugging, but not used by the game.',
+  'observe/1': 'observe(X): what the player observes, such as observe(at(R,C,O)) or observe(fog(R,C)).',
+  'memory/1': 'memory(X): what the player remembered (with remember(X)) in an earlier step.',
+  'do/1': 'do(X): a move of the player, such as do(move(up)).',
+  'remember/1': 'remember(X): store X in the memory of the player; memory(X) holds from the next step on.',
+  'forget/1': 'forget(X): remove X from the memory of the player (remember wins over forget).',
+  'next/3': 'next(R,C,O): object O is in row R, column C in the next state. Objects without a next atom disappear.',
+  'wipe_player_memory/0': 'wipe_player_memory: empty the memory of the player after this step.',
+  'win/*': 'win: the game is won (checked at the start of every step).',
+  'lose/*': 'lose: the game is lost (checked at the start of every step, before win).',
+};
+
+const doc_key = (s) => (SPECIAL_DOCS[s] ? s : SPECIAL_DOCS[s.replace(/\/\d+$/, '/*')] ? s.replace(/\/\d+$/, '/*') : null);
+
+// Help about predicate `s` ('name/arity') in the program `field`, or null if it
+// is not a special predicate: { title, text }.
+export function special_help(field, s) {
+  const key = doc_key(s);
+  if (!key) return null;
+  const iface = INTERFACES[field];
+  let role = '';
+  if (iface && in_list(s, iface.inputs)) {
+    role = `This program gets it from the game.`;
+  } else if (iface && in_list(s, iface.outputs)) {
+    const to = {
+      'do/1': "nature's program", 'remember/1': "the player's memory", 'forget/1': "the player's memory",
+      'observe/1': "the player's program", 'next/3': 'the next state of the game', 'wipe_player_memory/0': "the player's memory",
+      'at/3': 'the level state', 'setting/1': 'the level settings', 'decorate/*': 'the drawing of the board', 'debug/*': 'the level state',
+    }[key];
+    role = to ? `This program passes it on to ${to}.` : 'This program passes it on to the game.';
+  } else if (iface) {
+    const users = Object.entries(INTERFACES).filter(([f, i]) => f !== field && (in_list(s, i.inputs) || in_list(s, i.outputs))).map(([f]) => NAMES[f]);
+    const list = users.length > 1 ? users.slice(0, -1).join(', ') + ' and ' + users.at(-1) : users[0];
+    role = `${NAMES[field][0].toUpperCase() + NAMES[field].slice(1)} does not get it${list ? ` (it is used by ${list})` : ''}.`;
+  } else if (field === 'aux_program') {
+    role = 'The auxiliary program is added to all programs, so this depends on the program it is added to.';
+  }
+  return { title: key.replace('/*', ''), text: SPECIAL_DOCS[key] + (role ? ' ' + role : '') };
+}
+
+// Completions for program `field`: its special predicates first, then the
+// predicates the other programs of the game define (e.g. in the auxiliary program).
+// Returns [{ caption, value, meta, doc }].
+export function completions(field, game) {
+  const out = [];
+  const seen = new Set();
+  const add = (s, meta) => {
+    const [name, arity] = s.split('/');
+    if (seen.has(name + '/' + arity)) return;
+    seen.add(name + '/' + arity);
+    const help = special_help(field, s);
+    out.push({ caption: arity === '*' ? name : `${name}/${arity}`, value: arity === '0' || arity === '*' ? name : name + '(', meta, doc: help ? help.text : '' });
+  };
+  const iface = INTERFACES[field];
+  if (iface) {
+    for (const s of iface.inputs) add(s, 'gets');
+    for (const s of iface.outputs) add(s, 'passes on');
+  }
+  for (const f of ['aux_program', field]) {
+    if (!game || !game[f]) continue;
+    for (const a of analyze_program(preprocess_program(game[f], () => 0)).atoms) {
+      if (a.role === 'head') add(sig(a), f === 'aux_program' && field !== f ? 'auxiliary' : 'defined here');
+    }
+  }
+  return out;
+}

@@ -15,6 +15,7 @@
 import { GAME_FIELDS, SOURCE_NAMES } from './engine.js';
 import { preprocess_program } from './asp.js';
 import { game_hints, INTERFACES } from './hints.js';
+import { add_editor_help } from './editor-help.js';
 
 const CHECK_DELAY_MS = 400;
 const HINT_DELAY_MS = 300;
@@ -33,10 +34,14 @@ const TAB_OF = {
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 
+// Ace (vendor/ace/) loads its theme from its own folder, and the mode for
+// answer set programs from js/mode-gringo.js.
+ace.config.set('basePath', 'vendor/ace');
+ace.config.setModuleUrl('ace/mode/gringo', 'js/mode-gringo.js');
+
 function make_editor(id) {
   const editor = ace.edit(id);
   editor.setTheme('ace/theme/textmate');
-  editor.$blockScrolling = Infinity;
   editor.setOptions({
     useSoftTabs: true,
     tabSize: 2,
@@ -99,6 +104,7 @@ export class Editors {
       list.id = key + '-problems';
       editor.container.after(list);
       editor.session.on('change', () => this.changed(key));
+      add_editor_help(editor, key, () => this.game());
     }
     this.summary = document.getElementById('problems-summary');
     this.notice = document.getElementById('problems-notice');

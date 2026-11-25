@@ -2,7 +2,9 @@
 // - vendor/clingo-wasm/: the clingo-wasm package (its dist/ folder, unchanged,
 //   without the TypeScript types);
 // - vendor/fonts/: Open Sans (latin and latin-ext) and the Font Awesome fonts
-//   (with their names from Font Awesome 4, as the page uses them), and fonts.css.
+//   (with their names from Font Awesome 4, as the page uses them), and fonts.css;
+// - vendor/ace/: the Ace editor (from ace-builds): the editor, the textmate
+//   theme, and the language tools (autocompletion).
 //
 // To update clingo (or a font):
 //   npm install --save-exact clingo-wasm@latest
@@ -75,3 +77,16 @@ fs.copyFileSync(path.join(fa, 'LICENSE.txt'), path.join(fonts, 'LICENSE-font-awe
 
 fs.writeFileSync(path.join(fonts, 'fonts.css'), css.join('\n') + '\n');
 console.log('fonts: ' + fs.readdirSync(fonts).join(' '));
+
+// ---- Ace ------------------------------------------------------------------------------
+
+const ace_src = path.join(nm, 'ace-builds', 'src-min-noconflict');
+const ace_dst = path.join(root, 'vendor', 'ace');
+fs.rmSync(ace_dst, { recursive: true, force: true });
+fs.mkdirSync(ace_dst, { recursive: true });
+for (const f of ['ace.js', 'theme-textmate.js', 'ext-language_tools.js']) {
+  fs.copyFileSync(path.join(ace_src, f), path.join(ace_dst, f));
+}
+fs.copyFileSync(path.join(nm, 'ace-builds', 'LICENSE'), path.join(ace_dst, 'LICENSE'));
+fs.writeFileSync(path.join(ace_dst, 'VERSION'), `ace-builds ${pkg_version('ace-builds')}\n`);
+console.log(`ace: ace-builds ${pkg_version('ace-builds')}`);

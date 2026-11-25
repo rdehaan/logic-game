@@ -562,3 +562,43 @@ test('the texts of the tabs and the info pop-ups are loaded', async (t) => {
   assert.equal(await page.locator('.modal.is-visible').count(), 0);
   assert.deepEqual(page.errors, []);
 });
+
+// Hover (with a mouse event) over row/column of an editor; returns the help shown, or null.
+async function hover_help(page, key, row, column) {
+  return page.evaluate(async ([key, row, column]) => {
+    const editor = window.logic_game.editors.get(key);
+    editor.container.scrollIntoView({ block: 'center' });
+    const c = editor.renderer.textToScreenCoordinates(row, column);
+    const y = c.pageY + editor.renderer.lineHeight / 2;
+    editor.container.dispatchEvent(new MouseEvent('mousemove', { clientX: c.pageX + 2, clientY: y, bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const tip = document.querySelector('.predicate-help');
+    return tip && !tip.hidden ? tip.textContent : null;
+  }, [key, row, column]);
+}
+
+test('help about special predicates in the editors', async (t) => {
+  const page = await open(t, '?tab=4');
+  if (!page) return;
+  await set_program(page, 'player_move_program', 'do(move(down)) :- observe(at(R1,C,player)), at(R2,C,flag).\nfoo :- bar.');
+  assert.equal(await hover_help(page, 'player_move_program', 0, 1),
+    "do/1do(X): a move of the player, such as do(move(up)). This program passes it on to nature's program.");
+  assert.match(await hover_help(page, 'player_move_program', 0, 20), /^observe\/1observe\(X\): what the player observes.*This program gets it from the game\.$/);
+  assert.match(await hover_help(page, 'player_move_program', 0, 45), /^at\/3at\(R,C,O\).*The player's program does not get it \(it is used by level generation/);
+  assert.equal(await hover_help(page, 'player_move_program', 1, 1), null);       // not special
+  // Autocompletion while typing
+  await page.evaluate(() => {
+    const editor = window.logic_game.editors.get('player_move_program');
+    editor.focus();
+    editor.navigateFileEnd();
+  });
+  await page.keyboard.type('\nreme');
+  await page.waitForSelector('.ace_autocomplete', { state: 'visible', timeout: 5000 });
+  assert.match(await page.textContent('.ace_autocomplete'), /remember\/1/);
+  await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program').split('\n').pop()), 'remember(');
+  // No suggestions while typing a variable
+  await page.keyboard.type('X');
+  await page.waitForTimeout(400);
+  assert.equal(await page.locator('.ace_autocomplete').isVisible(), false);
+});
