@@ -1,7 +1,7 @@
 # logic-game
 A Logic Game
 
-Live at https://rdehaan.github.io/logic-game/ (GitHub Pages, deployed from `main`).
+Live at https://rdehaan.github.io/logic-game/ (GitHub Pages, deployed from `main` when the tests pass).
 
 ## How it works
 
@@ -82,7 +82,10 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   shown in the editors, programs that do not terminate, Stop, Pause, URL options, uploading a game,
   saved work, share links, and that nothing is loaded from other sites (fonts included).
 
-The tests run on GitHub for every push (`.github/workflows/test.yml`).
+The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`).
+On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the
+tests pass. This needs a one-time setting on GitHub: *Settings > Pages > Build and deployment >
+Source: GitHub Actions* (instead of *Deploy from a branch*).
 To use a Chromium that is already installed, set `CHROMIUM_PATH` to its executable.
 
 ### Updating clingo (or the fonts)

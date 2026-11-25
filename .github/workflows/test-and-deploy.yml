@@ -1,0 +1,52 @@
+# Runs the tests on every push and pull request. On a push to main, the site
+# is published to GitHub Pages afterwards, but only if the tests pass.
+#
+# For this, GitHub Pages must be set to deploy from GitHub Actions:
+# repository Settings > Pages > Build and deployment > Source: "GitHub Actions".
+name: Test and deploy
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      # The site is every file in the repository, except the ones for development
+      - name: Collect the files of the site
+        run: |
+          mkdir _site
+          git ls-files | grep -vE '^(test|tools|\.github)/|^package(-lock)?\.json$|^\.gitignore$' \
+            | xargs cp --parents -t _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
