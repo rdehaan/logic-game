@@ -332,12 +332,6 @@ a.modal-link:link {
   background: #eee !important;
 }
 
-.clingo-error-marker {
-  position: absolute;
-  border-bottom: 2px dotted #E10600;
-  background: rgba(225, 6, 0, 0.08);
-}
-
 ul.editor-problems {
   margin: 0 0 10px;
   padding: 0;
@@ -375,4 +369,76 @@ label[name="tabs"].has-errors:after {
 
 .engine-status.error {
   color: #E10600;
+}
+
+/* Warnings and notes (hints about the special predicates) */
+.ace_editor.has-warnings:not(.has-errors) {
+  border-left: 3px solid #E69500;
+}
+
+.feedback-marker {
+  position: absolute;
+}
+
+.feedback-error {
+  border-bottom: 2px dotted #E10600;
+  background: rgba(225, 6, 0, 0.08);
+}
+
+.feedback-warning {
+  border-bottom: 2px dotted #E69500;
+  background: rgba(230, 149, 0, 0.10);
+}
+
+.feedback-info {
+  border-bottom: 1px dotted #888;
+}
+
+ul.editor-problems li.severity-warning {
+  color: #8a5300;
+  background: #fff4de;
+  border-left-color: #E69500;
+}
+
+ul.editor-problems li.severity-info {
+  color: #555;
+  background: #f3f3f3;
+  border-left-color: #aaa;
+}
+
+label[name="tabs"].has-warnings,
+input[name="tabs"]:checked + label.has-warnings {
+  color: #E69500;
+}
+
+label[name="tabs"].has-warnings:after {
+  content: ' \2022';
+}
+
+p.editor-interface {
+  margin: 0 0 5px;
+  font-size: 0.9em;
+  color: #777;
+}
+
+.problems-notice {
+  margin-left: 10px;
+  border: 0;
+  background: none;
+  color: #E69500;
+  cursor: pointer;
+  font: inherit;
+}
+
+.problems-notice.has-errors {
+  color: #E10600;
+}
+
+.board-message {
+  margin: 0 10% 10px;
+  padding: 5px 10px;
+  color: #8a5300;
+  background: #fff4de;
+  border-left: 3px solid #E69500;
+  white-space: pre-wrap;
 }

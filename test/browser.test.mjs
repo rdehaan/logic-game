@@ -102,7 +102,7 @@ test('syntax errors are shown in the editor while typing', async (t) => {
   await set_program(page, 'player_move_program', 'do(move(down)).\ndo(move(up)) :- observe(at(R,C,player).');
   await page.waitForSelector('#player_move_program-problems li');
   assert.deepEqual(await page.locator('#player_move_program-problems li').allTextContents(),
-    ['Line 2, column 39: syntax error, unexpected ., expecting ) or ;']);
+    ['Error (line 2): syntax error, unexpected ., expecting ) or ;']);
   assert.equal(await page.locator('#player_move_program .ace_gutter-cell.ace_error').count(), 1);
   assert.match(await page.getAttribute('label[for=tab4]', 'class'), /has-errors/);
   // Fixing the error removes the marks
@@ -117,7 +117,7 @@ test('unsafe variables are shown in the editor', async (t) => {
   await set_program(page, 'goal_program', 'win :- at(R,C,player), at(R,C,flag).\n\nlose(X) :- current_time(T), T > 10.');
   await page.waitForSelector('#goal_program-problems li');
   const [text] = await page.locator('#goal_program-problems li').allTextContents();
-  assert.match(text, /^Line 3, column 1: unsafe variables in: .*'X' is unsafe/);
+  assert.match(text, /^Error \(line 3\): unsafe variables in: .*'X' is unsafe/);
 });
 
 test('errors during a game are reported with the program and line', async (t) => {
@@ -205,4 +205,50 @@ test('uploading a game file', async (t) => {
   assert.equal(await page.evaluate(() => window.logic_game.editors.value('aux_program')), '% uploaded');
   assert.equal(await page.evaluate(() => window.logic_game.editors.value('goal_program')), '');
   await page.waitForFunction(() => document.querySelectorAll('#visual .grid-visual-cell').length === 2);
+});
+
+test('hints about special predicates are shown in the editor and in the Debug tab', async (t) => {
+  const page = await open(t, '?tab=4');
+  if (!page) return;
+  await set_program(page, 'player_move_program', 'do(move(down)) :- at(R,C,player).\nremeber(x).');
+  await page.waitForSelector('#player_move_program-problems li.severity-warning');
+  const items = await page.locator('#player_move_program-problems li').allTextContents();
+  assert.match(items[0], /^Warning \(line 1\): at\/3 never holds here: the player does not see the state/);
+  assert.match(items[1], /^Warning \(line 2\): remeber\/1 is derived but never used.*Did you mean remember\/1\?/);
+  assert.match(await page.getAttribute('label[for=tab4]', 'class'), /has-warnings/);
+  assert.equal(await page.textContent('#problems-notice'), '\u26A0 2 warnings in the programs');
+  assert.match(await page.textContent('#player_move_program-problems + *, p.editor-interface') || '', /Gets: /);
+  // The notice opens the Debug tab with the list; clicking an item goes to the program
+  await page.click('#problems-notice');
+  assert.equal(await page.isChecked('#tab5'), true);
+  assert.equal(await page.locator('#problems-summary li').count(), 2);
+  await page.locator('#problems-summary li').first().click();
+  assert.equal(await page.isChecked('#tab4'), true);
+  // Fixing the program removes the hints
+  await set_program(page, 'player_move_program', 'do(move(down)) :- observe(at(R,C,player)).');
+  await page.waitForSelector('#player_move_program-problems li', { state: 'detached' });
+  assert.equal(await page.isHidden('#problems-notice'), true);
+});
+
+test('a violated constraint is marked in the editor, and a lost game points to the warnings', async (t) => {
+  const page = await open(t, '?tab=3');
+  if (!page) return;
+  await set_program(page, 'goal_program', 'win :- at(R,C,player), at(R,C,flag).\nlose(timeout) :- current_time(T), T >= 3.\n:- current_time(2).');
+  await page.selectOption('#speed-selector', '100');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  const output = await game_output(page);
+  assert.match(output, /- Winning conditions: no answer set, because this constraint is violated:\n {4}Winning conditions, line 3: :- current_time\(2\)\./);
+  assert.match(output, /^LOSE! \(lose\(timeout\)\)\n\(There is 1 error or warning in the programs that may explain this/);
+  const items = await page.locator('#goal_program-problems li').allTextContents();
+  assert.deepEqual(items, ['Warning (line 3): This constraint was violated during the game, so the winning conditions had no answer set (see the game output).']);
+});
+
+test('problems with the board are shown under it', async (t) => {
+  const page = await open(t, '?editor=true&tab=5');
+  if (!page) return;
+  await set_program(page, 'level_settings', 'setting(grid_width(8)).');
+  await page.click('button[data-action=update_interface]');
+  await page.waitForSelector('#board-message:not([hidden])');
+  assert.equal(await page.textContent('#board-message'), 'The board cannot be drawn: the level settings have no setting(grid_height(H)).');
 });

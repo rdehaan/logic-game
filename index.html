@@ -21,6 +21,7 @@
     <div class="visual-container" id="visual-container">
       <div id="visual"></div>
     </div>
+    <p id="board-message" class="board-message" hidden></p>
 
     <div class="game-controls">
       <div>
@@ -44,6 +45,7 @@
           <option value="100">Very fast</option>
         </select>
         <span id="engine-status" class="engine-status"></span>
+        <button id="problems-notice" class="problems-notice" title="Show the list in the Debug tab" hidden></button>
       </div>
     </div>
 
@@ -620,6 +622,17 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
         <pre id="level_state"></pre>
         <button data-action="update_interface" class="control-button">Update interface</button>
         <p>&nbsp;</p>
+      </div>
+
+      <div id="problems-box" hidden>
+        <h3>Errors and warnings</h3>
+        <p>
+          These are problems in the programs that clingo reported, or that
+          the game noticed (for example, a program that uses a special
+          predicate it does not get, or derives one that is not passed on).
+          Click on one to go to the program.
+        </p>
+        <ul id="problems-summary" class="editor-problems"></ul>
       </div>
 
       <h3>Game output</h3>
@@ -1315,6 +1328,25 @@ memory(flag_at(1,4)).</pre>
           which program (and which line) it is in, and marks it in that
           program's editor. Programs are also checked for syntax errors
           and unsafe variables while you type.
+        </li>
+        <li>
+          <b>No answer set.</b> When a program has no answer set, the
+          engine looks for the constraints (<tt>:- ...</tt>) in the
+          programs that are violated: it runs clingo once more, with the
+          constraints turned into rules, looking for an answer set that
+          violates as few of them as possible. These constraints are named
+          in the game output and marked in the editors.
+        </li>
+        <li>
+          <b>Warnings about special predicates.</b> While you type, the
+          programs are also compared with what the engine gives them and
+          takes from them (the table above). For example, there is a
+          warning when the player's program never derives
+          <tt>do/1</tt>, uses <tt>at/3</tt> (which it does not get),
+          derives a misspelled <tt>remeber/1</tt>, or derives moves that
+          nature's program never looks at. These warnings come from a
+          simple analysis of the program text (<tt>js/hints.js</tt>), so
+          they are hints: clingo does not consider these errors.
         </li>
         <li>
           <b>No stratification check.</b> Player programs are not

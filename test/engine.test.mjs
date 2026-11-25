@@ -114,6 +114,26 @@ test('an error in the player program is reported with its line, and the game goe
   assert.equal(step.problems[0].result.errors[0].source, 'player_move_program');
 });
 
+test('no answer set: the violated constraint is reported', async () => {
+  const game = {
+    ...WALK,
+    player_move_program: 'do(right). do(left).',
+    nature_program: '% one move per step\n:- do(X), do(Y), X != Y.\n' + WALK.nature_program,
+  };
+  const session = new GameSession(solver, game);
+  await session.start();
+  const step = await session.step();
+  assert.match(step.report, /- Nature program: no answer set, because this constraint is violated:\n {4}Nature's moves, line 2: :- do\(X\), do\(Y\), X != Y\.\n {4}The player made 2 moves in this step \(do\(right\)\. do\(left\)\.\);\n {4}maybe nature allows only one move per step\.\n {2}\(state unchanged\)/);
+  assert.deepEqual(step.problems[0].result.violated, [{ source: 'nature_program', line: 2, col: 1, text: ':- do(X), do(Y), X != Y.' }]);
+});
+
+test('no answer set without a violated constraint', async () => {
+  const session = new GameSession(solver, { ...WALK, player_move_program: 'a :- not a.' });
+  await session.start();
+  const step = await session.step();
+  assert.match(step.report, /- Player program: no answer set\n {2}\(no moves, memory unchanged\)/);
+});
+
 test('a program that does not terminate stops the game', async () => {
   const quick = create_solver(clingo, { timeout_ms: 500 });
   const result = await play_headless(quick, { ...WALK, nature_program: 'n(0). n(X+1) :- n(X).' });

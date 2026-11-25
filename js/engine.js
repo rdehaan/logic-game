@@ -7,6 +7,7 @@
 import {
   preprocess_program, filter_answer_set, answer_set_to_facts, answer_set_to_fact_lines,
 } from './asp.js';
+import { relax_constraints } from './analysis.js';
 
 // The programs that make up a game (the keys of a game object / game file).
 export const GAME_FIELDS = [
@@ -50,6 +51,33 @@ const CURRENT_STATE_RULES =
 const part = (source, text) => ({ source, text });
 const engine = (text) => part('engine', text);
 
+const VIOLATED = 'logic_game_violated';
+
+// Solve, and when there is no answer set, try to explain why: find the
+// integrity constraints (':- ...') in the programs of the game that are
+// violated. To do so, the constraints are rewritten so that they derive
+// an atom instead of failing, and clingo looks for an answer set that
+// violates as few constraints as possible.
+// An explained 'unsat' result gets violated: [{ source, line, col, text }].
+async function solve(solver, parts) {
+  const result = await solver.solve(parts);
+  if (result.status !== 'unsat') return result;
+  const table = [];
+  const relaxed = parts.map((p, k) => {
+    if (!GAME_FIELDS.includes(p.source)) return p;
+    const r = relax_constraints(p.text, (i) => `${VIOLATED}(${k},${i})`);
+    r.constraints.forEach((c, i) => table.push({ k, i, source: p.source, ...c }));
+    return { ...p, text: r.text };
+  });
+  if (table.length === 0) return result;
+  relaxed.push(engine(`#minimize { 1,K,I : ${VIOLATED}(K,I) }.`));
+  const diagnosis = await solver.solve(relaxed, { optimize: true });
+  if (diagnosis.status !== 'ok') return result;
+  const violated = table.filter(({ k, i }) => diagnosis.atoms.includes(`${VIOLATED}(${k},${i})`))
+    .map(({ source, line, col, text }) => ({ source, line, col, text }));
+  return violated.length ? { ...result, violated } : result;
+}
+
 // ---- Describing problems ---------------------------------------------------
 
 function describe_location(e) {
@@ -61,7 +89,10 @@ function describe_location(e) {
 // A short description of why a call to the solver gave no answer set.
 export function describe_failure(result, solver) {
   switch (result.status) {
-    case 'unsat': return 'no answer set';
+    case 'unsat':
+      if (!result.violated) return 'no answer set';
+      return 'no answer set, because ' + (result.violated.length > 1 ? 'these constraints are' : 'this constraint is') + ' violated:\n' +
+        result.violated.map((v) => `    ${SOURCE_NAMES[v.source]}, line ${v.line}: ${v.text}`).join('\n');
     case 'timeout': return `clingo took longer than ${Math.round(solver.timeout_ms / 1000)} seconds and was stopped`;
     case 'aborted': return 'stopped';
     case 'error': return 'error:\n' + result.errors.map((e) => {
@@ -94,7 +125,7 @@ export function problem_line(program_name, p, consequence) {
 
 // Generate a level: returns { level_state, level_settings, problem }.
 export async function generate_level(solver, game, rng = Math.random) {
-  const result = await solver.solve([
+  const result = await solve(solver, [
     part('level_gen_program', preprocess_program(game.level_gen_program, rng)),
     part('aux_program', game.aux_program),
   ]);
@@ -110,7 +141,7 @@ export async function generate_level(solver, game, rng = Math.random) {
 
 // Generate the initial game state from the level state.
 export async function generate_initial_game_state(solver, game) {
-  const result = await solver.solve([
+  const result = await solve(solver, [
     engine('at_time(0,R,C,O) :- at(R,C,O).\nstate_time(0).'),
     part('level_state', game.level_state),
   ]);
@@ -126,7 +157,7 @@ export async function generate_initial_game_state(solver, game) {
 // Generate the player's input (and the decorations for the visualization)
 // from the game state.
 export async function generate_player_input(solver, game, game_state) {
-  const result = await solver.solve([
+  const result = await solve(solver, [
     engine(CURRENT_STATE_RULES),
     part('game_state', game_state),
     part('visibility_program', game.visibility_program),
@@ -147,7 +178,7 @@ export async function generate_player_input(solver, game, game_state) {
 
 // Generate the player's moves and memory updates.
 export async function generate_player_move(solver, game, player_input, player_memory, rng = Math.random) {
-  const result = await solver.solve([
+  const result = await solve(solver, [
     part('player_input', player_input),
     part('player_memory', player_memory),
     part('aux_program', game.aux_program),
@@ -166,14 +197,14 @@ export async function generate_player_move(solver, game, player_input, player_me
 // Update the player's memory. Returns { player_memory, problem }.
 export async function update_player_memory(solver, player_memory, memory_updates) {
   if (!memory_updates) return { player_memory, problem: null };
-  let result = await solver.solve([
+  let result = await solve(solver, [
     engine('new_memory(X) :- memory(X), not forget(X).\nnew_memory(X) :- remember(X).'),
     part('player_memory', player_memory),
     part('memory_updates', memory_updates),
   ]);
   if (result.status !== 'ok') return { player_memory, problem: problem('Memory update', result, solver) };
   const intermediate = answer_set_to_facts(filter_answer_set(result.atoms, ['new_memory']));
-  result = await solver.solve([engine('memory(X) :- new_memory(X).'), engine(intermediate)]);
+  result = await solve(solver, [engine('memory(X) :- new_memory(X).'), engine(intermediate)]);
   if (result.status !== 'ok') return { player_memory, problem: problem('Memory update', result, solver) };
   return { player_memory: answer_set_to_facts(filter_answer_set(result.atoms, ['memory'])), problem: null };
 }
@@ -181,7 +212,7 @@ export async function update_player_memory(solver, player_memory, memory_updates
 // Generate the next state of the game.
 export async function generate_next_state(solver, game, game_state, player_moves, rng = Math.random) {
   // Generate 'nexts'
-  let result = await solver.solve([
+  let result = await solve(solver, [
     engine(CURRENT_STATE_RULES),
     part('game_state', game_state),
     part('player_moves', player_moves),
@@ -198,6 +229,11 @@ export async function generate_next_state(solver, game, game_state, player_moves
     wipe_memory = filter_answer_set(result.atoms, ['wipe_player_memory']).length > 0;
   } else {
     nature_problem = problem('Nature program', result, solver);
+    const moves = player_moves.split(' ').filter(Boolean);
+    if (result.status === 'unsat' && moves.length > 1) {
+      nature_problem.text += `\n    The player made ${moves.length} moves in this step (${moves.join(' ')});` +
+        '\n    maybe nature allows only one move per step.';
+    }
     if (is_fatal(nature_problem)) {
       return { next_state: game_state, nexts: '', wipe_memory: false, problem: nature_problem };
     }
@@ -205,7 +241,7 @@ export async function generate_next_state(solver, game, game_state, player_moves
 
   // Generate trivial 'nexts' if needed (nothing changes)
   if (!nexts) {
-    result = await solver.solve([
+    result = await solve(solver, [
       engine(CURRENT_STATE_RULES + '\nnext(R,C,O) :- at(R,C,O).'),
       part('game_state', game_state),
     ]);
@@ -216,7 +252,7 @@ export async function generate_next_state(solver, game, game_state, player_moves
 
   // Generate the next state based on 'nexts'
   // (the time always advances, even if there are no 'nexts')
-  result = await solver.solve([
+  result = await solve(solver, [
     engine('at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).\nstate_time(T+1) :- current_time(T).'),
     part('game_state', game_state),
     part('nexts', nexts || ''),
@@ -234,7 +270,7 @@ export async function generate_next_state(solver, game, game_state, player_moves
 // Analyze the state for win/lose conditions.
 // Returns { verdict: 'win' | 'lose' | '', atoms, problem }.
 export async function analyze_state(solver, game, game_state) {
-  const result = await solver.solve([
+  const result = await solve(solver, [
     engine(CURRENT_STATE_RULES),
     part('game_state', game_state),
     part('level_settings', game.level_settings),

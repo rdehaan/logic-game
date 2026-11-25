@@ -4,6 +4,7 @@ import { create_solver } from './solver.js';
 import { GAME_FIELDS, GameSession, generate_level, normalize_game } from './engine.js';
 import { Editors, make_example_editors } from './editors.js';
 import { show_grid, clear_grid, display_win, display_lose } from './grid-visual.js';
+import { board_problems } from './hints.js';
 import './modal.js';
 
 const solver = create_solver(clingo);
@@ -108,7 +109,12 @@ async function update_interface() {
     if (my_preview !== preview_counter || playing) return;   // outdated
     editors.show_run_problems(start.problems);
     show_grid(preview.view());
+    show_board_message([
+      ...board_problems(preview.view(), editors.value('level_state')),
+      ...start.problems.map((p) => p.program + ': ' + p.text),
+    ]);
   } else {
+    show_board_message([]);
     set_button(clear_button, false, 'There is no level to be cleared.');
     set_button(reset_button, false, 'There is no level to be reset.');
     set_button(play_button, false, 'There is no level to play.');
@@ -129,6 +135,20 @@ async function do_generate() {
     add_to_game_output('Level generation: ' + level.problem.text + '\n  (no level generated)\n');
   }
   await update_interface();
+}
+
+// Problems with the level, shown under the board.
+function show_board_message(messages) {
+  const elem = $('board-message');
+  elem.textContent = messages.join('\n');
+  elem.hidden = messages.length === 0;
+}
+
+// After a game that was not won: point to the errors and warnings, if any.
+function problems_tip() {
+  const n = editors.count('error') + editors.count('warning');
+  if (n === 0) return '';
+  return `(There ${n > 1 ? 'are' : 'is'} ${n} error${n > 1 ? 's or warnings' : ' or warning'} in the programs that may explain this: see "Errors and warnings" above the game output.)\n`;
 }
 
 // ---- Playing -------------------------------------------------------------------
@@ -177,7 +197,7 @@ async function do_play() {
     editors.show_run_problems(start.problems);
     if (session.verdict) {
       if (start.report) add_to_game_output(start.report);
-      add_to_game_output(start.message);
+      add_to_game_output(start.message + problems_tip());
       display_lose();
       end_playing();
       return;
@@ -207,7 +227,7 @@ async function play_loop() {
     if (stop_requested) continue;
     if (step.report) add_to_game_output(step.report);
     if (step.verdict) {
-      add_to_game_output(step.message);
+      add_to_game_output(step.verdict === 'win' ? step.message : step.message + problems_tip());
       if (step.verdict === 'win') display_win(); else display_lose();
       end_playing();
       return;

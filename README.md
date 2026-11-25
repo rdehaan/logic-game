@@ -18,13 +18,29 @@ web worker, so the page stays responsive; a call to clingo that takes longer tha
 | `js/engine.js` | The game engine: how the programs are run and connected (no DOM) |
 | `js/solver.js` | Calls clingo-wasm: time limit, stopping, reading results and errors (no DOM) |
 | `js/asp.js` | Text helpers: composing programs, `RANDINT`, reading clingo's error messages (no DOM) |
-| `js/editors.js` | The code editors (Ace), and the errors shown in them |
+| `js/analysis.js` | A light-weight analysis of programs: which predicates they derive and use (no DOM) |
+| `js/hints.js` | Warnings about the special predicates of each program (`do/1`, `observe/1`, ...) (no DOM) |
+| `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/ace.js`, `js/mode-gringo.js` | The Ace editor, and syntax highlighting for ASP |
 | `vendor/clingo-wasm/` | An unmodified copy of the clingo-wasm npm package (see `VERSION`) |
 | `examples/` | The example games |
 | `test/` | The tests |
 | `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm into `vendor/`) |
+
+## Feedback for players
+
+The page tries to explain what went wrong:
+- syntax errors and unsafe variables are marked in the editors while typing;
+- warnings about the special predicates of each program, e.g. a player's program that never
+  derives `do/1`, uses `at/3` instead of `observe(at(...))`, misspells `remember/1`, uses the
+  wrong number of arguments, or makes moves that nature's program does not react to;
+- when a program has no answer set, the constraints that are violated are named;
+- problems with the level (no board size, objects outside of the board) are shown under the board;
+- all errors and warnings are listed in the Debug tab, and a lost game points to them.
+
+The special predicates of each program are listed in `INTERFACES` in `js/hints.js`; they must
+match what `js/engine.js` passes between the programs.
 
 ## Development
 
@@ -43,10 +59,12 @@ workers from `file://` URLs); use `npm run serve`.
 
 The tests (in `test/`, run with Node's built-in test runner) check:
 - `asp.test.mjs`: the text helpers and the board (no clingo needed);
+- `hints.test.mjs`: the analysis of programs and the warnings about special predicates
+  (no clingo needed); the example games get no warnings;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
   example is free of syntax errors, and every example solution wins (on fixed random levels);
-- `browser.test.mjs`: the page in Chromium: playing, generating levels, errors shown in the
-  editors, programs that do not terminate, Stop, Pause, URL options, uploading a game.
+- `browser.test.mjs`: the page in Chromium: playing, generating levels, errors and warnings
+  shown in the editors, programs that do not terminate, Stop, Pause, URL options, uploading a game.
 
 The tests run on GitHub for every push (`.github/workflows/test.yml`).
 To use a Chromium that is already installed, set `CHROMIUM_PATH` to its executable.

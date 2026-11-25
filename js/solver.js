@@ -61,9 +61,12 @@ export function create_solver(clingo, { timeout_ms = DEFAULT_TIMEOUT_MS, options
     //   { status: 'error', errors: [{ source, line, col, severity, message }] }
     //   { status: 'timeout' }   (clingo took longer than timeout_ms and was stopped)
     //   { status: 'aborted' }   (abort() was called while clingo was running)
-    async solve(parts) {
+    //
+    // With { optimize: true }, clingo looks for an optimal answer set
+    // (for programs with #minimize or #maximize).
+    async solve(parts, { optimize = false } = {}) {
       const { text, segments } = compose(parts);
-      const outcome = await run_with_limit(text, 1, solver.options);
+      const outcome = await run_with_limit(text, optimize ? 0 : 1, solver.options);
       if (outcome.status !== 'done') return { status: outcome.status };
       const result = outcome.result;
       if (result.Result === 'ERROR') {
