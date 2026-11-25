@@ -3,18 +3,24 @@
   "private": true,
   "type": "module",
   "description": "A logic game played with answer set programs (clingo in the browser).",
+  "bin": {
+    "logic-game": "bin/logic-game.mjs"
+  },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:unit": "node --test test/asp.test.mjs test/hints.test.mjs test/storage.test.mjs test/versions.test.mjs test/engine.test.mjs",
+    "test:unit": "node --test test/asp.test.mjs test/hints.test.mjs test/storage.test.mjs test/versions.test.mjs test/folder.test.mjs test/engine.test.mjs test/cli.test.mjs",
     "test:browser": "node --test test/browser.test.mjs",
     "vendor": "node tools/vendor.mjs",
-    "serve": "node tools/serve.mjs"
+    "serve": "node tools/serve.mjs",
+    "game": "node bin/logic-game.mjs"
+  },
+  "dependencies": {
+    "clingo-wasm": "0.6.0"
   },
   "devDependencies": {
     "@fontsource/open-sans": "5.3.0",
     "@fortawesome/fontawesome-free": "7.3.1",
     "ace-builds": "1.45.2",
-    "clingo-wasm": "0.6.0",
     "playwright": "^1.50.0"
   }
 }

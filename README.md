@@ -28,6 +28,9 @@ shows how long clingo took for each program in each step.
 | `js/storage.js` | Saved work (in the browser) and share links (no DOM) |
 | `js/versions.js` | Snapshots, differences between versions, project and backup files (no DOM) |
 | `js/versions-tab.js` | The Versions tab |
+| `js/folder.js` | The folder format (one `.lp` file per program), and zip files (no DOM) |
+| `js/text-board.js` | The board as text, for the command-line version (no DOM) |
+| `bin/logic-game.mjs`, `cli/` | The command-line version |
 | `js/tutorial.js` | The tutorial for new players (a guided first game), and the list of the first games |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
@@ -103,7 +106,46 @@ Everything about keeping work is in the *Versions* tab:
 - *Share current game* makes a link that contains the whole game, compressed, after `#game=`;
   that part of a URL never reaches the server, so nothing is uploaded.
 
-## Offline use
+## Working on your own computer (with git)
+
+A game can be kept as a folder with one plain clingo file per program, which works well
+with git (a diff per program) and with any editor:
+
+```
+my-game/
+  game.json                 the title, and which file holds which program
+  auxiliary.lp
+  level-generation.lp
+  visibility.lp
+  nature.lp
+  winning-conditions.lp
+  strategy.lp
+  level/state.lp            the level (if there is one)
+  level/settings.lp
+```
+
+The command-line version plays games from such folders (and from `.zip` files of them,
+`.json` game and project files, and the examples), with the same engine and the same clingo
+as the page, so results are the same as in the browser:
+
+```
+git clone https://github.com/rdehaan/logic-game.git && cd logic-game
+npm install                                  # once (needs Node.js 22 or newer)
+npm link                                     # optional: makes the command logic-game available
+                                             # (or use: node bin/logic-game.mjs ...)
+logic-game new ~/my-game --example flag3     # start a game folder from an example
+logic-game check ~/my-game                   # errors and warnings, as file:line:column
+logic-game play ~/my-game                    # play the level, with the board as text
+logic-game play ~/my-game --seed 7 --step    # level 7 of a test, one step at a time
+logic-game test ~/my-game --levels 50        # how often does the strategy win?
+logic-game convert game.json ~/my-game       # between folders, .zip, game and project files
+logic-game help
+```
+
+`play`, `test` and `check` exit with code 3 when the game is not won, a level of the test is
+not won, or there are errors, so they can be used in scripts and in CI.
+
+
 
 After the first visit, the game also works without a network connection (`sw.js`): the
 files it needs are stored in the browser. Online, the files still come from the network
@@ -130,6 +172,8 @@ The tests (in `test/`, run with Node's built-in test runner) check:
 - `hints.test.mjs`: the analysis of programs and the warnings about special predicates
   (no clingo needed); the example games get no warnings;
 - `storage.test.mjs`: share links (every example survives the round trip) and saved work;
+- `folder.test.mjs`: the folder format (every example survives the round trip) and zip files;
+- `cli.test.mjs`: the command-line version (new, check, play, test, convert);
 - `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
   test results, a full storage, and project and backup files;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
