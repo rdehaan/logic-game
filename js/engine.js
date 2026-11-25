@@ -6,8 +6,9 @@
 // (see solver.js), so that the tests can run games in Node.
 import {
   preprocess_program, filter_answer_set, answer_set_to_facts, answer_set_to_fact_lines,
+  facts_to_answer_set, split_atom,
 } from './asp.js';
-import { relax_constraints } from './analysis.js';
+import { relax_constraints, analyze_program } from './analysis.js';
 
 // The programs that make up a game (the keys of a game object / game file).
 export const GAME_FIELDS = [
@@ -194,19 +195,22 @@ export async function generate_player_move(solver, game, player_input, player_me
   };
 }
 
-// Update the player's memory. Returns { player_memory, problem }.
-export async function update_player_memory(solver, player_memory, memory_updates) {
+// Update the player's memory: forget what is forgotten, then add what is
+// remembered (memory(X) holds afterwards if remember(X), or if memory(X) held
+// and not forget(X)). Returns { player_memory, problem }.
+// (This needs no clingo: clingo prints every value in one way, so values can
+// be compared as text.)
+export function update_player_memory(player_memory, memory_updates) {
   if (!memory_updates) return { player_memory, problem: null };
-  let result = await solve(solver, [
-    engine('new_memory(X) :- memory(X), not forget(X).\nnew_memory(X) :- remember(X).'),
-    part('player_memory', player_memory),
-    part('memory_updates', memory_updates),
-  ]);
-  if (result.status !== 'ok') return { player_memory, problem: problem('Memory update', result, solver) };
-  const intermediate = answer_set_to_facts(filter_answer_set(result.atoms, ['new_memory']));
-  result = await solve(solver, [engine('memory(X) :- new_memory(X).'), engine(intermediate)]);
-  if (result.status !== 'ok') return { player_memory, problem: problem('Memory update', result, solver) };
-  return { player_memory: answer_set_to_facts(filter_answer_set(result.atoms, ['memory'])), problem: null };
+  const updates = facts_to_answer_set(memory_updates).map(split_atom).filter((a) => a.args.length === 1);
+  const forget = new Set(updates.filter((a) => a.name === 'forget').map((a) => a.args[0]));
+  const memory = new Set();
+  for (const atom of facts_to_answer_set(player_memory)) {
+    const { name, args } = split_atom(atom);
+    if (name === 'memory' && args.length === 1 && !forget.has(args[0])) memory.add(args[0]);
+  }
+  for (const a of updates) if (a.name === 'remember') memory.add(a.args[0]);
+  return { player_memory: answer_set_to_facts([...memory].map((x) => `memory(${x})`)), problem: null };
 }
 
 // Generate the next state of the game.
@@ -250,21 +254,25 @@ export async function generate_next_state(solver, game, game_state, player_moves
     }
   }
 
-  // Generate the next state based on 'nexts'
-  // (the time always advances, even if there are no 'nexts')
-  result = await solve(solver, [
-    engine('at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).\nstate_time(T+1) :- current_time(T).'),
-    part('game_state', game_state),
-    part('nexts', nexts || ''),
-  ]);
-  let next_state = '';
-  let next_atoms = '';
-  if (result.status === 'ok') {
-    next_state = answer_set_to_facts(filter_answer_set(result.atoms, ['at_time', 'state_time']));
-    // The 'nexts' themselves (for the game output)
-    next_atoms = answer_set_to_facts(filter_answer_set(result.atoms, ['next']));
+  // The next time slice of the game state, from the 'nexts'
+  // (the time always advances, even if there are no 'nexts'):
+  //   at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).
+  //   state_time(T+1) :- current_time(T).
+  const atoms = facts_to_answer_set(nexts || '');
+  const now = atoms.map(split_atom).find((a) => a.name === 'current_time' && a.args.length === 1);
+  const next_atoms = atoms.filter((a) => a.startsWith('next(') && split_atom(a).args.length === 3);
+  let slice = [];
+  if (now && /^-?\d+$/.test(now.args[0])) {
+    const t = Number(now.args[0]) + 1;
+    slice = [`state_time(${t})`, ...next_atoms.map((a) => `at_time(${t},${split_atom(a).args.join(',')})`)];
   }
-  return { next_state, nexts: next_atoms, wipe_memory, problem: nature_problem };
+  return {
+    next_state: [game_state, answer_set_to_facts(slice)].filter(Boolean).join(' '),
+    next_slice: answer_set_to_facts(slice),
+    nexts: answer_set_to_facts(next_atoms),
+    wipe_memory,
+    problem: nature_problem,
+  };
 }
 
 // Analyze the state for win/lose conditions.
@@ -287,6 +295,27 @@ export async function analyze_state(solver, game, game_state) {
   return { verdict: '', atoms: [], problem: null };
 }
 
+// Whether any program that gets the game state uses its history (at_time/4
+// or state_time/1, rather than at/3 and current_time/1). If not, the engine
+// only keeps the latest time slice of the game state, which gives the same
+// results but keeps the programs small: otherwise every program grounds the
+// whole history again in every step.
+export function needs_history(game) {
+  for (const field of ['visibility_program', 'nature_program', 'goal_program', 'aux_program', 'level_settings']) {
+    const a = analyze_program(preprocess_program(game[field] || '', () => 0));
+    if (!a.complete) return true;
+    if (a.atoms.some((x) => x.name === 'at_time' || x.name === 'state_time')) return true;
+  }
+  return false;
+}
+
+// Programs that take longer than this (in a step) are mentioned in the game output.
+export const SLOW_MS = 2000;
+
+const TIMED_PROGRAMS = [
+  ['goal', 'winning conditions'], ['player', "player's program"], ['nature', "nature's program"], ['visibility', 'visibility program'],
+];
+
 // ---- Playing a game ----------------------------------------------------------
 
 // One game being played, one step at a time:
@@ -302,7 +331,10 @@ export async function analyze_state(solver, game, game_state) {
 // Every step reports the problems it ran into (step.problems), so that the
 // page can mark the errors in the editors.
 export class GameSession {
-  constructor(solver, game, { rng = Math.random, max_time = 500, verbose = true } = {}) {
+  // Options: rng (random numbers for RANDINT), max_time (steps), verbose (report everything),
+  // keep_history (true: always keep the whole history; by default only when needed),
+  // slow_ms (programs that take longer in a step get a note in the report).
+  constructor(solver, game, { rng = Math.random, max_time = 500, verbose = true, keep_history = null, slow_ms = SLOW_MS } = {}) {
     this.solver = solver;
     this.game = normalize_game(game);
     this.rng = rng;
@@ -316,6 +348,21 @@ export class GameSession {
     this.player_memory = '';
     this.pending_report = '';     // problems found before the first step, reported with it
     this.visibility_problem = null;
+    this.keep_history = keep_history ?? needs_history(this.game);
+    this.slow_ms = slow_ms;
+    // Time spent in clingo per program in the current step (in ms)
+    this.times = {};
+    this.timing = null;
+    const timed = Object.create(solver);
+    timed.solve = async (parts, opts) => {
+      const t0 = performance.now();
+      try {
+        return await solver.solve(parts, opts);
+      } finally {
+        if (this.timing) this.times[this.timing] = (this.times[this.timing] || 0) + performance.now() - t0;
+      }
+    };
+    this.solver = timed;
   }
 
   // Compute the initial state and what the player sees of it.
@@ -343,6 +390,7 @@ export class GameSession {
 
   // Run the visibility program on the current state.
   async observe(problems) {
+    this.timing = 'visibility';
     const out = await generate_player_input(this.solver, this.game, this.game_state);
     this.player_input = out.player_input;
     this.player_decorations = out.decorations;
@@ -363,6 +411,7 @@ export class GameSession {
     const g = this.game;
     const problems = [];
     this.time_step += 1;
+    this.times = {};
 
     // The report for this step: the regular lines are only shown when
     // verbose, problems (fallbacks and errors) are always shown
@@ -377,6 +426,7 @@ export class GameSession {
     report += problem_line('Visibility program', this.visibility_problem, 'player observes nothing');
 
     // Check if the game is won/lost already
+    this.timing = 'goal';
     const condition = await analyze_state(s, g, this.game_state);
     if (condition.problem) {
       problems.push(condition.problem);
@@ -401,6 +451,7 @@ export class GameSession {
     }
 
     // Generate the player's moves and memory updates
+    this.timing = 'player';
     const move = await generate_player_move(s, g, this.player_input, this.player_memory, this.rng);
     if (move.problem) {
       problems.push(move.problem);
@@ -411,21 +462,16 @@ export class GameSession {
     report += problem_line('Player program', move.problem, 'no moves, memory unchanged');
 
     // Update the player's memory
-    const memory = await update_player_memory(s, this.player_memory, move.memory_updates);
-    if (memory.problem) {
-      problems.push(memory.problem);
-      if (is_fatal(memory.problem)) return this.stop(report, memory.problem, problems);
-    }
-    this.player_memory = memory.player_memory;
-    report += problem_line('Memory update', memory.problem, 'memory unchanged');
+    this.player_memory = update_player_memory(this.player_memory, move.memory_updates).player_memory;
 
     // Generate the next state
+    this.timing = 'nature';
     const nature = await generate_next_state(s, g, this.game_state, move.player_moves, this.rng);
     if (nature.problem) {
       problems.push(nature.problem);
       if (is_fatal(nature.problem)) return this.stop(report, nature.problem, problems);
     }
-    this.game_state = nature.next_state;
+    this.game_state = this.keep_history ? nature.next_state : nature.next_slice;
     report_line('Next state (from nature)', nature.nexts);
     report += problem_line('Nature program', nature.problem, 'state unchanged');
 
@@ -439,7 +485,24 @@ export class GameSession {
     await this.observe(problems);
     if (is_fatal(this.visibility_problem)) return this.stop(report, this.visibility_problem, problems);
 
-    return { report, verdict: null, message: '', problems };
+    report += this.time_report();
+    return { report, verdict: null, message: '', problems, times: this.times };
+  }
+
+  // Lines for the game output about the time spent in clingo in this step:
+  // always for programs that were slow, otherwise only when verbose.
+  time_report() {
+    const parts = TIMED_PROGRAMS.filter(([key]) => this.times[key] != null)
+      .map(([key, name]) => `${name} ${Math.round(this.times[key])} ms`);
+    let out = this.verbose && parts.length ? '- Time in clingo: ' + parts.join(', ') + '\n' : '';
+    for (const [key, name] of TIMED_PROGRAMS) {
+      if (this.times[key] > this.slow_ms) {
+        out += `- Note: the ${name} took ${(this.times[key] / 1000).toFixed(1)} seconds in this step` +
+          ' (large groundings make programs slow; the engine stops a program after ' +
+          `${Math.round(this.solver.timeout_ms / 1000)} seconds)\n`;
+      }
+    }
+    return out;
   }
 }
 

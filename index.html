@@ -44,9 +44,11 @@
         Speed:&nbsp;
         <select id="speed-selector">
           <option value="1000">Slow</option>
-          <option value="5000">Medium</option>
+          <option value="500">Medium</option>
           <option value="200" selected>Fast</option>
           <option value="100">Very fast</option>
+          <option value="0">As fast as possible</option>
+          <option value="-1">Instant (show only the end)</option>
         </select>
         <span id="engine-status" class="engine-status"></span>
         <button id="problems-notice" class="problems-notice" title="Show the list in the Debug tab" hidden></button>
@@ -748,8 +750,14 @@ decorate(item,R,C,O) :- at(R,C,O), not observe(at(R,C,O)).</pre>
           <tt>O</tt> is in cell <tt>(R,C)</tt> at time <tt>T</tt>,
           and facts <tt>state_time(T)</tt>, one for every time
           <tt>T</tt> so far.
-          A new time slice is added at each step; old slices are
-          never removed.
+          A new time slice is added at each step.
+          Old slices are kept only if one of the programs that get the
+          game state (visibility, nature, winning conditions, auxiliary
+          program, level settings) mentions <tt>at_time</tt> or
+          <tt>state_time</tt>; otherwise only the latest slice is kept.
+          This gives the same results, but is much faster: with the whole
+          history, every program would ground all past steps again in
+          every step.
           The <tt>state_time</tt> facts make it possible for a time
           slice to be empty (when there are no objects left).
         </li>
@@ -927,7 +935,7 @@ state_time(0).
         </tr>
         <tr>
           <td>Memory update (built in)</td>
-          <td>two rules (see below), player memory, memory updates</td>
+          <td>two rules (see below, computed without clingo), player memory, memory updates</td>
           <td><tt>memory</tt></td>
           <td>player memory</td>
           <td>&ndash;</td>
@@ -1000,8 +1008,9 @@ state_time(0).
       <h4>Memory update</h4>
       <p>
         If the player derived at least one <tt>remember</tt> or
-        <tt>forget</tt> atom, the engine runs the following program,
-        followed by the current memory and the memory updates:
+        <tt>forget</tt> atom, the engine computes the new memory as
+        given by the following rules (it does so directly, without
+        running clingo, because this is fast and cannot fail):
       </p>
       <pre class="example-code">
 new_memory(X) :- memory(X), not forget(X).
@@ -1022,7 +1031,8 @@ new_memory(X) :- remember(X).</pre>
         <tt>do(...)</tt> facts, and the level settings.
         From its answer set the engine keeps the <tt>next(R,C,O)</tt>
         atoms (and <tt>current_time(T)</tt>), and turns them into the
-        next time slice with this program:
+        next time slice as given by this program (again computed
+        directly, without running clingo):
       </p>
       <pre class="example-code">
 at_time(T+1,R,C,O) :- next(R,C,O), current_time(T).
@@ -1348,6 +1358,12 @@ memory(flag_at(1,4)).</pre>
           ends with <tt>STOPPED!</tt>. The <i>Stop</i> button also stops
           clingo. The limit can be changed in the URL, e.g.
           <tt>?timeout=30</tt>.
+        </li>
+        <li>
+          <b>Time.</b> The game output says, for every step, how long
+          clingo took for each program (<i>Time in clingo</i>), and it
+          adds a note when a program took more than 2 seconds in a step.
+          Slow programs usually have rules with large groundings.
         </li>
         <li>
           <b>Errors.</b> When clingo reports an error, the engine works out

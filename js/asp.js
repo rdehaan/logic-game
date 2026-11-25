@@ -65,6 +65,59 @@ export function answer_set_to_facts(answer_set) {
   return answer_set.length > 0 ? answer_set.join('. ') + '.' : '';
 }
 
+// The atoms of a program of facts as written by answer_set_to_facts
+// ('a. b(1,"x. y").'): the inverse of answer_set_to_facts.
+export function facts_to_answer_set(facts) {
+  const atoms = [];
+  let depth = 0;
+  let in_string = false;
+  let start = 0;
+  const text = facts || '';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (in_string) {
+      if (ch === '\\') i += 1;
+      else if (ch === '"') in_string = false;
+    } else if (ch === '"') in_string = true;
+    else if (ch === '(') depth += 1;
+    else if (ch === ')') depth -= 1;
+    else if (ch === '.' && depth === 0 && text[i + 1] !== '.' && text[i - 1] !== '.') {
+      const atom = text.slice(start, i).trim();
+      if (atom) atoms.push(atom);
+      start = i + 1;
+    }
+  }
+  const rest = text.slice(start).trim();
+  if (rest) atoms.push(rest);
+  return atoms;
+}
+
+// The name and arguments of an atom as printed by clingo:
+// 'at(1,f(2,3),"a,b")' -> { name: 'at', args: ['1', 'f(2,3)', '"a,b"'] }.
+export function split_atom(atom) {
+  const open = atom.indexOf('(');
+  if (open < 0 || !atom.endsWith(')')) return { name: atom, args: [] };
+  const args = [];
+  let depth = 0;
+  let in_string = false;
+  let start = open + 1;
+  for (let i = open + 1; i < atom.length - 1; i++) {
+    const ch = atom[i];
+    if (in_string) {
+      if (ch === '\\') i += 1;
+      else if (ch === '"') in_string = false;
+    } else if (ch === '"') in_string = true;
+    else if (ch === '(') depth += 1;
+    else if (ch === ')') depth -= 1;
+    else if (ch === ',' && depth === 0) {
+      args.push(atom.slice(start, i));
+      start = i + 1;
+    }
+  }
+  args.push(atom.slice(start, atom.length - 1));
+  return { name: atom.slice(0, open), args };
+}
+
 // Same, one fact per line.
 export function answer_set_to_fact_lines(answer_set) {
   return answer_set.map((atom) => atom + '.').join('\n');

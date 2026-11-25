@@ -6,7 +6,7 @@ import path from 'node:path';
 import clingo from 'clingo-wasm';
 import { create_solver } from '../js/solver.js';
 import {
-  GAME_FIELDS, GameSession, generate_level, normalize_game, play_headless, update_player_memory,
+  GAME_FIELDS, GameSession, generate_level, normalize_game, play_headless, update_player_memory, needs_history,
 } from '../js/engine.js';
 import { preprocess_program } from '../js/asp.js';
 import { ROOT, seeded_rng, load_examples, examples_in_page } from './helpers.mjs';
@@ -143,11 +143,11 @@ test('a program that does not terminate stops the game', async () => {
 
 test('the player remembers and forgets', async () => {
   const facts = (text) => text.split(' ').filter(Boolean).sort();
-  let r = await update_player_memory(solver, '', 'remember(a). remember(b).');
+  let r = update_player_memory('', 'remember(a). remember(b).');
   assert.deepEqual(facts(r.player_memory), ['memory(a).', 'memory(b).']);
-  r = await update_player_memory(solver, r.player_memory, 'forget(a). remember(c).');
+  r = update_player_memory(r.player_memory, 'forget(a). remember(c).');
   assert.deepEqual(facts(r.player_memory), ['memory(b).', 'memory(c).']);
-  const unchanged = await update_player_memory(solver, r.player_memory, '');
+  const unchanged = update_player_memory(r.player_memory, '');
   assert.equal(unchanged.player_memory, r.player_memory);
 });
 
@@ -159,6 +159,56 @@ test('nature can wipe the player memory', async () => {
   };
   const result = await play_headless(solver, game);
   assert.match(result.log.join('\n'), /Player memory wiped by nature/);
+});
+
+test('memory: values are compared exactly, also with strings and nested terms', () => {
+  const r = update_player_memory('memory(seen(1,2)). memory("a. b").', 'forget("a. b"). remember(seen(1,2)). remember(f(g(x))).');
+  assert.deepEqual(r.player_memory.split(' ').sort(), ['memory(f(g(x))).', 'memory(seen(1,2)).']);
+});
+
+test('the history is only kept when a program uses it', () => {
+  assert.equal(needs_history(WALK), false);
+  assert.equal(needs_history({ ...WALK, goal_program: 'lose :- at_time(0,R,C,player), at(R,C,player), current_time(T), T > 1.' }), true);
+  assert.equal(needs_history({ ...WALK, aux_program: 'steps(N) :- N = #count { T : state_time(T) }.' }), true);
+  assert.equal(needs_history({ ...WALK, nature_program: '#include "x.lp".' }), true);   // cannot tell
+  // The player's program never gets the game state
+  assert.equal(needs_history({ ...WALK, player_move_program: 'x :- at_time(0,1,1,player).' }), false);
+});
+
+test('a program that uses the history still gets it', async () => {
+  // Lose when the player is back where it started (needs the state at time 0)
+  const game = {
+    ...WALK,
+    player_move_program: 'do(right) :- current_time(0).\ndo(left) :- current_time(1).',
+    nature_program: WALK.nature_program + '\nnext(R,C-1,player) :- at(R,C,player), do(left).',
+    goal_program: 'lose(back) :- at_time(0,R,C,player), at(R,C,player), current_time(T), T > 0.',
+  };
+  const result = await play_headless(solver, game);
+  assert.equal(result.verdict, 'lose');
+  assert.equal(result.steps, 3);
+});
+
+test('keeping only the latest time slice gives the same game', async () => {
+  const strip = (log) => log.map((x) => x.replace(/- Time in clingo: .*\n/g, ''));
+  for (const { name, game } of load_examples().filter((e) => /flag(5|8|11)-with-solutions(-a)?\.json/.test(e.name))) {
+    const level = await generate_level(solver, normalize_game(game), seeded_rng(3));
+    const full = await play_headless(solver, { ...game, ...level }, { rng: seeded_rng(4), keep_history: true });
+    const latest = await play_headless(solver, { ...game, ...level }, { rng: seeded_rng(4) });
+    assert.equal(latest.verdict, full.verdict, name);
+    assert.deepEqual(strip(latest.log), strip(full.log), name);
+  }
+});
+
+test('the time in clingo is reported, and slow programs get a note', async () => {
+  const session = new GameSession(solver, WALK, { slow_ms: -1 });
+  await session.start();
+  const step = await session.step();
+  assert.deepEqual(Object.keys(step.times).sort(), ['goal', 'nature', 'player', 'visibility']);
+  assert.match(step.report, /- Time in clingo: winning conditions \d+ ms, player's program \d+ ms, nature's program \d+ ms, visibility program \d+ ms\n/);
+  assert.match(step.report, /- Note: the player's program took 0\.\d seconds in this step/);
+  const quiet = new GameSession(solver, WALK, { verbose: false });
+  await quiet.start();
+  assert.doesNotMatch((await quiet.step()).report, /Time in clingo|Note/);
 });
 
 // ---- The examples -----------------------------------------------------------------

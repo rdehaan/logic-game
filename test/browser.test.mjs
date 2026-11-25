@@ -351,3 +351,18 @@ test('forgetting all saved work', async (t) => {
   await page.waitForSelector('body[data-ready=true]');
   assert.notEqual(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), 'do(move(up)).');
 });
+
+test('the speeds As fast as possible and Instant', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  for (const speed of ['0', '-1']) {
+    await page.selectOption('#speed-selector', speed);
+    await page.click('#play-button');
+    await wait_for_verdict(page);
+    assert.match(await game_output(page), /^WIN!/);
+    // The board shows the end of the game
+    assert.equal(await page.locator('#visual .grid-visual-cell').count(), 48);
+    await page.waitForFunction(() => !document.getElementById('play-button').disabled);
+  }
+  assert.match(await game_output(page), /- Time in clingo: winning conditions \d+ ms/);
+});

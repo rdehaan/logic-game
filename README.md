@@ -11,6 +11,10 @@ clingo runs in the browser, compiled to WebAssembly, using the standard
 web worker, so the page stays responsive; a call to clingo that takes longer than
 10 seconds is stopped (change the limit with `?timeout=30` in the URL).
 
+To keep games fast, the engine only passes the current state of the game to the programs
+(not the whole history), unless a program uses `at_time` or `state_time`; the game output
+shows how long clingo took for each program in each step.
+
 | File | What it does |
 | --- | --- |
 | `index.html` | The page (including the Instructions and Internals tabs) |
@@ -60,7 +64,7 @@ You need [Node.js](https://nodejs.org/) 22 or newer.
 npm install                          # once: clingo-wasm and Playwright, for the tests
 npx playwright install chromium      # once: the browser for the browser tests
 npm run serve                        # then open http://localhost:8000/
-npm test                             # all tests (takes about two minutes)
+npm test                             # all tests (takes about a minute)
 npm run test:unit                    # only the tests that do not need a browser
 ```
 

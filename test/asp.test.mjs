@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   compose, preprocess_program, filter_answer_set, answer_set_to_facts,
-  answer_set_to_fact_lines, parse_clingo_errors, locate_errors,
+  answer_set_to_fact_lines, parse_clingo_errors, locate_errors, facts_to_answer_set, split_atom,
 } from '../js/asp.js';
 import { compute_grid_ds, split_answer_set, flatparse_atom } from '../js/grid-visual.js';
 import { seeded_rng } from './helpers.mjs';
@@ -99,4 +99,13 @@ test('the board is computed from the observed facts', () => {
   assert.equal(compute_grid_ds('observe(at(1,1,player)).'), null);
   // Items outside of the grid are ignored
   assert.deepEqual(compute_grid_ds('setting(grid_height(1)). setting(grid_width(1)). observe(at(5,5,x)).')[1], []);
+});
+
+test('reading facts and atoms back', () => {
+  const atoms = ['a', 'b(1,-2)', 'c("x. y",f(g(1),"(,)"))', 'd("a\\"b. c")', 'e((1,2))'];
+  assert.deepEqual(facts_to_answer_set(answer_set_to_facts(atoms)), atoms);
+  assert.deepEqual(facts_to_answer_set(''), []);
+  assert.deepEqual(split_atom('at(1,f(2,3),"a,b")'), { name: 'at', args: ['1', 'f(2,3)', '"a,b"'] });
+  assert.deepEqual(split_atom('win'), { name: 'win', args: [] });
+  assert.deepEqual(split_atom('e((1,2))'), { name: 'e', args: ['(1,2)'] });
 });

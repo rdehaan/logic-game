@@ -44,15 +44,13 @@ function set_engine_status(text, is_error = false) {
 // ---- Game output -------------------------------------------------------------
 
 const game_output_elem = $('game-output');
-let game_output = '';
 function clear_game_output() {
-  game_output = '';
   game_output_elem.textContent = '';
 }
-// New text goes at the top (most recent step first).
+// New text goes at the top (most recent step first). Each piece is its own
+// text node, so that adding a step does not rewrite the whole output.
 function add_to_game_output(text) {
-  game_output = game_output === '' ? text : text + '\n' + game_output;
-  game_output_elem.textContent = game_output;
+  game_output_elem.prepend(document.createTextNode(text + '\n'));
 }
 
 // ---- States of the game engine -------------------------------------------------
@@ -219,21 +217,24 @@ async function play_loop() {
       return;
     }
     if (game_paused) {
+      show_grid(session.view());
       play_button.disabled = false;
       return;
     }
-    show_grid(session.view());
+    // (at the speed 'Instant', the board is only drawn at the end)
+    if (speed >= 0) show_grid(session.view());
     const step = await session.step();
     editors.show_run_problems(step.problems);
     if (stop_requested) continue;
     if (step.report) add_to_game_output(step.report);
     if (step.verdict) {
+      show_grid(session.view());
       add_to_game_output(step.verdict === 'win' ? step.message : step.message + problems_tip());
       if (step.verdict === 'win') display_win(); else display_lose();
       end_playing();
       return;
     }
-    await sleep(speed);
+    await sleep(Math.max(0, speed));
   }
 }
 
