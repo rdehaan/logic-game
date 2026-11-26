@@ -14,7 +14,9 @@ import {
 import { read_submissions, parse_canvas_name } from '../js/submissions.js';
 import { make_zip, read_zip, game_to_files } from '../js/folder.js';
 import { compute_grid_ds } from '../js/grid-visual.js';
-import { load_examples } from './helpers.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { load_examples, ROOT } from './helpers.mjs';
 
 const solver = create_solver(clingo);
 const examples = Object.fromEntries(load_examples().map(({ name, game }) => [name.replace(/\.json$/, ''), game]));
@@ -272,4 +274,35 @@ test('zip files with bytes', async () => {
   assert.deepEqual([...back['a.bin']], [...bytes]);
   assert.equal(new TextDecoder().decode(back['b.txt']), 'text');
   assert.deepEqual(await read_zip(make_zip({ 'b.txt': 'text' })), { 'b.txt': 'text' });
+});
+
+// Zip files as real zip programs write them (made with Python's zipfile and Info-ZIP's zip):
+// test/fixtures/zips/. Each is a download of all submissions, with doejane (a zip file
+// with game.json and report.pdf) and roerich (a game file).
+const fixture = async (name) => read_submissions([{ name: 'submissions.zip', bytes: new Uint8Array(fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'zips', name))) }]);
+
+test('zip files with Zip64 fields (sizes and offsets in the central directory, and the Zip64 end record)', async () => {
+  const { students, notes } = await fixture('zip64.zip');
+  assert.deepEqual(notes, []);
+  assert.deepEqual(students.map((s) => [s.name, Boolean(s.game), s.pdfs.length]), [['doejane', true, 1], ['roerich', true, 0]]);
+});
+
+test('an entry that cannot be read is left out, with the reason; the rest is read', async () => {
+  const bz = await fixture('bzip2.zip');
+  assert.deepEqual(bz.students.map((s) => s.name), ['doejane']);
+  assert.match(bz.notes.join(' '), /roerich_12346_678902_game\.json was left out: it is compressed in a way that is not supported \(method 12, bzip2\)/);
+  // (in the zip file of a student: a warning for that student)
+  const enc = await fixture('encrypted.zip');
+  assert.deepEqual(enc.students.map((s) => s.name), ['doejane', 'roerich']);
+  assert.match(enc.students[0].warnings[0], /notes\.txt in hw3\.zip is encrypted/);
+  // Without a list for what is left out, the whole file fails (as before), saying which entry
+  await assert.rejects(read_zip(new Uint8Array(fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'zips', 'bzip2.zip')))), /roerich_12346_678902_game\.json in the zip file is compressed/);
+});
+
+test('zip files with data in front of them, and names in the encoding of DOS', async () => {
+  const pre = await fixture('prefixed.zip');
+  assert.deepEqual(pre.students.map((s) => [s.name, Boolean(s.game), s.pdfs.length]), [['doejane', true, 1]]);
+  const dos = await fixture('dosname.zip');
+  assert.deepEqual(dos.students.map((s) => [s.name, s.canvas_id, Boolean(s.game)]), [['m\u00fcllerjan', '12347', true]]);
+  await assert.rejects(read_zip(new Uint8Array([1, 2, 3])), /not a zip file \(or only a part of one/);
 });

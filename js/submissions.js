@@ -31,20 +31,23 @@ const decode = (bytes) => new TextDecoder().decode(bytes);
 
 // The files of a submission, with zip files unpacked (also zip files inside zip
 // files, up to a few levels): { path: Uint8Array }.
-async function unpack(files, depth = 0) {
+async function unpack(files, warnings, depth = 0) {
   const out = {};
   for (const [path, bytes] of Object.entries(files)) {
     if (ignored(path)) continue;
     if (is_zip(path, bytes) && depth < 3) {
       let inner;
+      const skipped = [];
       try {
-        inner = await read_zip(bytes, { binary: true });
+        inner = await read_zip(bytes, { binary: true, skipped });
       } catch (e) {
-        out[path] = bytes;      // (kept, and reported as a file that is not a game)
+        warnings.push(`${path.replace(/^.*\//, '')} could not be unpacked: ${e.message}.`);
+        out[path] = bytes;
         continue;
       }
+      for (const x of skipped) warnings.push(`${x.name.replace(/^.*\//, '')} in ${path.replace(/^.*\//, '')} ${x.reason}.`);
       const stem = path.replace(/\.zip$/i, '');
-      for (const [p, b] of Object.entries(await unpack(inner, depth + 1))) out[stem + '/' + p] = b;
+      for (const [p, b] of Object.entries(await unpack(inner, warnings, depth + 1))) out[stem + '/' + p] = b;
     } else {
       out[path] = bytes;
     }
@@ -55,9 +58,9 @@ async function unpack(files, depth = 0) {
 // The game and the PDFs among the files of one submission ({ path: Uint8Array }).
 // Returns { game, game_file, pdfs: [{ name, bytes }], files: [paths], warnings }.
 export async function read_submission(raw) {
-  const files = await unpack(raw);
-  const paths = Object.keys(files).sort();
   const warnings = [];
+  const files = await unpack(raw, warnings);
+  const paths = Object.keys(files).sort();
   let game = null;
   let game_file = null;
   const short = (p) => p.replace(/^.*\//, '');
@@ -128,12 +131,14 @@ export async function read_submissions(list) {
     }
     if (is_zip(name, bytes)) {
       let inner;
+      const skipped = [];
       try {
-        inner = await read_zip(bytes, { binary: true });
+        inner = await read_zip(bytes, { binary: true, skipped });
       } catch (e) {
         notes.push(`${name}: ${e.message}`);
         continue;
       }
+      for (const x of skipped) notes.push(`${name}: ${x.name} was left out: it ${x.reason}.`);
       const entries = Object.entries(inner).filter(([p]) => !ignored(p));
       const canvas = entries.filter(([p]) => parse_canvas_name(p));
       if (canvas.length) {

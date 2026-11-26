@@ -321,7 +321,9 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   test results, a full storage, and project and backup files;
 - `grading.test.mjs`: the rubric and the grade, comments, similarity, the full board, measuring
   games and the suggested scores (with clingo), grading sessions (export, import, merge, CSV), and
-  reading submissions (Canvas' zip file, zip files of one student, game folders, bytes in zip files);
+  reading submissions (Canvas' zip file, zip files of one student, game folders, bytes in zip files,
+  and zip files as zip programs write them: Zip64, data in front, names in the encoding of DOS,
+  entries that cannot be read; `test/fixtures/zips/`);
 - `feedback.test.mjs`: the feedback as Markdown, a web page and a PDF, and the PDF writer;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
   example is free of syntax errors, every example solution wins (on fixed random levels), the

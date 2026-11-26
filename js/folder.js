@@ -203,6 +203,10 @@ export function make_zip(files, date = new Date()) {
   return out;
 }
 
+// The characters 128-255 of the encoding of DOS (code page 437), in which zip
+// programs wrote names without the flag for UTF-8.
+const CP437 = 'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u00a0';
+
 async function inflate(bytes) {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
@@ -210,34 +214,101 @@ async function inflate(bytes) {
 
 // The files in a zip file: { path: text } (directories and files of macOS'
 // resource forks are left out); with { binary: true }: { path: Uint8Array }.
-export async function read_zip(bytes, { binary = false } = {}) {
+// Zip files as zip programs write them are read: also with Zip64 fields (for
+// large files, which some programs write for any file), with data before the
+// zip file itself, and with names in the old encoding of DOS.
+// An entry that cannot be read (encrypted, or compressed with another method
+// than deflate) makes the whole file fail, unless `skipped` is a list: then
+// it is left out, and { name, reason } is added to the list.
+export async function read_zip(bytes, { binary = false, skipped = null } = {}) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const u16 = (i) => view.getUint16(i, true);
+  const u32 = (i) => view.getUint32(i, true);
+  const u64 = (i) => Number(view.getBigUint64(i, true));
   let end = -1;
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 22 - 65535); i--) {
-    if (view.getUint32(i, true) === 0x06054b50) { end = i; break; }
+    if (u32(i) === 0x06054b50) { end = i; break; }
   }
-  if (end < 0) throw new Error('this is not a zip file');
-  const count = view.getUint16(end + 10, true);
-  let p = view.getUint32(end + 16, true);
+  if (end < 0) throw new Error('this is not a zip file (or only a part of one: download it again)');
+  let count = u16(end + 10);
+  let cd_size = u32(end + 12);
+  let cd_offset = u32(end + 16);
+  let cd_end = end;
+  // Zip64: the real numbers are in the Zip64 end of the central directory
+  if (end >= 20 && u32(end - 20) === 0x07064b50) {
+    const at = u64(end - 12);
+    if (at + 56 <= bytes.length && u32(at) === 0x06064b50) {
+      count = u64(at + 32);
+      cd_size = u64(at + 40);
+      cd_offset = u64(at + 48);
+      cd_end = at;
+    }
+  }
+  // (data in front of the zip file, e.g. a self-extracting archive: all offsets shift)
+  const shift = Math.max(0, cd_end - (cd_offset + cd_size));
+  const utf8 = new TextDecoder('utf-8', { fatal: true });
   const dec = new TextDecoder();
+  const name_of = (raw, flags) => {
+    if (flags & 0x0800) return dec.decode(raw);
+    try {
+      return utf8.decode(raw);
+    } catch {
+      return [...raw].map((b) => (b < 128 ? String.fromCharCode(b) : CP437[b - 128])).join('');
+    }
+  };
   const out = {};
+  let p = cd_offset + shift;
   for (let k = 0; k < count; k++) {
-    if (view.getUint32(p, true) !== 0x02014b50) throw new Error('the zip file is damaged');
-    const method = view.getUint16(p + 10, true);
-    const size = view.getUint32(p + 20, true);
-    const name_length = view.getUint16(p + 28, true);
-    const extra_length = view.getUint16(p + 30, true);
-    const comment_length = view.getUint16(p + 32, true);
-    const local = view.getUint32(p + 42, true);
-    const name = dec.decode(bytes.subarray(p + 46, p + 46 + name_length));
+    if (p + 46 > bytes.length || u32(p) !== 0x02014b50) throw new Error('the zip file is damaged (or only a part of one: download it again)');
+    const flags = u16(p + 8);
+    const method = u16(p + 10);
+    let size = u32(p + 20);
+    let original = u32(p + 24);
+    const name_length = u16(p + 28);
+    const extra_length = u16(p + 30);
+    const comment_length = u16(p + 32);
+    let local = u32(p + 42);
+    const name = name_of(bytes.subarray(p + 46, p + 46 + name_length), flags);
+    // Zip64 sizes and offset, in the extra field (only those that do not fit in 32 bits)
+    for (let e = p + 46 + name_length; e + 4 <= p + 46 + name_length + extra_length;) {
+      const id = u16(e);
+      const len = u16(e + 2);
+      if (id === 0x0001) {
+        let f = e + 4;
+        if (original === 0xFFFFFFFF && f + 8 <= e + 4 + len) { original = u64(f); f += 8; }
+        if (size === 0xFFFFFFFF && f + 8 <= e + 4 + len) { size = u64(f); f += 8; }
+        if (local === 0xFFFFFFFF && f + 8 <= e + 4 + len) { local = u64(f); f += 8; }
+      }
+      e += 4 + len;
+    }
     p += 46 + name_length + extra_length + comment_length;
     if (name.endsWith('/') || name.startsWith('__MACOSX/') || /(^|\/)\.DS_Store$/.test(name)) continue;
-    const data_start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+    const skip = (reason) => {
+      if (!skipped) throw new Error(`${name} in the zip file ${reason}`);
+      skipped.push({ name, reason });
+    };
+    local += shift;
+    if (flags & 1) {
+      skip('is encrypted (with a password)');
+      continue;
+    }
+    if (method !== 0 && method !== 8) {
+      skip(`is compressed in a way that is not supported (method ${method}${{ 9: ', deflate64', 12: ', bzip2', 14: ', LZMA', 93: ', zstd', 95: ', xz', 98: ', PPMd' }[method] || ''}): make the zip file with another program`);
+      continue;
+    }
+    if (local + 30 > bytes.length || u32(local) !== 0x04034b50) {
+      skip('is damaged');
+      continue;
+    }
+    const data_start = local + 30 + u16(local + 26) + u16(local + 28);
     const raw = bytes.subarray(data_start, data_start + size);
     let data;
-    if (method === 0) data = raw.slice();
-    else if (method === 8) data = await inflate(raw);
-    else throw new Error(`the zip file uses a compression that is not supported (${name})`);
+    try {
+      data = method === 0 ? raw.slice() : await inflate(raw);
+    } catch {
+      skip('is damaged (it cannot be unpacked)');
+      continue;
+    }
     out[name] = binary ? data : dec.decode(data);
   }
   return out;

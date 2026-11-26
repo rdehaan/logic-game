@@ -1877,3 +1877,16 @@ test('grading: export, import into another browser, compare all submissions, rem
   assert.deepEqual(page.errors, []);
   assert.deepEqual(other.errors, []);
 });
+
+test('grading: zip files with Zip64 fields, and an entry that cannot be read', async (t) => {
+  const page = await open(t, '?grader=true&tab=8');
+  if (!page) return;
+  const fixture = (name) => fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'zips', name));
+  await page.setInputFiles('#grading-input', { name: 'submissions.zip', mimeType: 'application/zip', buffer: fixture('zip64.zip') });
+  await page.waitForFunction(() => /^Loaded 2 submissions/.test(document.getElementById('grading-load-status').textContent));
+  await page.setInputFiles('#grading-input', { name: 'more.zip', mimeType: 'application/zip', buffer: fixture('bzip2.zip') });
+  await page.waitForFunction(() => /^Loaded 1 submission/.test(document.getElementById('grading-load-status').textContent));
+  assert.match(await page.textContent('#grading-notes'), /roerich_12346_678902_game\.json was left out: it is compressed in a way that is not supported/);
+  assert.deepEqual((await student_rows(page)).map((r) => r[0]), ['doejane', 'roerich']);
+  assert.deepEqual(page.errors, []);
+});
