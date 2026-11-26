@@ -4,7 +4,7 @@
 // - live checks: shortly after an editor changes, its program is checked on
 //   its own for syntax errors and unsafe variables (solver.check);
 // - hints: the programs are analyzed together for mistakes with the special
-//   predicates, such as a player's program that never derives do/1 (hints.js);
+//   predicates, such as a player strategy that never derives do/1 (hints.js);
 // - runs: when a program fails while generating a level or playing, the
 //   errors that clingo reports (or the constraints that are violated) are
 //   traced back to the editor they are in.
@@ -218,7 +218,7 @@ export class Editors {
           if (!this.editors[v.source]) continue;
           (by_key[v.source] ||= []).push({
             line: v.line, col: v.col, end_line: v.line, end_col: v.col + 2, severity: 'warning',
-            message: `This constraint was violated during the game, so ${p.program === 'Level generation' ? 'level generation' : 'the ' + p.program.toLowerCase()} had no answer set (see the game output).`,
+            message: `This constraint was violated during the game, so the ${p.program.replace(/ program$/, '').toLowerCase()} program had no answer set (see the game output).`,
           });
         }
       }

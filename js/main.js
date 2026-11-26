@@ -879,7 +879,7 @@ async function play_loop() {
     else shown_snapshot = -1;
     const step = await session.step();
     snapshots.at(-1).moves = step.verdict ? null : (step.moves || '');
-    snapshots.at(-1).player_problem = (step.problems || []).find((p) => p && p.program === 'Player program') || null;
+    snapshots.at(-1).player_problem = (step.problems || []).find((p) => p && p.program === 'Player strategy') || null;
     editors.show_run_problems(step.problems);
     if (stop_requested) continue;
     if (step.report) add_to_game_output(step.report, session.time_step);

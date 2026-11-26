@@ -46,7 +46,7 @@ my-game/
   visibility.lp             what the player can observe
   nature.lp                 nature's moves
   winning-conditions.lp     when the game is won or lost
-  strategy.lp               your strategy (the player's program)
+  strategy.lp               your strategy (the player strategy)
   level/state.lp            the level (if there is one)
   level/settings.lp
 ```
@@ -112,7 +112,7 @@ Which level is played:
 Other options:
 - `--step`: wait for Enter after every step;
 - `--delay MS`: wait MS milliseconds after every step (to watch the game);
-- `--verbose`: also show what went into the player's program and what came out of it in every
+- `--verbose`: also show what went into the player strategy and what came out of it in every
   step (as the Debug tab of the page);
 - `--quiet`: only show the result.
 

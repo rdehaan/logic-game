@@ -48,7 +48,7 @@
           games</i> below). While they are unlocked, the buttons say <i>Lock rules and generate level</i>,
           <i>Lock rules and play</i> and <i>Lock rules and test</i>: they lock the rules first.</li>
         <li>The <i>Debug</i> tab shows, for the step of the board that is shown, what went into the
-          player's program and what came out, with what changed since the step before. Hover over a
+          player strategy and what came out, with what changed since the step before. Hover over a
           fact to see its cell on the board, or over a cell to see the facts about it.</li>
         <li>On a wide screen, the board stays next to the tabs while you scroll.</li>
         <li>In the <i>Control</i> tab, <i>Options</i>: the board next to the tabs, whether changed cells
@@ -135,7 +135,7 @@ decorate(label,player,font_f007).</pre>
         restricted to atoms over the predicate <tt>observe</tt>,
         constitutes what is observable to the player.
         These atoms, together with the level settings, are passed on to the
-        player's program.
+        player strategy.
         Atoms over <tt>at</tt> are never passed on to the player directly:
         the player only knows what is made observable here.
       </p>
@@ -293,7 +293,7 @@ lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
         the player performs no moves and its memory does not change.
       </p>
       <p>
-        The player strategy program may contain substrings of the form
+        The player strategy may contain substrings of the form
         <tt>RANDINT(l,u)</tt>, where <tt>l</tt> and <tt>u</tt> are
         integers (possibly negative, and possibly with spaces around them,
         as in <tt>RANDINT(-2, 2)</tt>).
@@ -432,7 +432,8 @@ logic-game convert project.json my-game   # convert files (e.g. from the Version
         </li>
         <li>
           After 500 time steps, the game is stopped with a timeout,
-          to avoid games that go on forever. This counts as a loss.
+          to avoid games that go on forever. A timeout is not a win, but
+          it is reported separately from a loss (as <i>timed out</i>).
         </li>
         <li>
           If a program has no answer sets, or contains an error
@@ -521,7 +522,7 @@ decorate(bgcolor,R,C,hex_ddf) :- at(R,C,water), not observe(fog(R,C)),
       <p>
         Atoms over <tt>decorate</tt> derived by the visibility program are only
         used for the visualization: they are <b>not</b> passed on to the
-        player's program. So they cannot reveal anything to the player.
+        player strategy. So they cannot reveal anything to the player.
       </p>
       <p>
         For example, the following rule in the visibility program shows

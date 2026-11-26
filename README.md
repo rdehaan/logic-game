@@ -123,9 +123,9 @@ which they are shown: 1 Control, 2 Instructions, 3 Game rules, 4 Strategy, 5 Deb
 
 The page tries to explain what went wrong:
 - syntax errors and unsafe variables are marked in the editors while typing;
-- warnings about the special predicates of each program, e.g. a player's program that never
+- warnings about the special predicates of each program, e.g. a player strategy that never
   derives `do/1`, uses `at/3` instead of `observe(at(...))`, misspells `remember/1`, uses the
-  wrong number of arguments, or makes moves that nature's program does not react to;
+  wrong number of arguments, or makes moves that the nature's moves program does not react to;
 - when a program has no answer set, the constraints that are violated are named;
 - when the player made no move (or several) at the time the board shows, a note below the
   buttons says why: an error in the strategy, no answer set, no rule for `do/1` that applied, or

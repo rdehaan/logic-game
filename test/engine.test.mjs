@@ -120,13 +120,13 @@ test('the engine stops after max_time steps', async () => {
   assert.equal(result.steps, 5);
 });
 
-test('an error in the player program is reported with its line, and the game goes on', async () => {
+test('an error in the player strategy is reported with its line, and the game goes on', async () => {
   const game = { ...WALK, player_move_program: '% walk\ndo(right) :- observe(at(R,C,player).' };
   const session = new GameSession(solver, game);
   await session.start();
   const step = await session.step();
   assert.equal(step.verdict, null);
-  assert.match(step.report, /Player program: error:\n {4}Player strategy, line 2, column 36: syntax error/);
+  assert.match(step.report, /Player strategy: error:\n {4}Player strategy, line 2, column 36: syntax error/);
   assert.match(step.report, /\(no moves, memory unchanged\)/);
   assert.equal(step.problems[0].result.errors[0].source, 'player_move_program');
 });
@@ -140,7 +140,7 @@ test('no answer set: the violated constraint is reported', async () => {
   const session = new GameSession(solver, game);
   await session.start();
   const step = await session.step();
-  assert.match(step.report, /- Nature program: no answer set, because this constraint is violated:\n {4}Nature's moves, line 2: :- do\(X\), do\(Y\), X != Y\.\n {4}The player made 2 moves in this step \(do\(right\)\. do\(left\)\.\);\n {4}maybe nature allows only one move per step\.\n {2}\(state unchanged\)/);
+  assert.match(step.report, /- Nature's moves: no answer set, because this constraint is violated:\n {4}Nature's moves, line 2: :- do\(X\), do\(Y\), X != Y\.\n {4}The player made 2 moves in this step \(do\(right\)\. do\(left\)\.\);\n {4}maybe nature allows only one move per step\.\n {2}\(state unchanged\)/);
   assert.deepEqual(step.problems[0].result.violated, [{ source: 'nature_program', line: 2, col: 1, text: ':- do(X), do(Y), X != Y.' }]);
 });
 
@@ -148,14 +148,14 @@ test('no answer set without a violated constraint', async () => {
   const session = new GameSession(solver, { ...WALK, player_move_program: 'a :- not a.' });
   await session.start();
   const step = await session.step();
-  assert.match(step.report, /- Player program: no answer set\n {2}\(no moves, memory unchanged\)/);
+  assert.match(step.report, /- Player strategy: no answer set\n {2}\(no moves, memory unchanged\)/);
 });
 
 test('a program that does not terminate stops the game', async () => {
   const quick = create_solver(clingo, { timeout_ms: 500 });
   const result = await play_headless(quick, { ...WALK, nature_program: 'n(0). n(X+1) :- n(X).' });
   assert.equal(result.verdict, 'stopped');
-  assert.match(result.log.at(-1), /^STOPPED! \(Nature program: clingo took longer than/);
+  assert.match(result.log.at(-1), /^STOPPED! \(Nature's moves: clingo took longer than/);
 });
 
 test('the player remembers and forgets', async () => {
@@ -188,7 +188,7 @@ test('the history is only kept when a program uses it', () => {
   assert.equal(needs_history({ ...WALK, goal_program: 'lose :- at_time(0,R,C,player), at(R,C,player), current_time(T), T > 1.' }), true);
   assert.equal(needs_history({ ...WALK, aux_program: 'steps(N) :- N = #count { T : state_time(T) }.' }), true);
   assert.equal(needs_history({ ...WALK, nature_program: '#include "x.lp".' }), true);   // cannot tell
-  // The player's program never gets the game state
+  // The player strategy never gets the game state
   assert.equal(needs_history({ ...WALK, player_move_program: 'x :- at_time(0,1,1,player).' }), false);
 });
 
@@ -221,8 +221,8 @@ test('the time in clingo is reported, and slow programs get a note', async () =>
   await session.start();
   const step = await session.step();
   assert.deepEqual(Object.keys(step.times).sort(), ['goal', 'nature', 'player', 'visibility']);
-  assert.match(step.report, /- Time in clingo: winning conditions \d+ ms, player's program \d+ ms, nature's program \d+ ms, visibility program \d+ ms\n/);
-  assert.match(step.report, /- Note: the player's program took 0\.\d seconds in this step/);
+  assert.match(step.report, /- Time in clingo: winning conditions \d+ ms, player strategy \d+ ms, nature's moves \d+ ms, visibility program \d+ ms\n/);
+  assert.match(step.report, /- Note: player strategy took 0\.\d seconds in this step/);
   const quiet = new GameSession(solver, WALK, { verbose: false });
   await quiet.start();
   assert.doesNotMatch((await quiet.step()).report, /Time in clingo|Note/);

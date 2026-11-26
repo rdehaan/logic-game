@@ -99,13 +99,13 @@ test('the example games get no warnings', () => {
   for (const { name, game } of load_examples()) {
     for (const [field, list] of Object.entries(game_hints(game))) {
       const warnings = list.filter((h) => h.severity !== 'info');
-      // The examples without solutions have no player's program yet
+      // The examples without solutions have no player strategy yet
       assert.deepEqual(warnings, [], `${name}: ${field}`);
     }
   }
 });
 
-test('a player program without moves', () => {
+test('a player strategy without moves', () => {
   assert.match(hints_for({ player_move_program: 'remember(x).' }, 'player_move_program')[0], /^null:warning: This program never derives do\/1, so the player never makes a move/);
   assert.match(hints_for({ player_move_program: '% my strategy' }, 'player_move_program')[0], /^null:info: This program has no rules yet/);
 });
@@ -126,14 +126,14 @@ test('wrong number of arguments, and misspelled predicates', () => {
 
 test('predicates of other programs', () => {
   assert.deepEqual(hints_for({ player_move_program: 'do(move(right)).\nnext(1,1,player).' }, 'player_move_program'),
-    ["2:warning: next/3 is not passed on from the player's program: only nature's program passes on next/3. This program passes on do/1, remember/1, forget/1."]);
+    ["2:warning: next/3 is not passed on from the player strategy: only the nature's moves program passes on next/3. This program passes on do/1, remember/1, forget/1."]);
   assert.deepEqual(hints_for({ nature_program: GAME.nature_program + '\nnext(R,C,O) :- observe(at(R,C,O)).' }, 'nature_program'),
-    ["4:warning: observe/1 never holds here: nature's program does not get observe/1 (only the player's program gets it). It gets at/3, at_time/4, state_time/1, current_time/1, do/1, setting/1, decorate."]);
+    ["4:warning: observe/1 never holds here: the nature's moves program does not get observe/1 (only the player strategy gets it). It gets at/3, at_time/4, state_time/1, current_time/1, do/1, setting/1, decorate."]);
 });
 
 test('moves that nature does not react to', () => {
   assert.deepEqual(hints_for({ player_move_program: 'do(right).' }, 'player_move_program'),
-    ["1:warning: Nature's program does not react to moves like do(right): it only looks at do(move(right))."]);
+    ["1:warning: The nature's moves program does not react to moves like do(right): it only looks at do(move(right))."]);
 });
 
 test('memory without remember, and remembering the wrong thing', () => {
@@ -170,9 +170,9 @@ test('problems with the board', () => {
 });
 
 test('help about special predicates, per program', () => {
-  assert.match(special_help('player_move_program', 'do/1').text, /This program passes it on to nature's program\.$/);
+  assert.match(special_help('player_move_program', 'do/1').text, /This program passes it on to the nature's moves program\.$/);
   assert.match(special_help('nature_program', 'do/1').text, /This program gets it from the game\.$/);
-  assert.match(special_help('player_move_program', 'at/3').text, /The player's program does not get it/);
+  assert.match(special_help('player_move_program', 'at/3').text, /The player strategy does not get it/);
   assert.equal(special_help('goal_program', 'win/0').title, 'win');
   assert.equal(special_help('player_move_program', 'foo/1'), null);
   // every special predicate of every program has help
@@ -207,11 +207,11 @@ test('why the player made no move, or several', () => {
   hint = move_hint(program, 'do(move(down)). do(move(left)).', null);
   assert.equal(hint.text.split('.')[0] + '.', 'The player made 2 moves at once (do(move(down)), do(move(left))).');
   assert.deepEqual(hint.lines, [1, 3]);
-  // A problem of the player's program: an error, no answer set, or too slow
-  const error = { program: 'Player program', text: 'error', result: { status: 'error', errors: [{ source: 'player_move_program', line: 2, col: 5, message: 'syntax error, unexpected .' }] } };
+  // A problem of the player strategy: an error, no answer set, or too slow
+  const error = { program: 'Player strategy', text: 'error', result: { status: 'error', errors: [{ source: 'player_move_program', line: 2, col: 5, message: 'syntax error, unexpected .' }] } };
   assert.deepEqual(move_hint(program, '', error), { text: 'Your strategy has an error, so the player made no move: syntax error, unexpected .', lines: [2] });
-  const unsat = { program: 'Player program', text: 'no answer set', result: { status: 'unsat', violated: [{ source: 'player_move_program', line: 4 }, { source: 'aux_program', line: 1 }] } };
+  const unsat = { program: 'Player strategy', text: 'no answer set', result: { status: 'unsat', violated: [{ source: 'player_move_program', line: 4 }, { source: 'aux_program', line: 1 }] } };
   assert.deepEqual(move_hint(program, '', unsat), { text: 'Your strategy had no answer set in this step, because a constraint was violated, so the player made no move.', lines: [4] });
-  const slow = { program: 'Player program', text: 'clingo took longer than 10 seconds\nmore', result: { status: 'timeout' } };
+  const slow = { program: 'Player strategy', text: 'clingo took longer than 10 seconds\nmore', result: { status: 'timeout' } };
   assert.match(move_hint(program, '', slow).text, /^Your strategy did not finish in this step \(clingo took longer than 10 seconds\)/);
 });

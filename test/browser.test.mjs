@@ -164,7 +164,7 @@ test('errors during a game are reported with the program and line', async (t) =>
   await page.selectOption('#speed-selector', '100');
   await page.click('#play-button');
   await wait_for_verdict(page);
-  assert.match(await game_output(page), /Player program: error:\n {4}Player strategy, line 2, column 41: syntax error/);
+  assert.match(await game_output(page), /Player strategy: error:\n {4}Player strategy, line 2, column 41: syntax error/);
 });
 
 test('a program that does not terminate is stopped, and the page stays responsive', async (t) => {
@@ -177,7 +177,7 @@ test('a program that does not terminate is stopped, and the page stays responsiv
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
   assert.ok(Date.now() - t0 < 1000);
   await wait_for_verdict(page, /STOPPED!/, 20000);
-  assert.match(await game_output(page), /^STOPPED! \(Nature program: clingo took longer than 2 seconds and was stopped\)/);
+  assert.match(await game_output(page), /^STOPPED! \(Nature's moves: clingo took longer than 2 seconds and was stopped\)/);
   assert.equal(await page.isEnabled('#play-button'), true);
 });
 
@@ -190,7 +190,7 @@ test('the Stop button stops clingo, and the next game works', async (t) => {
   await page.click('#stop-button');
   await page.waitForFunction(() => document.getElementById('stop-button').disabled, null, { timeout: 5000 });
   assert.equal(await page.isEnabled('#play-button'), true);
-  // Back to the nature program of the example (the changed one was saved)
+  // Back to the nature's moves program of the example (the changed one was saved)
   page.on('dialog', (dialog) => dialog.accept());
   await page.waitForSelector('#work-notice:not([hidden])');
   await page.click('button[data-action=revert_to_original]');
@@ -279,7 +279,7 @@ test('a violated constraint is marked in the editor, and a lost game points to t
   assert.match(output, /- Winning conditions: no answer set, because this constraint is violated:\n {4}Winning conditions, line 3: :- current_time\(2\)\./);
   assert.match(output, /^LOSE! \(lose\(timeout\)\)\n\(There is 1 error or warning in the programs that may explain this/);
   const items = await page.locator('#goal_program-problems li').allTextContents();
-  assert.deepEqual(items, ['Warning (line 3): This constraint was violated during the game, so the winning conditions had no answer set (see the game output).']);
+  assert.deepEqual(items, ['Warning (line 3): This constraint was violated during the game, so the winning conditions program had no answer set (see the game output).']);
 });
 
 test('problems with the board are shown under it', async (t) => {
@@ -1056,9 +1056,9 @@ test('help about special predicates in the editors', async (t) => {
   if (!page) return;
   await set_program(page, 'player_move_program', 'do(move(down)) :- observe(at(R1,C,player)), at(R2,C,flag).\nfoo :- bar.');
   assert.equal(await hover_help(page, 'player_move_program', 0, 1),
-    "do/1do(X): a move of the player, such as do(move(up)). This program passes it on to nature's program.");
+    "do/1do(X): a move of the player, such as do(move(up)). This program passes it on to the nature's moves program.");
   assert.match(await hover_help(page, 'player_move_program', 0, 20), /^observe\/1observe\(X\): what the player observes.*This program gets it from the game\.$/);
-  assert.match(await hover_help(page, 'player_move_program', 0, 45), /^at\/3at\(R,C,O\).*The player's program does not get it \(it is used by level generation/);
+  assert.match(await hover_help(page, 'player_move_program', 0, 45), /^at\/3at\(R,C,O\).*The player strategy does not get it \(it is used by level generation/);
   assert.equal(await hover_help(page, 'player_move_program', 1, 1), null);       // not special
   // Autocompletion while typing
   await page.evaluate(() => {
