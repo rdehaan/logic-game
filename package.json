@@ -27,7 +27,7 @@
     "clingo-wasm": "0.6.0"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "@fontsource/open-sans": "5.3.0",
     "@fortawesome/fontawesome-free": "7.3.1",
     "ace-builds": "1.45.2",
