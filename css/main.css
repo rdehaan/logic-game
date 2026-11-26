@@ -1134,6 +1134,11 @@ pre.debug-messages {
   overflow-wrap: anywhere;
 }
 
+/* The tabs, under the board: some room between them and the messages above */
+.tabs-pane {
+  margin-top: 28px;
+}
+
 /* Side by side (an option, on wide screens): the board, with its buttons, stays
    in view on the left while the tabs scroll on the right. (1100px: also in
    js/grid-visual.js) */
@@ -1167,6 +1172,7 @@ pre.debug-messages {
 
   body.side-by-side .tabs-pane {
     min-width: 0;
+    margin-top: 0;
   }
 
   body.side-by-side .game-controls {
