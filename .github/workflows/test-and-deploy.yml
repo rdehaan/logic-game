@@ -23,21 +23,17 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm test
 
-  deploy:
+  # The site is put together in a job of its own. The deploy job comes after
+  # it, and by then the uploaded artifact is always in the list that
+  # deploy-pages asks for. (Uploading and deploying in the same job sometimes
+  # failed with "Found 0 artifact(s)", because right after the upload the
+  # artifact is not always in that list yet.)
+  build:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
+    outputs:
+      artifact: ${{ steps.name.outputs.artifact }}
     steps:
       - uses: actions/checkout@v4
       # The site is every file in the repository, except the ones for development
@@ -49,25 +45,29 @@ jobs:
       # Each attempt of a run gets an artifact of its own: when a run is run
       # again, the artifact of the earlier attempt is still there, and with
       # the same name deploy-pages stops ("Multiple artifacts named ...").
+      # The name goes to the deploy job as an output, so that it is also
+      # right when only the deploy job is run again.
+      - id: name
+        run: echo "artifact=github-pages-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-          name: github-pages-${{ github.run_attempt }}
-      # Right after the upload, the artifact is sometimes not yet in the list
-      # that deploy-pages asks for, and then it stops ("Found 0 artifact(s)").
-      # So wait (at most about a minute) until the artifact can be seen.
-      - name: Wait until the artifact can be seen
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NAME: github-pages-${{ github.run_attempt }}
-        run: |
-          for i in $(seq 1 30); do
-            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?name=$NAME" --jq '.total_count')
-            if [ "$count" -gt 0 ]; then exit 0; fi
-            sleep 2
-          done
-          echo "The artifact $NAME cannot be seen after a minute; deploy-pages will try anyway."
+          name: ${{ steps.name.outputs.artifact }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
         with:
-          artifact_name: github-pages-${{ github.run_attempt }}
+          artifact_name: ${{ needs.build.outputs.artifact }}
