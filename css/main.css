@@ -1381,10 +1381,17 @@ details.versions-more > :not(summary) {
   box-shadow: inset 4px 0 0 #2c6fa8;
 }
 
-.board-status .replay-button {
+.board-status .replay-button,
+.board-status .keep-level-button {
   margin-left: 6px;
   padding: 3px 10px;
   font-weight: 600;
+}
+
+/* A level that is out of date (the level programs changed since it was made): greyed out */
+.visual-container.outdated .grid-visual {
+  opacity: 0.4;
+  filter: grayscale(1);
 }
 
 kbd {

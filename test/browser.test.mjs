@@ -490,10 +490,10 @@ test('the game rules are locked together; unlocking keeps the level until the le
   await page.click('#lock-button');
   assert.equal(await value(page, 'level_state'), level);
   assert.equal(await page.textContent('#play-button'), '\u23F5\u00A0Play');
-  // Changing the level generation removes the level when locking (here with Lock rules and play)
+  // Changing the level generation removes the level when locking
   await page.click('#unlock-button');
   await set_program(page, 'level_gen_program', (await value(page, 'level_gen_program')) + '\n% changed');
-  await page.click('#play-button');
+  await page.click('#lock-button');
   assert.equal(await value(page, 'level_state'), '');
   assert.match(await page.textContent('#board-status'), /^The level was removed: it was made with another version/);
   assert.deepEqual(await read_only(), [true, true, true, true, true, false]);
@@ -509,6 +509,60 @@ test('the game rules are locked together; unlocking keeps the level until the le
   assert.equal(await page.isDisabled('#unlock-button'), true);
   await page.click('#stop-button');
   await page.waitForFunction(() => !window.logic_game.editors.get('player_move_program').getReadOnly());
+});
+
+test('a level made with another level generation program is out of date: generate a new one, or keep it on purpose', async (t) => {
+  const page = await open(t, '?tab=3');
+  if (!page) return;
+  const level = await value(page, 'level_state');
+  const status = () => page.textContent('#board-status');
+  const outdated = () => page.evaluate(() => document.getElementById('visual-container').classList.contains('outdated'));
+  await page.click('#unlock-button');
+  // Other rules: the level is still fine
+  await set_program(page, 'goal_program', (await value(page, 'goal_program')) + '\n% changed');
+  assert.equal(await outdated(), false);
+  assert.equal(await page.isEnabled('#play-button'), true);
+  // The level generation program: the level is out of date, and Play and Step wait for a new level
+  await set_program(page, 'level_gen_program', (await value(page, 'level_gen_program')) + '\n% changed');
+  assert.equal(await outdated(), true);
+  assert.match(await status(), /^This level is out of date: you changed the level generation program since it was made/);
+  assert.equal(await page.isDisabled('#play-button'), true);
+  assert.equal(await page.isDisabled('#step-button'), true);
+  assert.match(await page.getAttribute('#play-button', 'title'), /^The level is out of date/);
+  assert.match(await page.getAttribute('#generate-button', 'class'), /primary-button/);
+  assert.match(await page.textContent('#rules-lock-text'), /locking removes it/);
+  // Keeping it is a choice of its own
+  await page.click('#board-status .keep-level-button');
+  assert.equal(await outdated(), false);
+  assert.equal(await page.isEnabled('#play-button'), true);
+  assert.doesNotMatch(await page.getAttribute('#generate-button', 'class'), /primary-button/);
+  assert.match(await status(), /^You kept the level/);
+  await page.click('#lock-button');
+  assert.equal(await value(page, 'level_state'), level);
+  // A level removed by locking can be brought back, too
+  await page.click('#unlock-button');
+  await set_program(page, 'level_gen_program', (await value(page, 'level_gen_program')) + '\n% changed again');
+  await page.click('#lock-button');
+  assert.equal(await value(page, 'level_state'), '');
+  assert.equal(await page.textContent('#board-status .keep-level-button'), 'Keep the old level anyway');
+  assert.match(await page.getAttribute('#generate-button', 'class'), /primary-button/);
+  await page.click('#board-status .keep-level-button');
+  await page.waitForFunction(() => document.querySelectorAll('#visual .grid-visual-cell').length > 0);
+  assert.equal(await value(page, 'level_state'), level);
+  assert.equal(await page.isEnabled('#play-button'), true);
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  // Generating a new level is the usual way
+  await page.click('#unlock-button');
+  await set_program(page, 'level_gen_program', (await value(page, 'level_gen_program')) + '\n% and again');
+  assert.equal(await outdated(), true);
+  await page.click('#generate-button');
+  await page.waitForFunction(() => /^The board shows the start of the level \(generated at /.test(document.getElementById('board-status').textContent));
+  assert.equal(await outdated(), false);
+  assert.equal(await page.isEnabled('#play-button'), true);
+  assert.equal(await page.locator('#board-status .keep-level-button').count(), 0);
+  assert.deepEqual(page.errors, []);
 });
 
 test('options in the Control tab are kept, and can be set in the URL', async (t) => {

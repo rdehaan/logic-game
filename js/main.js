@@ -339,6 +339,8 @@ let last_test = null;
 let level_basis = null;
 let run_basis = null;
 let board_notice = '';         // a message about the last change to the level
+// The level that was removed because the level programs changed (it can be kept anyway)
+let removed_level = null;
 
 function select_speed() {
   speed = Number(speed_selector.value);
@@ -348,6 +350,38 @@ const level_programs = () => Object.fromEntries(LEVEL_GEN_PROGRAMS.map((k) => [k
 
 function set_level_basis(source) {
   level_basis = editors.value('level_state') ? { source, at: new Date(), programs: level_programs() } : null;
+  removed_level = null;
+}
+
+// The names of programs, in a sentence ("the auxiliary program and the level generation program").
+const names = (keys) => keys.map((k) => SOURCE_NAMES[k].toLowerCase()).join(' and the ');
+
+// The level programs (auxiliary, level generation) that changed since the level
+// on the board was made with them: then the level is out of date.
+function outdated_level_programs() {
+  if (!editors.value('level_state') || !level_basis) return [];
+  return LEVEL_GEN_PROGRAMS.filter((k) => level_basis.programs[k] !== editors.value(k));
+}
+
+// Keep the level on the board, although the level programs changed since it was
+// made (an explicit choice of the player): it counts as made with the current ones.
+// After the level was removed for that reason, this brings it back.
+function keep_level() {
+  if (playing || testing || generating) return;
+  if (removed_level && !editors.value('level_state')) {
+    const { level_state, level_settings, source } = removed_level;
+    editors.set_value('level_state', level_state);
+    editors.set_value('level_settings', level_settings);
+    reset_debugging();
+    set_level_basis(source);
+    board_notice = 'You kept the level, although it was made with another version of the level programs.';
+    update_interface();
+    return;
+  }
+  if (!outdated_level_programs().length) return;
+  level_basis = { ...level_basis, programs: level_programs() };
+  board_notice = 'You kept the level, although it was made with another version of the level programs.';
+  update_controls();
 }
 
 // The fields that changed since a game (an object with all fields).
@@ -369,17 +403,21 @@ function update_controls() {
   const idle = !playing && !testing && !generating;
   const why = playing ? 'Not while a game is going on (Stop ends it).' : testing ? 'Not while the strategy is being tested.' : generating ? 'A level is being generated.' : '';
 
+  // A level made with other level programs than the ones in the editors: it has to be made again
+  const outdated = idle ? outdated_level_programs() : [];
+  const outdated_why = outdated.length ? `The level is out of date: you changed the ${names(outdated)} since it was made. Generate a new level (or keep this one, under the board).` : '';
   set_label(generate_button, '⎚', level_locked ? 'Generate level' : 'Lock rules and generate level');
   set_button(generate_button, idle, why);
+  generate_button.classList.toggle('primary-button', outdated.length > 0 || (idle && !has_level && Boolean(removed_level)));
   if (idle) generate_button.title = level_locked ? 'Make a new level with the level generation program' : 'Lock the game rules (so that they cannot be changed during a game), and make a new level with them';
   set_button(clear_button, idle && has_level, why || 'There is no level.');
   set_button(reset_button, idle && has_level && snapshots.length > 0, why || (has_level ? 'The level is already in its initial state.' : 'There is no level.'));
   if (!reset_button.disabled) reset_button.title = 'Show the level as it was before the game';
 
-  const can_play = has_level && (!playing || game_paused) && !testing && !generating;
+  const can_play = has_level && (!playing || game_paused) && !testing && !generating && !outdated.length;
   set_label(play_button, '⏵', game_paused ? 'Resume' : level_locked ? 'Play' : 'Lock rules and play');
-  set_button(play_button, can_play, !has_level ? 'There is no level: generate one first.' : why);
-  set_button(step_button, can_play, !has_level ? 'There is no level: generate one first.' : why);
+  set_button(play_button, can_play, !has_level ? 'There is no level: generate one first.' : why || outdated_why);
+  set_button(step_button, can_play, !has_level ? 'There is no level: generate one first.' : why || outdated_why);
   if (can_play) step_button.title = 'Play one step, then pause (Space)';
   if (can_play) play_button.title = (game_paused ? 'Go on with the game' : 'Play') + ' (Ctrl+Enter)';
   set_button(pause_button, busy && !single_step, 'There is no game going on.');
@@ -396,7 +434,9 @@ function update_controls() {
   $('section-game-rules').classList.toggle('rules-unlocked', !level_locked);
   $('rules-lock-text').textContent = level_locked
     ? 'The game rules are locked: games are played with these programs. Unlock them to change them.'
-    : 'The game rules are unlocked: you can change them. Lock them again to generate a level or play.';
+    : 'The game rules are unlocked: you can change them. Lock them again to generate a level or play.' +
+      (outdated.length ? ` The level on the board is out of date (you changed the ${names(outdated)}): locking removes it, so generate a new one.` : '');
+  $('visual-container').classList.toggle('outdated', outdated.length > 0);
   editors.set_read_only(RULE_PROGRAMS, level_locked || playing);
   editors.set_read_only(['player_move_program'], playing);
   update_board_status();
@@ -407,7 +447,9 @@ function update_board_status() {
   const elem = $('board-status');
   const parts = [];
   let replay = false;      // (offer to play the level again)
+  let keep = false;        // (offer to keep an out-of-date level)
   const has_level = Boolean(editors.value('level_state'));
+  const outdated = !playing && !testing && !generating ? outdated_level_programs() : [];
   if (generating) {
     parts.push('Generating a level…');
   } else if (testing) {
@@ -420,6 +462,12 @@ function update_board_status() {
     if (board_notice) parts.push(board_notice);
     if (!has_level) {
       if (!board_notice) parts.push('There is no level: generate one.');
+      keep = Boolean(removed_level);
+    } else if (outdated.length) {
+      parts.push(`This level is out of date: you changed the ${names(outdated)} since it was made, ` +
+        'so it may not be a level that the new version would make. Generate a new level. ' +
+        '(Locking the rules removes this level, unless you choose to keep it.)');
+      keep = true;
     } else if (snapshots.length && run_basis) {
       const t = snapshots.at(-1).time;
       const verdict = final_verdict ? final_verdict.toUpperCase() : 'stopped';
@@ -438,9 +486,17 @@ function update_board_status() {
     } else {
       parts.push('The board shows the start of the level.');
     }
-    if (!level_locked) parts.push('The game rules are unlocked, so they can be changed: lock them to play.');
+    if (!level_locked && !outdated.length) parts.push('The game rules are unlocked, so they can be changed: lock them to play.');
   }
   elem.textContent = parts.join(' ');
+  if (keep) {
+    const button = document.createElement('button');
+    button.className = 'control-button keep-level-button';
+    button.textContent = has_level ? 'Keep this level' : 'Keep the old level anyway';
+    button.title = 'Use this level with the changed level programs, although they may not make a level like it';
+    button.addEventListener('click', keep_level);
+    elem.append(' ', button);
+  }
   if (replay) {
     const button = document.createElement('button');
     button.className = 'control-button replay-button';
@@ -449,7 +505,7 @@ function update_board_status() {
     button.addEventListener('click', play_again);
     elem.append(' ', button);
   }
-  elem.classList.toggle('attention', !level_locked || (!playing && changed_since(run_basis).length > 0 && snapshots.length > 0));
+  elem.classList.toggle('attention', !level_locked || outdated.length > 0 || keep || (!playing && changed_since(run_basis).length > 0 && snapshots.length > 0));
 }
 
 function lock_level_generation() {
@@ -470,7 +526,9 @@ function lock_rules() {
 function rules_changed() {
   if (editors.value('level_state') && level_basis &&
       LEVEL_GEN_PROGRAMS.some((k) => level_basis.programs[k] !== editors.value(k))) {
+    const removed = { level_state: editors.value('level_state'), level_settings: editors.value('level_settings'), source: level_basis.source };
     clear_level();
+    removed_level = removed;
     board_notice = 'The level was removed: it was made with another version of the auxiliary or level generation program. Generate a new level.';
   } else if (snapshots.length && run_basis && RULE_PROGRAMS.some((k) => run_basis[k] !== editors.value(k))) {
     reset_debugging();
@@ -492,6 +550,7 @@ const unlock_level_generation = unlock_rules;
 function clear_level() {
   level_seed = null;
   level_basis = null;
+  removed_level = null;
   board_notice = '';
   editors.set_value('level_state', '');
   editors.set_value('level_settings', '');
@@ -861,7 +920,7 @@ function save_work_now() {
 }
 
 editors.on_change = (key) => {
-  if (key === 'level_state') update_controls(); else update_board_status();
+  if (key === 'level_state' || LEVEL_GEN_PROGRAMS.includes(key)) update_controls(); else update_board_status();
   if (!current || loading_game) return;
   clearTimeout(save_timer);
   save_timer = setTimeout(save_work_now, SAVE_DELAY_MS);

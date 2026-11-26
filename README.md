@@ -70,7 +70,10 @@ winning conditions) are locked and unlocked together, at the top of the Game rul
 can only be generated, and a game only played, with locked rules, so it is always clear which
 programs a game was played with. While they are unlocked, the buttons say *Lock rules and
 generate level*, *Lock rules and play* and *Lock rules and test*. Locking keeps the level, unless the auxiliary or level
-generation program changed since it was made. The line below the buttons says what the board
+generation program changed since it was made. Such a level is *out of date* as soon as one of
+those programs is edited: the board is greyed out, Play and Step are disabled, and *Lock rules
+and generate level* is the highlighted next step. Keeping the level anyway takes an explicit
+click (*Keep this level*, or *Keep the old level anyway* after locking removed it). The line below the buttons says what the board
 shows (the start of a level and where it came from, or the last game), and which programs
 changed since then; after a change, *Play again* plays the level again and comes back to the
 time the board showed. Whether the game is the player's own version (saved in the browser) is a
