@@ -1748,7 +1748,7 @@ test("grading: load Canvas' download, test a game, grade it, and give feedback",
   await page.waitForFunction(() => document.getElementById('game-title').textContent === 'janssenalice');
   assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), JSON.parse(example('flag9-with-solutions')).player_move_program);
   assert.match(await page.textContent('#grading-name'), /janssenalice \(1001\)/);
-  assert.match(await page.textContent('#grading-game-line'), /is the game of this student \(game\.json\)/);
+  await page.waitForFunction(() => /is the game of this student \(game\.json\)/.test(document.getElementById('grading-game-line').textContent));
   await page.waitForFunction(() => /^blob:/.test(document.getElementById('grading-pdf').src));
   // Test and measure: suggestions with their evidence
   await page.fill('#grading-levels', '2');
@@ -1836,7 +1836,7 @@ test("grading: load Canvas' download, test a game, grade it, and give feedback",
   assert.deepEqual((await student_rows(page))[1], ['janssenalice', 'done', '9']);
   assert.match(await page.textContent('#grading-name'), /smitcarol/);
   await page.click('#grading-prev');
-  assert.match(await page.inputValue('#grading-comment'), /^Well done/);
+  await page.waitForFunction(() => /^Well done/.test(document.getElementById('grading-comment').value));
   await page.waitForFunction(() => /^blob:/.test(document.getElementById('grading-pdf').src));
   assert.deepEqual(page.errors, []);
   assert.deepEqual(page.external, []);
@@ -1865,8 +1865,10 @@ test('grading: export, import into another browser, compare all submissions, rem
   // (the grade so far, in brackets: not all items are decided)
   assert.deepEqual((await student_rows(other))[0], ['debruijnbob late', 'in progress', '(6)']);
   await other.click('#grading-students button[data-key="canvas:1002"]');
-  assert.equal(await other.inputValue('#grading-comment'), 'From the first grader.');
-  assert.equal(await other.isVisible('#grading-no-pdf'), true);      // (the PDF files are not in the grading file)
+  await other.waitForFunction(() => document.getElementById('grading-comment').value === 'From the first grader.');
+  // (the PDF files are not in the grading file: said once the browser's storage was looked in)
+  await other.waitForSelector('#grading-no-pdf', { state: 'visible' });
+  assert.match(await other.textContent('#grading-no-pdf'), /The PDF file report\.pdf is not in this browser \(load the submissions again\)\./);
   // Remove all
   await page.click('button[data-action=grading_forget]');
   await page.waitForFunction(() => /All students were removed/.test(document.getElementById('grading-batch-status').textContent));
