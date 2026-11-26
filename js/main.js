@@ -165,14 +165,27 @@ on_cell_hover((cell) => link_cell($('tab5').checked ? cell : null));
 // step before (`previous`), the facts that are new are marked, and the ones
 // that are gone are listed under the editor.
 // Keep the height of `elem` while its contents are made again, until the new
-// contents are drawn (the editors get their height in the next frame): else the
-// page is shorter for a moment, and the browser scrolls up (e.g. at every step).
+// editors in it have been drawn (they get their height when they are drawn, in
+// a next frame): else the page is shorter for a moment, and the browser scrolls
+// up (e.g. at every step). Returns the function to call with those editors.
 function keep_height(elem) {
   elem.style.minHeight = elem.offsetHeight + 'px';
   const n = (elem.keep_height_count = (elem.keep_height_count || 0) + 1);
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  const release = () => {
     if (elem.keep_height_count === n) elem.style.minHeight = '';
-  }));
+  };
+  return (editors) => {
+    let waiting = editors.length;
+    setTimeout(release, 2000);      // (in case one is never drawn)
+    if (!waiting) requestAnimationFrame(release);
+    for (const editor of editors) {
+      const drawn = () => {
+        editor.renderer.off('afterRender', drawn);
+        if (--waiting === 0) requestAnimationFrame(release);
+      };
+      editor.renderer.on('afterRender', drawn);
+    }
+  };
 }
 
 function show_debug_step(report, text = '', previous = null) {
@@ -184,13 +197,14 @@ function show_debug_step(report, text = '', previous = null) {
   debug_editors = [];
   linked_cell = null;
   const elem = $('debug-step');
-  keep_height(elem);
+  const drawn = keep_height(elem);
   elem.replaceChildren();
   if (report == null) {
     const p = document.createElement('p');
     p.className = 'debug-text';
     p.textContent = text;
     elem.append(p);
+    drawn([]);
     return;
   }
   const before = new Map();
@@ -264,6 +278,7 @@ function show_debug_step(report, text = '', previous = null) {
       }
     }
   }
+  drawn(debug_editors);
 }
 
 // The Debug tab: the messages, and the report of the step of the board that is shown.
