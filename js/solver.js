@@ -18,6 +18,25 @@ export const DEFAULT_TIMEOUT_MS = 10000;
 // unsafe variables) but does not ground or solve.
 const CHECK_HEADER = '#program syntax_check.';
 
+// Programs may not contain scripts (#script (lua) ... #end.). clingo-wasm has
+// Lua built in, and in Node (the command-line version, e.g. `logic-game grade`
+// on the work of students) Lua's os.execute runs shell commands on the computer.
+// clingo only knows the directive as exactly "#script" (no spaces, no comments
+// in between, lowercase), so any program that has that text anywhere (even in
+// a comment) is refused, with an error in the style of clingo, so that it is
+// shown at the right line of the right program.
+export function refuse_scripts(text) {
+  const i = text.indexOf('#script');
+  if (i < 0) return null;
+  const before = text.slice(0, i).split('\n');
+  const line = before.length;
+  const col = before.at(-1).length + 1;
+  return {
+    Result: 'ERROR',
+    Error: `<string>:${line}:${col}-${col + 7}: error: scripts (#script) are not allowed in this game\n`,
+  };
+}
+
 export function create_solver(clingo, { timeout_ms = DEFAULT_TIMEOUT_MS, options = DEFAULT_OPTIONS } = {}) {
   let generation = 0;     // increased by abort(), to recognize calls that were aborted
   let queue = Promise.resolve();
@@ -35,6 +54,8 @@ export function create_solver(clingo, { timeout_ms = DEFAULT_TIMEOUT_MS, options
 
   async function run_now(text, models, opts, my_generation) {
     if (generation !== my_generation) return { status: 'aborted' };
+    const refused = refuse_scripts(text);
+    if (refused) return { status: 'done', result: refused };
     let timer = null;
     const timeout = new Promise((resolve) => {
       timer = setTimeout(() => resolve({ status: 'timeout' }), solver.timeout_ms);

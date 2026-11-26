@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import clingo from 'clingo-wasm';
 import { create_solver } from '../js/solver.js';
 import {
@@ -39,6 +40,21 @@ test('solve: unsafe variables are reported', async () => {
   assert.equal(result.status, 'error');
   assert.deepEqual(result.errors.map((e) => [e.source, e.line]), [['goal_program', 2]]);
   assert.match(result.errors[0].message, /unsafe variables.*'X' is unsafe/);
+});
+
+test('scripts are refused: in Node, Lua could run shell commands', async () => {
+  const marker = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lg-script-')), 'ran');
+  const lua = `#script (lua)\nos.execute("echo x > ${marker}")\n#end.\nmove(up).`;
+  const result = await solver.solve([
+    { source: 'engine', text: 'a.' },
+    { source: 'player_move_program', text: `% my strategy\n${lua}` },
+  ]);
+  assert.equal(result.status, 'error');
+  assert.deepEqual(result.errors.map((e) => [e.source, e.line, e.col]), [['player_move_program', 2, 1]]);
+  assert.match(result.errors[0].message, /#script.*not allowed/);
+  const checked = await solver.check(`a.\n${lua}`);
+  assert.deepEqual(checked.map((e) => e.line), [2]);
+  assert.ok(!fs.existsSync(marker), 'the script ran');
 });
 
 test('check: syntax errors and unsafe variables, without grounding', async () => {
