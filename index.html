@@ -457,12 +457,18 @@
     <section id="section-internals" data-include="docs/internals.html"></section>
 
     <section id="section-grading">
+      <p id="grading-tutorial-invite" class="tutorial-invite" hidden>
+        <span>New to grading? A short tutorial shows the Grading tab with two made-up students (your own grading is not changed).</span>
+        <button data-action="start_grading_tutorial" class="control-button">Start the grading tutorial</button>
+        <button data-action="dismiss_grading_tutorial" class="control-button">No, thanks</button>
+      </p>
       <p>
         The Grading tab is for teachers and teaching assistants: load the games that students
         handed in, test them, grade them with the rubric, and write feedback to send to the
         students (as a PDF, a web page or text). Your grading is kept in this browser; export it
         to keep it safe, or to hand it to another grader.
         <a href="javascript:void(0)" class="modal-link" data-open="modal-grading" aria-label="About grading">&#xf05a;</a>
+        <button data-action="start_grading_tutorial" class="link-button" id="grading-tutorial-start">Take the grading tutorial</button>
       </p>
 
       <details class="versions-more" data-remember="grading-submissions" open>

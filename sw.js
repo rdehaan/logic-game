@@ -38,6 +38,7 @@ const PRECACHE = [
   'js/versions.js',
   'js/versions-tab.js',
   'js/tutorial.js',
+  'js/grading-tutorial.js',
   'js/folder.js',
   'js/folder-link.js',
   'js/grading.js',

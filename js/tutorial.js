@@ -8,9 +8,14 @@
 //
 // The page (main.js) passes in what the tutorial needs from it (`app`):
 //   open_game()          -> opens a fresh copy of the tutorial game
+//   close()              -> (optional) called when the tutorial is closed
 //   load_example(name)   -> loads an example game (e.g. 'flag2')
 //   results()            -> { games, verdict }: the number of games played so far, and the last verdict
 //   select_tab(n), program(), set_program(text), snapshots()
+//
+// The same card is used for other tutorials (the grading tutorial, see
+// grading-tutorial.js): they pass their own steps, their own key to remember
+// that they were seen, and the id of their own invitation.
 
 const STATE_KEY = 'logic-game:tutorial';
 const POLL_MS = 250;
@@ -183,10 +188,12 @@ function make_steps(app) {
 }
 
 export class Tutorial {
-  constructor({ storage, app }) {
+  constructor({ storage, app, steps = make_steps, key = STATE_KEY, invite = 'tutorial-invite' }) {
     this.storage = storage;
     this.app = app;
-    this.steps = make_steps(app);
+    this.key = key;
+    this.invite_id = invite;
+    this.steps = steps(app);
     this.index = -1;
     this.timer = null;
     this.target = null;
@@ -197,7 +204,7 @@ export class Tutorial {
 
   get seen() {
     try {
-      return Boolean(this.storage && this.storage.getItem(STATE_KEY));
+      return Boolean(this.storage && this.storage.getItem(this.key));
     } catch {
       return false;
     }
@@ -205,7 +212,7 @@ export class Tutorial {
 
   remember(state) {
     try {
-      this.storage.setItem(STATE_KEY, JSON.stringify({ state, at: new Date().toISOString() }));
+      this.storage.setItem(this.key, JSON.stringify({ state, at: new Date().toISOString() }));
     } catch {
       // (then the invitation comes back next time)
     }
@@ -213,13 +220,13 @@ export class Tutorial {
 
   // The invitation for new players (not shown when the tutorial was seen or dismissed).
   invite() {
-    const box = $('tutorial-invite');
+    const box = $(this.invite_id);
     if (!box || this.seen) return;
     box.hidden = false;
   }
 
   dismiss_invite() {
-    $('tutorial-invite').hidden = true;
+    $(this.invite_id).hidden = true;
     this.remember('dismissed');
   }
 
@@ -230,7 +237,7 @@ export class Tutorial {
   }
 
   async start() {
-    $('tutorial-invite').hidden = true;
+    $(this.invite_id).hidden = true;
     this.remember('started');
     this.make_card();
     await this.app.open_game();
@@ -238,6 +245,7 @@ export class Tutorial {
   }
 
   stop(finished = false) {
+    const was_running = Boolean(this.card);      // (also when starting failed halfway)
     clearInterval(this.timer);
     this.timer = null;
     this.highlight(null);
@@ -245,6 +253,8 @@ export class Tutorial {
     this.card = null;
     this.index = -1;
     this.remember(finished ? 'finished' : 'closed');
+    // (returns what close() returns: a promise, when closing takes a while)
+    return was_running && this.app.close ? this.app.close() : undefined;
   }
 
   go(index) {

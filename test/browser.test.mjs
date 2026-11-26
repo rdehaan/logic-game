@@ -1891,3 +1891,108 @@ test('grading: zip files with Zip64 fields, and an entry that cannot be read', a
   assert.deepEqual((await student_rows(page)).map((r) => r[0]), ['doejane', 'roerich']);
   assert.deepEqual(page.errors, []);
 });
+
+// ---- The grading tutorial ------------------------------------------------------------------
+
+test('the grading tutorial is offered once, on the first visit of grader mode', async (t) => {
+  const page = await open(t, '?tab=8');
+  if (!page) return;
+  // (not without grader mode)
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  await page.click('label[for=tab1]');
+  await page.check('#option-grader');
+  await page.click('label[for=tab8]');
+  assert.equal(await page.isVisible('#grading-tutorial-invite'), true);
+  await page.click('#grading-tutorial-invite button[data-action=dismiss_grading_tutorial]');
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.click('label[for=tab8]');
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  assert.deepEqual(page.errors, []);
+});
+
+test("the grading tutorial: a sample batch from load to feedback, and the grader's own grading is kept", async (t) => {
+  const page = await open(t, '?grader=true&tab=8');
+  if (!page) return;
+  await page.evaluate(() => window.logic_game.grader.ready);
+  // The grader's own work: three students, and a comment on one of them
+  await load_submissions(page);
+  await page.click('#grading-students button[data-key="canvas:1002"]');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'debruijnbob');
+  await page.fill('#grading-comment', 'My own comment.');
+  await page.selectOption('#grading-status', 'done');
+  const own = await student_rows(page);
+  assert.equal(own[0][1], 'done');
+  assert.equal(await page.isVisible('#grading-tutorial-invite'), true);
+  await page.click('#grading-tutorial-invite button[data-action=start_grading_tutorial]');
+  const count = () => page.textContent('.tutorial-count');
+  const next = () => page.click('.tutorial-next');
+  await page.waitForFunction(() => document.querySelector('.tutorial-count')?.textContent === '1 of 12');
+  // The sample session starts empty
+  assert.equal(await page.isVisible('#grading-students'), false);
+  await next();
+  // Loading the sample batch (made by the tutorial, as Canvas names the files)
+  assert.equal(await page.isDisabled('.tutorial-next'), true);
+  assert.match(await page.getAttribute('#grading-form', 'class') || '', /tutorial-target/);
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after');
+  assert.deepEqual(await student_rows(page), [['studenta', 'not started', ''], ['studentb late', 'not started', '']]);
+  await next();
+  // Grade studenta: the game is loaded, with the PDF
+  await page.click('#grading-students button[data-key="sample:canvas:1"]');
+  await page.waitForSelector('.tutorial-after');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'studenta');
+  await page.waitForFunction(() => /^blob:/.test(document.getElementById('grading-pdf').src));
+  await next();
+  // Test and measure (3 levels)
+  assert.equal(await page.inputValue('#grading-levels'), '3');
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after', { timeout: 120000 });
+  assert.match(await page.textContent('#grading-results'), /New levels: 3 played/);
+  await next();
+  await page.click('.tutorial-do-it');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  assert.equal(await page.inputValue('[data-item=npc] select'), 'yes');
+  await next();
+  await next();
+  // Feedback: a standard comment
+  await page.click('.tutorial-do-it');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  assert.match(await page.inputValue('#grading-comment'), /^Well done/);
+  await next();
+  await next();
+  await page.selectOption('#grading-status', 'done');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  assert.deepEqual((await student_rows(page))[0].slice(0, 2), ['studenta', 'done']);
+  await next();
+  await next();
+  await next();
+  assert.equal(await count(), '12 of 12');
+  await page.click('.tutorial-next');
+  await page.waitForSelector('#tutorial-card', { state: 'detached' });
+  // The grader's own grading is back, with the game that was on the page
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'debruijnbob');
+  assert.deepEqual(await student_rows(page), own);
+  assert.equal(await page.inputValue('#grading-comment'), 'My own comment.');
+  assert.deepEqual(await page.evaluate(() => [...window.logic_game.work.origins(), ...window.logic_game.versions.origins()].filter((o) => o.includes('sample'))), []);
+  // It can be started again from the Grading tab, and closed at any step
+  await page.click('#grading-tutorial-start');
+  await page.waitForFunction(() => document.querySelector('.tutorial-count')?.textContent === '1 of 12');
+  await next();
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after');
+  await page.click('.tutorial-close');
+  await page.waitForSelector('#tutorial-card', { state: 'detached' });
+  await page.waitForFunction((n) => document.querySelectorAll('#grading-students tbody tr').length === n, own.length);
+  assert.deepEqual(await student_rows(page), own);
+  // The browser's storage holds the grader's own grading only, after a reload; the tutorial is not offered again
+  await page.evaluate(() => window.logic_game.grader.flush());
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.evaluate(() => window.logic_game.grader.ready);
+  assert.deepEqual(await student_rows(page), own);
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  assert.deepEqual(page.errors, []);
+  assert.deepEqual(page.external, []);
+});

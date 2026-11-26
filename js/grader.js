@@ -50,6 +50,7 @@ export class GraderTab {
     this.pdf_url = null;
     this.pdf_shown = true;
     this.last_editor = 'player_move_program';
+    this.saved_session = null;    // the grader's own session, while the grading tutorial uses a sample
     this.ready = this.init();
   }
 
@@ -91,6 +92,8 @@ export class GraderTab {
 
   // A student changed: save it (soon), and show the change in the list.
   changed(st, { list = true } = {}) {
+    // (a student of a session that is put away, e.g. measured while the tutorial was closed: not saved)
+    if (!this.students.includes(st)) return;
     st.updated_at = new Date().toISOString();
     if (st.status === 'new') {
       st.status = 'in progress';
@@ -204,11 +207,25 @@ export class GraderTab {
     const files = [...event.target.files];
     event.target.value = '';
     if (!files.length) return;
+    let list;
+    try {
+      list = await Promise.all(files.map(async (f) => ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+    } catch (e) {
+      this.status('grading-load-status', 'Loading failed: ' + e.message, true);
+      return;
+    }
+    await this.load_list(list);
+  }
+
+  // Load submissions: a list of files { name, bytes }.
+  async load_list(list) {
     this.status('grading-load-status', 'Reading the submissions…');
     $('grading-notes').replaceChildren();
     try {
-      const list = await Promise.all(files.map(async (f) => ({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
       const { students, notes } = await read_submissions(list);
+      // (in the sample session of the tutorial, the students get keys of their own, so that
+      // their games in the page are never mixed up with the work on real students)
+      if (this.saved_session) for (const st of students) st.key = 'sample:' + st.key;
       let added = 0;
       let replaced = 0;
       for (const st of students) {
@@ -874,6 +891,56 @@ export class GraderTab {
     this.render_list();
     this.render_student();
     this.status('grading-batch-status', ask ? 'All students were removed.' : '');
+  }
+
+  // ---- The sample session of the grading tutorial ------------------------------------------
+  //
+  // The grading tutorial works on a sample batch of its own: the grader's own
+  // session (the students, the rubric, the student being graded) is put away,
+  // and the sample session is kept in memory only (not in IndexedDB). Leaving
+  // brings the grader's own session back, and forgets the games of the sample
+  // students in the page.
+
+  async enter_sample() {
+    if (this.saved_session) return;
+    await this.ready;
+    if (this.measuring) this.cancel_measure();
+    await this.flush();
+    this.saved_session = { store: this.store, students: this.students, current: this.current, rubric: this.rubric, page: this.app.current() };
+    this.store = new GradingStore();        // (not initialized: in memory only)
+    this.students = [];
+    this.current = null;
+    this.rubric = read_rubric(DEFAULT_RUBRIC);
+    this.render_session();
+  }
+
+  async leave_sample() {
+    const saved = this.saved_session;
+    if (!saved) return;
+    if (this.measuring) this.cancel_measure();
+    for (const t of this.save_timers.values()) clearTimeout(t);
+    this.save_timers.clear();
+    const sample = this.students;
+    this.saved_session = null;
+    this.store = saved.store;
+    this.students = saved.students;
+    this.current = saved.current;
+    this.rubric = saved.rubric;
+    const page = this.app.current();
+    if (page && page.origin.startsWith('grading:sample:') && saved.page) {
+      await this.app.open_game(saved.page.original, saved.page.origin, saved.page.title);
+    }
+    for (const st of sample) this.app.forget_work('grading:' + st.key);
+    this.render_session();
+  }
+
+  render_session() {
+    for (const id of ['grading-load-status', 'grading-batch-status', 'grading-rubric-status']) this.status(id, '');
+    $('grading-notes').replaceChildren();
+    $('grading-pairs').replaceChildren();
+    this.render_list();
+    this.render_rubric_summary();
+    this.render_student();
   }
 
   // ---- The rubric file -------------------------------------------------------------------------
