@@ -58,6 +58,9 @@
       <span id="timeline-label"></span>
       <label class="inline-check timeline-option"><input type="checkbox" id="mark-changes"> Mark the cells that changed since the time before</label>
     </div>
+    <p id="full-view-box" class="full-view-box" hidden>
+      <label class="inline-check"><input type="checkbox" id="full-view" data-option="full_view"> Show everything on the board, also what the player does not see (faded)</label>
+    </p>
 
     <div class="game-controls">
       <div class="control-group">
@@ -116,6 +119,9 @@
 
     <input id="tab6" type="radio" name="tabs">
     <label for="tab6" name="tabs" title="Internals">Internals</label>
+
+    <input id="tab8" type="radio" name="tabs">
+    <label for="tab8" name="tabs" title="Grading">Grading</label>
 
     <section id="section-control">
       <p>
@@ -183,12 +189,13 @@
         <label class="inline-check"><input type="checkbox" id="option-solutions" data-option="solutions"> Show the example games with solutions</label>
         <label class="inline-check"><input type="checkbox" id="option-editor" data-option="editor"> Show the level editor (in the Debug tab)</label>
         <label class="inline-check"><input type="checkbox" id="option-internals" data-option="internals"> Show the Internals tab (how the game works inside)</label>
+        <label class="inline-check"><input type="checkbox" id="option-grader" data-option="grader"> Grader mode, for teachers: the Grading tab, to test, grade and give feedback on the games of students</label>
         <label class="inline-check">Time limit for each call to clingo:
           <input type="number" id="option-timeout" data-option="timeout" min="1" max="600" step="1"> seconds</label>
       </div>
       <p class="versions-help">These options are kept in this browser. They can also be set
         in a link (then only for that visit):
-        <tt>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;timeout=30</tt>
+        <tt>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;grader=true&amp;timeout=30</tt>
         (and <tt>=false</tt> to turn one off).</p>
     </section>
 
@@ -448,6 +455,167 @@
     </section>
 
     <section id="section-internals" data-include="docs/internals.html"></section>
+
+    <section id="section-grading">
+      <p>
+        The Grading tab is for teachers and teaching assistants: load the games that students
+        handed in, test them, grade them with the rubric, and write feedback to send to the
+        students (as a PDF, a web page or text). Your grading is kept in this browser; export it
+        to keep it safe, or to hand it to another grader.
+        <a href="javascript:void()" class="modal-link" data-open="modal-grading">&#xf05a;</a>
+      </p>
+
+      <details class="versions-more" data-remember="grading-submissions" open>
+        <summary>Submissions <span id="grading-count" class="summary-note"></span></summary>
+        <p>
+          Load the zip file of <i>Download submissions</i> in Canvas (all students at once), the zip
+          file of one student, or game files (.json) and PDF files. Loading more adds students to the list.
+        </p>
+        <form id="grading-form">
+          <label for="grading-input" class="control-button primary-button">Load submissions</label>
+          <input type="file" id="grading-input" multiple accept=".zip,.json,.pdf,application/zip,application/json,application/pdf">
+        </form>
+        <p id="grading-load-status" class="versions-status"></p>
+        <ul id="grading-notes" class="grading-warnings"></ul>
+        <div class="table-wrapper">
+          <table id="grading-students" class="saved-games grading-students" hidden>
+            <thead><tr><th>Student</th><th>Status</th><th>Grade</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="grading-batch" class="grading-actions" hidden>
+          <button data-action="grading_compare" class="control-button" title="Compare the games of all students with each other">Compare all submissions</button>
+          <button data-action="grading_csv" class="control-button">Download the grades (.csv)</button>
+          <button data-action="grading_all_feedback" class="control-button">Download all feedback (.zip)</button>
+          <span class="inline-check-group">as
+            <label class="inline-check"><input type="checkbox" id="grading-format-pdf" checked> PDF</label>
+            <label class="inline-check"><input type="checkbox" id="grading-format-html"> web page</label>
+            <label class="inline-check"><input type="checkbox" id="grading-format-md"> text (Markdown)</label>
+          </span>
+        </div>
+        <p id="grading-batch-status" class="versions-status"></p>
+        <div id="grading-pairs"></div>
+        <p class="grading-actions">
+          <button data-action="grading_export" class="control-button" title="All grading work (not the PDF files of the students), to keep it safe or to give it to another grader">Export the grading (.json)</button>
+          <label for="grading-import" class="control-button">Import grading&hellip;</label>
+          <input type="file" id="grading-import" accept=".json,application/json">
+          <button data-action="grading_forget" class="control-button">Remove all students</button>
+        </p>
+      </details>
+
+      <div id="grading-student" class="grading-student" hidden>
+        <div class="grading-header">
+          <button data-action="grading_prev" class="control-button" id="grading-prev" title="The student before">&#x25C0;</button>
+          <h3 id="grading-name"></h3>
+          <button data-action="grading_next" class="control-button" id="grading-next" title="The next student">&#x25B6;</button>
+          <label class="inline-check">Status:
+            <select id="grading-status">
+              <option value="new">not started</option>
+              <option value="in progress">in progress</option>
+              <option value="done">done</option>
+            </select>
+          </label>
+        </div>
+        <p id="grading-files" class="versions-help"></p>
+        <ul id="grading-warnings" class="grading-warnings"></ul>
+        <p id="grading-game-line" class="versions-help"></p>
+
+        <div class="grading-columns">
+          <div id="grading-pdf-pane" class="grading-pdf-pane">
+            <div class="grading-pdf-bar">
+              <select id="grading-pdf-select" aria-label="The PDF file to show"></select>
+              <button data-action="grading_pdf_tab" class="control-button" id="grading-pdf-tab">Open in a new tab</button>
+              <button data-action="grading_pdf_toggle" class="control-button" id="grading-pdf-toggle">Hide the PDF</button>
+            </div>
+            <iframe id="grading-pdf" class="grading-pdf" title="The PDF file of the student"></iframe>
+            <p id="grading-no-pdf" class="versions-help" hidden>This submission has no PDF file.</p>
+          </div>
+
+          <div class="grading-main">
+            <h4>Test the game</h4>
+            <p class="versions-help">
+              Plays the game on new levels (as <i>Test your strategy</i> does), and measures how long
+              the programs take, what the player does not see, which objects move, whether the
+              memory is used and whether levels are random. It also compares the game with the
+              example games and with the other submissions. The results suggest scores below.
+            </p>
+            <div class="test-controls">
+              Levels:&nbsp;<input type="number" id="grading-levels" min="1" max="500" value="20" aria-label="Number of levels">
+              <button data-action="grading_measure" class="control-button primary-button" id="grading-measure">Test and measure</button>
+              <button data-action="grading_cancel" class="control-button" id="grading-cancel" hidden>Cancel</button>
+              <span id="grading-progress"></span>
+            </div>
+            <div id="grading-results" class="grading-results"></div>
+
+            <h4>Rubric <span id="grading-rubric-title" class="summary-note"></span></h4>
+            <p class="grading-actions">
+              <button data-action="grading_accept" class="control-button" id="grading-accept" title="Take over the suggestions for the items that are not decided yet">Accept the suggestions</button>
+            </p>
+            <div id="grading-rubric" class="grading-rubric"></div>
+            <p class="grading-grade">Grade: <b id="grading-grade"></b>
+              <label class="inline-check">Give another grade: <input type="number" id="grading-override" min="0" max="10" step="0.1" aria-label="Another grade"></label>
+            </p>
+
+            <h4>Feedback</h4>
+            <label for="grading-comment" class="grading-label">Comment for the student</label>
+            <textarea id="grading-comment" rows="6" class="grading-textarea"></textarea>
+            <div class="grading-snippets">
+              <span class="versions-help">Insert a standard comment:</span>
+              <div id="grading-snippet-list"></div>
+              <details class="grading-snippet-edit">
+                <summary>Change the standard comments</summary>
+                <textarea id="grading-snippets" rows="6" class="grading-textarea" aria-label="The standard comments, one per line"></textarea>
+                <p class="versions-help">One comment per line (for all students).</p>
+              </details>
+            </div>
+
+            <h5>Notes on lines of the programs</h5>
+            <ul id="grading-line-notes" class="grading-list"></ul>
+            <div class="grading-note-form">
+              <select id="grading-note-program" aria-label="Program"></select>
+              line <input type="number" id="grading-note-line" min="1" value="1" aria-label="Line">
+              <button data-action="grading_note_cursor" class="control-button" title="The program and line of the cursor in the editor you used last">Use the cursor's line</button>
+              <input type="text" id="grading-note-text" placeholder="Your note on this line" aria-label="Note">
+              <button data-action="grading_add_note" class="control-button">Add note</button>
+            </div>
+
+            <h5>Pictures of the board</h5>
+            <ul id="grading-images" class="grading-list grading-images"></ul>
+            <div class="grading-note-form">
+              <input type="text" id="grading-image-caption" placeholder="Caption (optional; by default: what the board shows)" aria-label="Caption">
+              <button data-action="grading_add_image" class="control-button">Add the board as it is shown now</button>
+            </div>
+
+            <label class="inline-check"><input type="checkbox" id="grading-include-tests"> Add the test results (the levels played, and how long the programs took)</label>
+
+            <p class="grading-actions grading-export">
+              <button data-action="grading_pdf_feedback" class="control-button primary-button">Feedback as PDF</button>
+              <button data-action="grading_html_feedback" class="control-button">as web page</button>
+              <button data-action="grading_md_feedback" class="control-button">as text (Markdown)</button>
+              <button data-action="grading_preview" class="control-button">Preview</button>
+              <button data-action="grading_copy_md" class="control-button" title="To paste into a comment, e.g. in Canvas">Copy as text</button>
+            </p>
+            <p id="grading-export-status" class="versions-status"></p>
+          </div>
+        </div>
+      </div>
+
+      <details class="versions-more" data-remember="grading-rubric">
+        <summary>The rubric <span class="summary-note">(the items, the grades, and the thresholds for the suggestions)</span></summary>
+        <p>
+          By default, the rubric of the logic game assignment of <i>Knowledge Representation and Reasoning</i>.
+          Download it, change it (a JSON file), and load it again for another assignment.
+        </p>
+        <div id="grading-rubric-summary" class="versions-help"></div>
+        <p class="grading-actions">
+          <button data-action="grading_download_rubric" class="control-button">Download the rubric (.json)</button>
+          <label for="grading-rubric-input" class="control-button">Load a rubric&hellip;</label>
+          <input type="file" id="grading-rubric-input" accept=".json,application/json">
+          <button data-action="grading_default_rubric" class="control-button">Use the default rubric</button>
+        </p>
+        <p id="grading-rubric-status" class="versions-status"></p>
+      </details>
+    </section>
     </div>
     </div>
 

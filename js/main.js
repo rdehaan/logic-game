@@ -1,13 +1,15 @@
 // The page: the buttons and the lock of the game rules, playing a game step by
 // step (with what the board shows, and the Debug tab), the options, loading and
 // saving games (saved work, share links, files, game folders and linked
-// folders), and the wiring of the Versions tab and the tutorial.
+// folders), and the wiring of the Versions tab, the tutorial and the Grading tab.
 import clingo from '../vendor/clingo-wasm/index.web.js';
 import { create_solver } from './solver.js';
 import { GAME_FIELDS, SOURCE_NAMES, GameSession, generate_level, normalize_game, test_strategy, replay_rng } from './engine.js';
 import { Editors, make_example_editors, make_output_editor } from './editors.js';
 import { facts_to_answer_set, answer_set_to_fact_lines } from './asp.js';
 import { show_grid, clear_grid, display_win, display_lose, cell_of_atom, board_size, highlight_cells, on_cell_hover } from './grid-visual.js';
+import { full_view } from './grading.js';
+import { GraderTab } from './grader.js';
 import { board_problems, move_hint } from './hints.js';
 import { WorkStore, encode_game, decode_game, game_id, same_game } from './storage.js';
 import { VersionStore, read_file, file_stem } from './versions.js';
@@ -591,6 +593,24 @@ function clear_level() {
   update_interface();
 }
 
+// What the board shows: what the player sees (`view`), and with everything on
+// it (`full`: also what the player does not see, for the grader).
+let preview_views = null;      // (the start of the level, when no game was played)
+let drawn_facts = null;        // the facts of the board as it is drawn now
+
+const board_view = (views) => (views ? (options.grader && options.full_view ? views.full : views.view) : null);
+
+function draw_board(facts, previous = null) {
+  drawn_facts = facts;
+  show_grid(facts, previous);
+}
+
+// Draw the board again (after "Show everything on the board" was switched).
+function redraw_board() {
+  if (snapshots[shown_snapshot]) show_snapshot(shown_snapshot);
+  else if (preview_views && !snapshots.length) draw_board(board_view(preview_views));
+}
+
 // Show the level in its initial state.
 let preview_counter = 0;
 async function update_interface() {
@@ -601,12 +621,15 @@ async function update_interface() {
     const start = await preview.start();
     if (my_preview !== preview_counter || playing) return;   // outdated
     editors.show_run_problems(start.problems);
-    show_grid(preview.view());
+    preview_views = { view: preview.view(), full: full_view(preview.view(), preview.game_state) };
+    draw_board(board_view(preview_views));
     show_board_message([
       ...board_problems(preview.view(), editors.value('level_state')),
       ...start.problems.map((p) => p.program + ': ' + p.text),
     ]);
   } else {
+    preview_views = null;
+    drawn_facts = null;
     show_board_message([]);
     clear_grid();
   }
@@ -680,8 +703,8 @@ function clear_snapshots() {
   update_timeline();
 }
 
-function record_snapshot(time, view) {
-  snapshots.push({ time, view, moves: null });
+function record_snapshot(time, s) {
+  snapshots.push({ time, view: s.view(), full: full_view(s.view(), s.game_state), moves: null });
 }
 
 // Show the board as it was at a step (an index into snapshots).
@@ -689,7 +712,7 @@ function show_snapshot(index) {
   if (index < 0 || index >= snapshots.length) return;
   shown_snapshot = index;
   const snap = snapshots[index];
-  show_grid(snap.view, index > 0 ? snapshots[index - 1].view : null);
+  draw_board(board_view(snap), index > 0 ? board_view(snapshots[index - 1]) : null);
   if (linked_cell != null) highlight_cells([linked_cell]);
   if (index === snapshots.length - 1 && final_verdict) {
     if (final_verdict === 'win') display_win(); else display_lose();
@@ -814,7 +837,7 @@ async function do_play() {
       end_playing();
       return;
     }
-    record_snapshot(0, session.view());
+    record_snapshot(0, session);
   }
   game_paused = false;
   update_controls();
@@ -867,7 +890,7 @@ async function play_loop() {
       show_snapshot(end_snapshot());
       return;
     }
-    record_snapshot(session.time_step, session.view());
+    record_snapshot(session.time_step, session);
     if (single_step) {
       single_step = false;
       game_paused = true;
@@ -1212,6 +1235,7 @@ async function reset_everything() {
     // (no storage: nothing was kept)
   }
   await forget_folder();
+  await grader.forget_all(false);
   window.location.replace(window.location.pathname);
 }
 
@@ -1436,6 +1460,7 @@ function change_tabs() {
   upload_status.innerText = '';
   load_status.innerText = '';
   versions_tab.shown();
+  if ($('tab8').checked) grader.shown();
 }
 
 function select_tab(n) {
@@ -1664,9 +1689,60 @@ async function start_tutorial() {
   }
 }
 
+// ---- Grading (grader mode) --------------------------------------------------------------
+
+// The example games (to compare the games of students with), as listed in the page.
+const EXAMPLES = [...example_games.querySelectorAll('option')].map((o) => ({ name: o.textContent, path: o.value }));
+
+// What the board shows now, in words (the caption of a picture of it).
+function board_caption() {
+  const full = options.grader && options.full_view ? ' (everything shown, also what the player does not see)' : '';
+  const snap = snapshots[shown_snapshot];
+  if (snap) {
+    const last = shown_snapshot === snapshots.length - 1;
+    let what = '';
+    if (snap.moves) what = `: the player moved ${snap.moves.replace(/\.$/, '').replace(/\. /g, ', ')}`;
+    else if (last && final_verdict) what = `: ${final_verdict.toUpperCase()}`;
+    return `Time ${snap.time} of ${snapshots.at(-1).time}${what}` + (level_seed != null ? `, level ${level_seed} of the test` : '') + full;
+  }
+  return (level_seed != null ? `Level ${level_seed} of the test` : 'The start of the level') + full;
+}
+
+const grader = new GraderTab({
+  solver, editors,
+  current: () => current,
+  game: () => editors.game(),
+  examples: () => EXAMPLES,
+  busy: () => playing || testing || generating,
+  stop: stop_game_if_playing,
+  open_game: async (game, origin, title) => {
+    await stop_game_if_playing();
+    forget_link();
+    await open_game(game, origin, title);
+    lock_level_generation();
+  },
+  revert: async () => {
+    if (!current) return;
+    await stop_game_if_playing();
+    clearTimeout(save_timer);
+    save_timer = null;
+    versions_tab.auto_snapshot('revert');
+    work.forget(current.origin);
+    await open_game(current.original, current.origin, current.title);
+    lock_level_generation();
+    grader.render_game_line();
+  },
+  load_seeded_level,
+  go_to: (field, line) => editors.go_to(field, { line, col: 1 }),
+  board_facts: () => drawn_facts,
+  board_caption,
+  download: save,
+});
+
 // ---- Wiring ------------------------------------------------------------------------
 
 const actions = {
+  ...grader.actions(),
   do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
   lock_level_generation, unlock_level_generation, lock_rules, unlock_rules, update_interface: show_edited_level, load_game, download_game,
   share_game, revert_to_original, forget_saved_work, reset_everything, run_test, cancel_test, load_test_level, copy_test_level_link,
@@ -1750,7 +1826,10 @@ window.addEventListener('storage', (e) => {
 
 const params = new URLSearchParams(window.location.search);
 const OPTIONS_KEY = 'logic-game:options';
-const DEFAULT_OPTIONS = { side_by_side: true, only_changes: false, mark_changes: false, solutions: false, editor: false, internals: false, timeout: solver.timeout_ms / 1000 };
+const DEFAULT_OPTIONS = {
+  side_by_side: true, only_changes: false, mark_changes: false, solutions: false, editor: false, internals: false,
+  grader: false, full_view: false, timeout: solver.timeout_ms / 1000,
+};
 
 function stored_options() {
   try {
@@ -1777,6 +1856,7 @@ function set_option(key, value) {
 }
 
 const solutions_group = document.querySelector('#example-games optgroup[label="Solutions"]');
+let board_view_shown = false;      // (whether the board shows everything)
 
 function apply_options() {
   if (document.body.classList.contains('side-by-side') !== Boolean(options.side_by_side)) {
@@ -1791,6 +1871,16 @@ function apply_options() {
   $('tab6').style.display = options.internals ? '' : 'none';
   document.querySelector('label[for="tab6"]').style.display = options.internals ? '' : 'none';
   if (!options.internals && $('tab6').checked) select_tab(1);
+  // Grader mode: the Grading tab, and showing everything on the board
+  document.body.classList.toggle('grader-mode', Boolean(options.grader));
+  $('tab8').style.display = options.grader ? '' : 'none';
+  document.querySelector('label[for="tab8"]').style.display = options.grader ? '' : 'none';
+  if (!options.grader && $('tab8').checked) select_tab(1);
+  $('full-view-box').hidden = !options.grader;
+  if (board_view_shown !== Boolean(options.grader && options.full_view)) {
+    board_view_shown = Boolean(options.grader && options.full_view);
+    redraw_board();
+  }
   if (options.solutions && !solutions_group.isConnected) example_games.append(solutions_group);
   if (!options.solutions && solutions_group.isConnected) solutions_group.remove();
   solver.timeout_ms = Math.max(1, Number(options.timeout) || DEFAULT_OPTIONS.timeout) * 1000;
@@ -1813,7 +1903,7 @@ apply_options();
 
 // Select a particular tab if specified in the URL
 const tab = params.get('tab');
-if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && options.internals)) {
+if (['1', '2', '3', '4', '5', '7'].includes(tab) || (tab === '6' && options.internals) || (tab === '8' && options.grader)) {
   $('tab' + tab).checked = true;
 }
 
@@ -1912,4 +2002,4 @@ window.addEventListener('hashchange', async () => {
 });
 
 // (for debugging in the browser console)
-window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial, game_output: game_output_text };
+window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial, grader, game_output: game_output_text };

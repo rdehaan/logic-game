@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "test:unit": "node --test test/asp.test.mjs test/hints.test.mjs test/storage.test.mjs test/versions.test.mjs test/folder.test.mjs test/engine.test.mjs test/cli.test.mjs",
+    "test:unit": "node --test test/asp.test.mjs test/hints.test.mjs test/storage.test.mjs test/versions.test.mjs test/folder.test.mjs test/engine.test.mjs test/cli.test.mjs test/grading.test.mjs test/feedback.test.mjs",
     "test:browser": "node --test test/browser.test.mjs",
     "vendor": "node tools/vendor.mjs",
     "serve": "node tools/serve.mjs",

@@ -15,6 +15,11 @@ programs too. For players and students:
 - a **command-line version** ([docs/CLI.md](docs/CLI.md)) plays the same games on your own
   computer, with your own editor and git.
 
+For teachers, **grader mode** (an option) adds a *Grading* tab: load the submissions of all
+students at once (Canvas' *Download submissions*), test and measure each game, grade it with a
+rubric (with suggested scores, and the evidence for them), read the student's PDF next to the
+rubric, and write feedback to send as a PDF, a web page or text (see *Grader mode* below).
+
 ## How it works
 
 The site is static: plain HTML, CSS and JavaScript (ES modules), with no build step.
@@ -47,6 +52,13 @@ shows how long clingo took for each program in each step.
 | `js/text-board.js` | The board as text, for the command-line version (no DOM) |
 | `bin/logic-game.mjs` | The command-line version (see [docs/CLI.md](docs/CLI.md)) |
 | `cli/game-files.mjs` | Reading and writing games on disk for the command-line version: folders, .zip, game and project files, examples |
+| `js/grader.js` | The Grading tab (grader mode) |
+| `js/grading.js` | Grading: the rubric and the grade, measuring a game, comments, similarity, suggested scores, grading sessions (no DOM) |
+| `js/submissions.js` | Reading the submissions of students: Canvas' zip file of all submissions, zip files, game files and PDFs (no DOM) |
+| `js/feedback.js` | The feedback for a student, as Markdown, a web page and a PDF (no DOM) |
+| `js/pdf.js` | A small PDF writer: text in the standard fonts, tables, code, JPEG images (no DOM) |
+| `js/board-image.js` | Pictures of the board (a canvas), for the feedback |
+| `js/grading-store.js` | Where the grading is kept in the browser (IndexedDB) |
 | `js/tutorial.js` | The tutorial for new players (a guided first game), and the list of the first games |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
@@ -99,12 +111,13 @@ In the Control tab (kept in the browser), and in the URL for one visit (`=false`
 stay in view on the left while the tabs scroll on the right; on by default), `?mark_changes=true` (mark the cells on the board that changed in the last step; off by default,
 also under the slider below the board), `?solutions=true` (the example games with solutions),
 `?editor=true` (the level editor in the Debug tab), `?internals=true` (the Internals tab),
-`?timeout=30` (the time limit for each call to clingo, in seconds).
+`?grader=true` (grader mode: the Grading tab, and *Show everything on the board* under the board,
+`?full_view=true`), `?timeout=30` (the time limit for each call to clingo, in seconds).
 
 Other URL options: `?file=flag3` (load an example), `?tutorial=true` (start the tutorial), and
 `?tab=N` (open a tab). The tabs are numbered by their place in `index.html`, not by the order in
 which they are shown: 1 Control, 2 Instructions, 3 Game rules, 4 Strategy, 5 Debug, 7 Versions,
-and 6 Internals (only with `internals=true`).
+6 Internals (only with `internals=true`) and 8 Grading (only with `grader=true`).
 
 ## Feedback for players
 
@@ -130,6 +143,51 @@ drawing them, and lists the levels that were not won. Level *n* is generated and
 random numbers from seed *n*, so each of them can be played again exactly (*Load this level*),
 or shared as a link (`#game=...&seed=n`). Under the list, any level of the last test (also one
 that was won) can be loaded or linked to by its number.
+
+## Grader mode (for teachers)
+
+Grader mode is an option in the Control tab (anyone can turn it on; `?grader=true` in a link).
+It adds the *Grading* tab, and a switch under the board, *Show everything on the board*: the
+objects that the player does not see are drawn faded (`full_view` in `js/grading.js`: the
+objects of the game state that are not observed become `decorate(item,R,C,O)`).
+
+- **Loading.** The zip file of Canvas' *Download submissions* is loaded as it is: Canvas names
+  every file `<name>_<user id>_<submission id>_<file>` (`_LATE_` after the name when it was late),
+  so the files are grouped per student; zip files in it (also in a folder) are unpacked, and the
+  first game or project file (or game folder) and all PDF files of a student are used. A zip file
+  of one student, and game files and PDFs on their own, work too (`js/submissions.js`).
+- **Grading a student.** *Grade* loads the student's game into the page (saved under the origin
+  `grading:<key>`, so the grader's changes never change what was handed in, and *Back to what was
+  handed in* undoes them); the student's PDF is shown next to the rubric (above it, when the tab is
+  narrower than 960 pixels).
+- **Test and measure** (`measure_game`) plays levels 1 to *n* as *Test your strategy* does (so a
+  level can be loaded onto the board to watch it), and keeps how long level generation and each
+  program in each step took, how each game ended, which objects the player did not see (the game
+  state compared with what was observed), which objects moved, whether the memory was used, and
+  how many different levels were generated (the first ones are shown small). The game is also
+  compared with the example games and the other submissions: the programs as tokens, without
+  comments and spaces, with every variable written as `V`, and the Jaccard index of runs of five
+  tokens (a hint for the grader, not proof of copying). *Compare all submissions* lists the most
+  similar pairs.
+- **The rubric** is a JSON file (`"format": "logic-game-rubric"`): required items (all of them give
+  a grade, by default a 6), extra items with points (up to a maximum, 9; all of them give 10),
+  thresholds for the suggestions (`checks`), and standard comments. The default is the rubric of the
+  logic game assignment (`DEFAULT_RUBRIC`); download it, change it and load it for another assignment.
+  Each item has a `check` (`timing`, `novelty`, `comments`, `visual`, `hidden`, `npc`, `random`,
+  `new_levels`, `memory`) that suggests a score with its evidence (`suggest` in `js/grading.js`).
+  Suggestions never decide by themselves: *Accept the suggestions* fills in only the items that are
+  not decided yet. A required item that is not met leaves the grade to the grader (*Give another grade*).
+- **Feedback**: a comment (with standard comments to insert), notes on lines of the programs
+  (*Use the cursor's line*: the line of the cursor in the editor used last), pictures of the board
+  as it is shown (kept as facts, drawn when the feedback is made), the notes of the items, and the
+  test results if the grader adds them. Per student as a PDF (`js/pdf.js`: no library is needed,
+  the PDF uses the standard fonts), a web page (one file, with the pictures in it) or Markdown; for
+  all students as a zip file, with the grades as CSV (`grades.csv`, also on its own).
+- **Keeping the work.** Everything is kept in the browser (IndexedDB, `js/grading-store.js`;
+  *Reset everything* forgets it too). *Export the grading* gives a JSON file (`"format":
+  "logic-game-grading"`) with the rubric and all students, without their PDF files; *Import
+  grading* merges one: students that are not there yet are added, and of a student in both, the
+  version that was changed last is kept (to share the work between graders).
 
 ## Saving, versions and sharing
 
@@ -255,6 +313,10 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   and that every command and option is in its help and in docs/CLI.md;
 - `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
   test results, a full storage, and project and backup files;
+- `grading.test.mjs`: the rubric and the grade, comments, similarity, the full board, measuring
+  games and the suggested scores (with clingo), grading sessions (export, import, merge, CSV), and
+  reading submissions (Canvas' zip file, zip files of one student, game folders, bytes in zip files);
+- `feedback.test.mjs`: the feedback as Markdown, a web page and a PDF, and the PDF writer;
 - `engine.test.mjs`: the solver and the game engine, with clingo; every program of every
   example is free of syntax errors, every example solution wins (on fixed random levels), the
   history is only kept when it is needed, and tests of a strategy can be repeated exactly;
@@ -264,7 +326,9 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   Control tab and the URL), loading files, saved work, share links, snapshots, comparing and
   restoring versions, project and backup files, game folders (download, load, link), testing a
   strategy, the tutorial, help in the editors, boards of all sizes, the page on a phone, offline
-  use, and that nothing is loaded from other sites (fonts included).
+  use, grader mode (the whole board; loading Canvas' download, testing, grading, feedback in
+  every format, keeping the grading, exporting and importing it), and that nothing is loaded from
+  other sites (fonts included).
 
 The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`).
 On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the

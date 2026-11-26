@@ -167,6 +167,10 @@ label[for='tab7']:before {
   content: '\f126';
 }
 
+label[for='tab8']:before {
+  content: '\f19d';
+}
+
 label:hover {
   color: #888;
   cursor: pointer;
@@ -185,7 +189,8 @@ input[name="tabs"]:checked + label {
 #tab4:checked ~ #section-player-strategy,
 #tab5:checked ~ #section-debug,
 #tab6:checked ~ #section-internals,
-#tab7:checked ~ #section-versions {
+#tab7:checked ~ #section-versions,
+#tab8:checked ~ #section-grading {
   display: block;
 }
 
@@ -1417,4 +1422,380 @@ kbd {
   height: 10px;
   margin-bottom: 8px;
   accent-color: #E69500;
+}
+
+/* ---- Grader mode: the Grading tab ---------------------------------------------------- */
+
+/* (one more tab: the tabs are a bit narrower, to stay on one row) */
+body.grader-mode label[name="tabs"] {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@container (max-width: 1000px) {
+  body.grader-mode label[name="tabs"] {
+    padding: 14px 7px;
+    font-size: 13px;
+  }
+
+  body.grader-mode label[name="tabs"]:before {
+    margin-right: 5px;
+  }
+}
+
+@container (max-width: 760px) {
+  body.grader-mode label[name="tabs"] {
+    font-size: 0;
+    padding: 12px 12px;
+  }
+
+  body.grader-mode label[name="tabs"]:before {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
+@media screen and (min-width: 651px) and (max-width: 900px) {
+  body.grader-mode label[name="tabs"] {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+}
+
+@media screen and (max-width: 650px) {
+  body.grader-mode label[name="tabs"] {
+    padding: 12px 10px;
+  }
+}
+
+.full-view-box {
+  margin: 0 0 0.6em;
+  text-align: center;
+}
+
+#grading-input,
+#grading-import,
+#grading-rubric-input {
+  display: none;
+}
+
+.grading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 0.6em 0;
+}
+
+.inline-check-group .inline-check {
+  padding: 0 4px;
+}
+
+.grading-warnings {
+  color: #a15c00;
+  margin: 0.3em 0;
+}
+
+.grading-students tr.current td {
+  background: #fff6e0;
+}
+
+.grading-students td:nth-child(3) {
+  font-weight: 600;
+}
+
+.grading-status-done {
+  color: #2e7d32;
+}
+
+.grading-status-in-progress {
+  color: #a15c00;
+}
+
+.grading-late {
+  color: #c62828;
+  font-size: 0.85em;
+}
+
+.grading-student {
+  border-top: 2px solid orange;
+  margin-top: 1em;
+  padding-top: 0.5em;
+}
+
+.grading-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.grading-header h3 {
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+/* The student's PDF next to the rubric (when there is room), else above it */
+.grading-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@container (min-width: 960px) {
+  .grading-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .grading-pdf-pane:not(.collapsed) {
+    position: sticky;
+    top: 0;
+  }
+
+  .grading-pdf {
+    height: 90vh;
+  }
+
+  .grading-columns:has(.grading-pdf-pane.collapsed) {
+    grid-template-columns: 1fr;
+  }
+}
+
+#section-grading {
+  container-type: inline-size;
+}
+
+.grading-pdf-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.grading-pdf {
+  width: 100%;
+  height: 65vh;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+}
+
+.grading-pdf-pane.collapsed .grading-pdf {
+  display: none;
+}
+
+.grading-main {
+  min-width: 0;
+}
+
+.grading-results p {
+  margin: 0.4em 0;
+}
+
+.grading-timing,
+.grading-similar {
+  margin: 0.5em 0;
+}
+
+.grading-similar td,
+.grading-similar th,
+.grading-timing td,
+.grading-timing th {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.grading-similar td:first-child,
+.grading-similar th:first-child,
+.grading-timing td:first-child,
+.grading-timing th:first-child {
+  text-align: left;
+  white-space: normal;
+}
+
+td.grading-slow {
+  color: #c62828;
+  font-weight: 600;
+}
+
+.grading-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.grading-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+}
+
+.grading-level {
+  min-width: 128px;
+  min-height: 100px;
+  justify-content: flex-end;
+}
+
+.grading-level:hover {
+  border-color: orange;
+}
+
+.grading-level canvas,
+.grading-images canvas {
+  width: 120px;
+  height: auto;
+}
+
+.grading-section {
+  font-weight: 600;
+  margin: 1em 0 0.3em;
+}
+
+.grading-item {
+  border-left: 3px solid #ddd;
+  padding: 4px 0 6px 10px;
+  margin: 6px 0;
+}
+
+.grading-item.decided {
+  border-left-color: #2e7d32;
+}
+
+.grading-item.from-suggestion {
+  border-left-color: #6aa6d8;
+}
+
+.grading-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.grading-item-label {
+  flex: 1 1 240px;
+}
+
+.grading-points {
+  width: 4.5em;
+}
+
+.grading-points-label[hidden] {
+  display: none;
+}
+
+.grading-points-label {
+  padding: 0;
+}
+
+.grading-suggestion {
+  margin: 3px 0;
+  font-size: 0.9em;
+  color: #355f86;
+}
+
+.grading-item-note {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 3px;
+  font-size: 0.9em;
+}
+
+.grading-grade {
+  font-size: 1.1em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.grading-grade .error {
+  color: #c62828;
+}
+
+#grading-override {
+  width: 5em;
+}
+
+.grading-label {
+  padding: 0;
+  font-weight: 600;
+}
+
+.grading-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.grading-snippets {
+  margin: 0.4em 0 1em;
+}
+
+#grading-snippet-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.control-button.grading-snippet {
+  font-size: 0.85em;
+  text-align: left;
+  white-space: normal;
+}
+
+.grading-list {
+  padding-left: 1.2em;
+}
+
+.grading-list li {
+  margin: 4px 0;
+}
+
+.grading-quote {
+  display: block;
+  white-space: pre-wrap;
+  background: #f4f4f4;
+  padding: 2px 6px;
+  margin: 2px 0;
+}
+
+.grading-images li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.grading-images input {
+  flex: 1 1 200px;
+}
+
+.grading-note-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 0.4em 0 1em;
+}
+
+#grading-note-line {
+  width: 4.5em;
+}
+
+#grading-note-text,
+#grading-image-caption {
+  flex: 1 1 220px;
+}
+
+.grading-export {
+  margin-top: 1.2em;
 }

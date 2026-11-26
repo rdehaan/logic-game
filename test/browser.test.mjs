@@ -10,6 +10,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { createServer } from '../tools/serve.mjs';
 import { ROOT } from './helpers.mjs';
+import { make_zip } from '../js/folder.js';
 
 let chromium = null;
 let devices = {};
@@ -57,7 +58,8 @@ async function open(t, query = '') {
   page.external = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
   // The page does not need anything from other sites
-  await page.route((url) => !url.href.startsWith(base) && !url.href.startsWith('blob:'), (route) => {
+  // (the browser's own files, e.g. of its PDF viewer, are not from other sites)
+  await page.route((url) => !url.href.startsWith(base) && !/^(blob|chrome|chrome-extension):/.test(url.href), (route) => {
     page.external.push(route.request().url());
     route.abort();
   });
@@ -1679,4 +1681,197 @@ test('taking a level program from another version removes a level that does not 
   await page.waitForFunction(() => window.logic_game.editors.value('level_state') === '');
   assert.match(await page.textContent('#board-status'), /^The level was removed: it was made with another version/);
   assert.equal(await page.evaluate(() => window.logic_game.editors.get('level_gen_program').getReadOnly()), true);
+});
+
+// ---- Grader mode ---------------------------------------------------------------------------
+
+const example = (name) => fs.readFileSync(path.join(ROOT, 'examples', name + '.json'), 'utf8');
+const TINY_PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj ' +
+  '3 0 obj<</Type/Page/MediaBox[0 0 200 200]/Parent 2 0 R>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
+
+// What Canvas' "Download submissions" gives: one zip file with the files of all students.
+function canvas_zip() {
+  return Buffer.from(make_zip({
+    'janssenalice_1001_5001_hw3.zip': make_zip({ 'hw3/game.json': example('flag9-with-solutions'), 'hw3/report.pdf': new Uint8Array(TINY_PDF) }),
+    'debruijnbob_LATE_1002_5002_game.json': example('flag5-with-solutions'),
+    'debruijnbob_LATE_1002_5003_report.pdf': new Uint8Array(TINY_PDF),
+    'smitcarol_1003_5004_game.json': example('flag9-with-solutions'),
+  }));
+}
+
+async function load_submissions(page) {
+  await page.setInputFiles('#grading-input', { name: 'submissions.zip', mimeType: 'application/zip', buffer: canvas_zip() });
+  await page.waitForFunction(() => /^Loaded 3 submissions/.test(document.getElementById('grading-load-status').textContent));
+}
+
+const student_rows = (page) => page.$$eval('#grading-students tbody tr', (rows) => rows.map((r) => [...r.cells].slice(0, 3).map((c) => c.textContent.trim())));
+
+test('grader mode: an option (also in the link), with the Grading tab and the whole board', async (t) => {
+  const page = await open(t, '?file=flag5-with-solutions');
+  if (!page) return;
+  assert.equal(await page.isVisible('label[for=tab8]'), false);
+  assert.equal(await page.isVisible('#full-view-box'), false);
+  await page.check('#option-grader');
+  assert.equal(await page.isVisible('label[for=tab8]'), true);
+  assert.equal(await page.isVisible('#full-view'), true);
+  // The flag is not visible to the player at the start: with everything shown, it is (faded)
+  assert.equal(await page.locator('#visual .grid-visual-hidden').count(), 0);
+  await page.check('#full-view');
+  await page.waitForFunction(() => document.querySelectorAll('#visual .grid-visual-hidden').length > 0);
+  assert.match(await page.locator('#visual .grid-visual-hidden').first().evaluate((e) => e.parentElement.getAttribute('aria-label')), /flag/);
+  // ... also while stepping through a game
+  await page.click('#step-button');
+  await page.waitForFunction(() => document.getElementById('timeline-label').textContent.startsWith('Time 1'));
+  assert.ok(await page.locator('#visual .grid-visual-hidden').count() > 0);
+  await page.uncheck('#full-view');
+  await page.waitForFunction(() => document.querySelectorAll('#visual .grid-visual-hidden').length === 0);
+  // Turning grader mode off hides the tab (and the whole board)
+  await page.click('label[for=tab8]');
+  await page.click('label[for=tab1]');
+  await page.uncheck('#option-grader');
+  assert.equal(await page.isVisible('label[for=tab8]'), false);
+  // In a link
+  const other = await open(t, '?grader=true&tab=8');
+  assert.equal(await other.isChecked('#tab8'), true);
+  assert.equal(await other.isVisible('#section-grading'), true);
+  assert.deepEqual(page.errors, []);
+  assert.deepEqual(other.errors, []);
+});
+
+test("grading: load Canvas' download, test a game, grade it, and give feedback", async (t) => {
+  const page = await open(t, '?grader=true&tab=8');
+  if (!page) return;
+  await load_submissions(page);
+  assert.deepEqual(await student_rows(page), [['debruijnbob late', 'not started', ''], ['janssenalice', 'not started', ''], ['smitcarol', 'not started', '']]);
+  // Grade Alice: her game is loaded into the page, her PDF is shown
+  await page.click('#grading-students button[data-key="canvas:1001"]');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'janssenalice');
+  assert.equal(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), JSON.parse(example('flag9-with-solutions')).player_move_program);
+  assert.match(await page.textContent('#grading-name'), /janssenalice \(1001\)/);
+  assert.match(await page.textContent('#grading-game-line'), /is the game of this student \(game\.json\)/);
+  await page.waitForFunction(() => /^blob:/.test(document.getElementById('grading-pdf').src));
+  // Test and measure: suggestions with their evidence
+  await page.fill('#grading-levels', '2');
+  await page.click('#grading-measure');
+  await page.waitForFunction(() => /^Done/.test(document.getElementById('grading-progress').textContent), null, { timeout: 120000 });
+  assert.match(await page.textContent('#grading-results'), /New levels: 2 played: 2 won\./);
+  assert.match(await page.textContent('#grading-results'), /attacker \(NPC\)/);
+  // (Carol handed in the same game: she is the most similar)
+  assert.match(await page.textContent('#grading-results'), /smitcarol \(a submission\)100%/);
+  await page.waitForFunction(() => document.querySelectorAll('#grading-results .grading-level canvas').length === 2);
+  assert.match(await page.textContent('[data-item=npc] .grading-suggestion'), /Suggested: yes\. objects that moved: attacker/);
+  assert.match(await page.textContent('[data-item=novel] .grading-suggestion'), /Suggested: not met\./);
+  await page.locator('#grading-accept').scrollIntoViewIfNeeded();
+  await page.click('#grading-accept');
+  assert.equal(await page.inputValue('[data-item=npc] select'), 'yes');
+  assert.equal(await page.inputValue('[data-item=visual] select'), '');
+  assert.match(await page.textContent('#grading-grade'), /not all requirements are met/);
+  // The grader decides otherwise
+  await page.selectOption('[data-item=novel] select', 'yes');
+  await page.selectOption('[data-item=documented] select', 'yes');
+  await page.selectOption('[data-item=visual] select', 'yes');
+  await page.fill('[data-item=visual] .grading-points', '0.25');
+  await page.fill('[data-item=visual] .grading-item-note', 'Nice icons.');
+  assert.equal(await page.textContent('#grading-grade'), '9');
+  // A failed level can be loaded onto the board from the list of different levels
+  await page.click('#grading-results .grading-level >> nth=1');
+  await page.waitForFunction(() => /level 2 of the test/.test(document.getElementById('board-message').textContent));
+  // Feedback: a standard comment, a note on a line (where the cursor is), a picture of the board
+  await page.click('#grading-snippet-list button >> nth=0');
+  assert.match(await page.inputValue('#grading-comment'), /^Well done/);
+  await page.click('label[for=tab3]');
+  await page.click('#nature_program .ace_content');
+  await page.evaluate(() => window.logic_game.editors.get('nature_program').gotoLine(3, 0));
+  await page.click('label[for=tab8]');
+  await page.click('button[data-action=grading_note_cursor]');
+  assert.equal(await page.inputValue('#grading-note-program'), 'nature_program');
+  assert.equal(await page.inputValue('#grading-note-line'), '3');
+  await page.fill('#grading-note-text', 'Why this rule?');
+  await page.click('button[data-action=grading_add_note]');
+  assert.match(await page.textContent('#grading-line-notes'), /Nature's moves, line 3: Why this rule\?/);
+  await page.click('button[data-action=grading_add_image]');
+  assert.equal(await page.inputValue('#grading-images input'), 'Level 2 of the test');
+  await page.waitForSelector('#grading-images canvas');
+  // The feedback as text, as a web page and as a PDF
+  const download = async (action) => {
+    const [d] = await Promise.all([page.waitForEvent('download'), page.click(`button[data-action=${action}]`)]);
+    return { name: d.suggestedFilename(), data: fs.readFileSync(await d.path()) };
+  };
+  const md = await download('grading_md_feedback');
+  assert.equal(md.name, 'feedback-janssenalice-1001.md');
+  assert.match(md.data.toString(), /\*\*Grade:\*\* 9/);
+  assert.match(md.data.toString(), /The game is visually pleasing \(0\.5\): \*\*\+0\.25\*\* \u2014 Nice icons\./);
+  assert.match(md.data.toString(), /\*\*Nature's moves, line 3:\*\* Why this rule\?/);
+  assert.doesNotMatch(md.data.toString(), /Test results/);
+  await page.check('#grading-include-tests');
+  const html = await download('grading_html_feedback');
+  assert.match(html.data.toString(), /<img src="data:image\/png;base64,/);
+  assert.match(html.data.toString(), /Played 2 new levels/);
+  const pdf = await download('grading_pdf_feedback');
+  assert.equal(pdf.name, 'feedback-janssenalice-1001.pdf');
+  assert.equal(pdf.data.subarray(0, 8).toString(), '%PDF-1.4');
+  assert.match(pdf.data.toString('latin1'), /\/Filter \/DCTDecode/);
+  // Done, and on to the next student (Bob: handed in late, his game is loaded)
+  await page.selectOption('#grading-status', 'done');
+  assert.deepEqual((await student_rows(page))[1], ['janssenalice', 'done', '9']);
+  await page.click('#grading-next');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'smitcarol');
+  // All grades, and all feedback at once
+  const csv = await download('grading_csv');
+  const lines = csv.data.toString().trim().split('\r\n');
+  assert.equal(lines.length, 4);
+  assert.match(lines[2], /^janssenalice,1001,,done,9,yes,yes,yes,0\.25,0,1,0\.5,0\.5,1,/);
+  const all = await download('grading_all_feedback');
+  assert.equal(all.name, 'feedback.zip');
+  const names = await page.evaluate(async (bytes) => {
+    const { read_zip } = await import('./js/folder.js');
+    return Object.keys(await read_zip(new Uint8Array(bytes), { binary: true })).sort();
+  }, [...all.data]);
+  assert.deepEqual(names, ['feedback/feedback-debruijnbob-1002.pdf', 'feedback/feedback-janssenalice-1001.pdf', 'feedback/feedback-smitcarol-1003.pdf', 'feedback/grades.csv']);
+  // The grading is kept in this browser
+  await page.evaluate(() => window.logic_game.grader.flush());
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.evaluate(() => window.logic_game.grader.ready);
+  assert.deepEqual((await student_rows(page))[1], ['janssenalice', 'done', '9']);
+  assert.match(await page.textContent('#grading-name'), /smitcarol/);
+  await page.click('#grading-prev');
+  assert.match(await page.inputValue('#grading-comment'), /^Well done/);
+  await page.waitForFunction(() => /^blob:/.test(document.getElementById('grading-pdf').src));
+  assert.deepEqual(page.errors, []);
+  assert.deepEqual(page.external, []);
+});
+
+test('grading: export, import into another browser, compare all submissions, remove all', async (t) => {
+  const page = await open(t, '?grader=true&tab=8');
+  if (!page) return;
+  page.on('dialog', (dialog) => dialog.accept());
+  await load_submissions(page);
+  await page.click('#grading-students button[data-key="canvas:1002"]');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'debruijnbob');
+  await page.fill('#grading-comment', 'From the first grader.');
+  await page.selectOption('[data-item=timing] select', 'yes');
+  // Similar pairs: Alice and Carol handed in the same game
+  await page.click('button[data-action=grading_compare]');
+  assert.match(await page.textContent('#grading-pairs'), /janssenalice \u2013 smitcarol100%/);
+  const [d] = await Promise.all([page.waitForEvent('download'), page.click('button[data-action=grading_export]')]);
+  const file = fs.readFileSync(await d.path());
+  assert.match(d.suggestedFilename(), /^grading-\d{4}-\d\d-\d\d\.json$/);
+  assert.equal(JSON.parse(file).students.length, 3);
+  // Another grader imports it
+  const other = await open(t, '?grader=true&tab=8');
+  await other.setInputFiles('#grading-import', { name: 'grading.json', mimeType: 'application/json', buffer: file });
+  await other.waitForFunction(() => /3 students added, 0 updated/.test(document.getElementById('grading-batch-status').textContent));
+  // (the grade so far, in brackets: not all items are decided)
+  assert.deepEqual((await student_rows(other))[0], ['debruijnbob late', 'in progress', '(6)']);
+  await other.click('#grading-students button[data-key="canvas:1002"]');
+  assert.equal(await other.inputValue('#grading-comment'), 'From the first grader.');
+  assert.equal(await other.isVisible('#grading-no-pdf'), true);      // (the PDF files are not in the grading file)
+  // Remove all
+  await page.click('button[data-action=grading_forget]');
+  await page.waitForFunction(() => /All students were removed/.test(document.getElementById('grading-batch-status').textContent));
+  assert.equal(await page.isVisible('#grading-students'), false);
+  assert.equal(await page.isVisible('#grading-student'), false);
+  assert.deepEqual(page.errors, []);
+  assert.deepEqual(other.errors, []);
 });
