@@ -105,7 +105,7 @@ test('a small game is won', async () => {
   const result = await play_headless(solver, WALK);
   assert.equal(result.verdict, 'win');
   assert.equal(result.steps, 3);
-  assert.match(result.log.at(-1), /^WIN! \(win\)/);
+  assert.match(result.log.at(-1), /^WIN!\n/);
 });
 
 test('winning conditions are checked before the first move', async () => {

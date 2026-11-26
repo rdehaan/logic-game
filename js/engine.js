@@ -438,9 +438,11 @@ export class GameSession {
     report += problem_line('Winning conditions', condition.problem, 'game continues');
     if (condition.verdict === 'win' || condition.verdict === 'lose') {
       this.verdict = condition.verdict;
+      // (with the reason, unless it says no more than the verdict: "WIN!", not "WIN! (win)")
+      const reason = condition.atoms.filter((atom) => atom !== condition.verdict);
       return {
         report, verdict: this.verdict, problems,
-        message: condition.verdict.toUpperCase() + '! (' + condition.atoms.join(', ') + ')\n',
+        message: condition.verdict.toUpperCase() + '!' + (reason.length ? ' (' + condition.atoms.join(', ') + ')' : '') + '\n',
       };
     }
 

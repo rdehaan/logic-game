@@ -72,10 +72,10 @@ test('cli: a new game folder, checked, played and tested', async (t) => {
   assert.equal(play.code, 0, play.stdout + play.stderr);
   assert.match(play.stdout, /^The level of the game file\.\n\nTime 0\n {2}1 2 3 4 5 6 7 8\n1 /);
   assert.match(play.stdout, /Time 1: the player did do\(move\(\w+\)\)/);
-  assert.match(play.stdout, /\nWIN! \(win\) \(at time \d+\)\n$/);
+  assert.match(play.stdout, /\nWIN! \(at time \d+\)\n$/);
   // A level of the test: the same as in the browser (and in test)
   const seeded = await run('play', dir, '--seed', '2', '--quiet');
-  assert.match(seeded.stdout, /^WIN! \(win\) \(at time \d+\)\n$/);
+  assert.match(seeded.stdout, /^WIN! \(at time \d+\)\n$/);
   const tested = await run('test', dir, '--levels', '3', '--json');
   assert.equal(tested.code, 0);
   const results = JSON.parse(tested.stdout);
