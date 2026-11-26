@@ -1,0 +1,12 @@
+# Dependabot proposes updates (as pull requests, which the tests then check):
+# of the actions in the workflows (pinned to commits) and of the npm packages.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
