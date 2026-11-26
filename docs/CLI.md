@@ -207,6 +207,15 @@ Pictures of the board are only drawn by the web page: the feedback written here 
 
 Short forms: `-v` for `--verbose`, `-q` for `--quiet`.
 
+### Permissions
+
+The commands run under Node's permission model: they can read files, but they only write what
+the command writes (the folder of `new` and `feedback`, the result of `convert`, the files of
+`grade`), and they cannot start other programs. The games of students are programs written by
+others: this is a second safeguard, next to refusing programs with scripts. To run a command
+without it (for example to find out whether a problem comes from it), set the environment
+variable `LOGIC_GAME_NO_PERMISSIONS=1`.
+
 ### Exit codes
 
 `0` when all went well (`play`: the game was won; `test`: every level was won; `check`: no

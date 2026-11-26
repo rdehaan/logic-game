@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { ROOT } from './helpers.mjs';
 import { text_board } from '../js/text-board.js';
+import { permission_flags } from '../cli/permissions.mjs';
 import { make_zip } from '../js/folder.js';
 import { read_session, merge_students, new_student } from '../js/grading.js';
 
@@ -245,4 +246,43 @@ test('importing a grading file adds the test results of students that were not t
   assert.equal(merged.students[0].comment, 'mine');
   assert.deepEqual(merged.students[0].measurements, { levels: [] });
   assert.deepEqual(merged.students[0].suggestions, { a: { value: 'yes' } });
+});
+
+test('cli: runs under the permission model: it only writes what the command writes, and starts no programs', async (t) => {
+  const flags = permission_flags([]);
+  if (!flags) return;       // (a Node version without the permission model)
+  const tmp = tmpdir(t);
+  const allowed = path.join(tmp, 'out');
+  const probe = `
+    const fs = require('node:fs');
+    const { Worker } = require('node:worker_threads');
+    const tries = {
+      write_in: () => { fs.mkdirSync(${JSON.stringify(path.join(allowed, 'a'))}, { recursive: true }); fs.writeFileSync(${JSON.stringify(path.join(allowed, 'a', 'x.txt'))}, 'x'); },
+      write_next_to: () => fs.writeFileSync(${JSON.stringify(path.join(tmp, 'outside.txt'))}, 'x'),
+      read: () => fs.readFileSync(${JSON.stringify(path.join(ROOT, 'package.json'))}),
+      program: () => require('node:child_process').execFileSync(process.execPath, ['-e', '1']),
+      worker: () => new Worker('1', { eval: true }).terminate(),
+    };
+    const result = {};
+    for (const [name, f] of Object.entries(tries)) {
+      try { f(); result[name] = 'yes'; } catch (e) { result[name] = e.code; }
+    }
+    console.log(JSON.stringify(result));`;
+  const result = await new Promise((resolve, reject) => {
+    execFile(process.execPath, [...permission_flags([allowed]), '-e', probe], (error, stdout, stderr) => (error ? reject(error) : resolve({ stdout, stderr })));
+  });
+  assert.deepEqual(JSON.parse(result.stdout), { write_in: 'yes', write_next_to: 'ERR_ACCESS_DENIED', read: 'yes', program: 'ERR_ACCESS_DENIED', worker: 'yes' });
+  assert.equal(result.stderr, '');      // (no warnings)
+  assert.ok(fs.existsSync(path.join(allowed, 'a', 'x.txt')));
+  assert.ok(!fs.existsSync(path.join(tmp, 'outside.txt')));
+});
+
+test('cli: output into a program that stops reading (e.g. head) ends quietly', async () => {
+  const child = spawn(process.execPath, [BIN, 'examples'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stdout.destroy();
+  let stderr = '';
+  child.stderr.on('data', (d) => { stderr += d; });
+  const code = await new Promise((resolve) => child.on('close', resolve));
+  assert.equal(stderr, '');
+  assert.equal(code, 0);
 });

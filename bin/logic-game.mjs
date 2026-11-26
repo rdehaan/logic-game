@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
+import { fileURLToPath } from 'node:url';
 import clingo from 'clingo-wasm';
 import { create_solver } from '../js/solver.js';
 import { GAME_FIELDS, SOURCE_NAMES, GameSession, replay_rng, test_strategy, normalize_game } from '../js/engine.js';
@@ -16,6 +17,7 @@ import { game_hints } from '../js/hints.js';
 import { encode_game } from '../js/storage.js';
 import { text_board } from '../js/text-board.js';
 import { load_game, save_game, kind_of, example_names, submission_files, EXAMPLES } from '../cli/game-files.mjs';
+import { run_with_permissions } from '../cli/permissions.mjs';
 import {
   DEFAULT_RUBRIC, read_rubric, rubric_items, measure_game, most_similar, fingerprint, suggest_all, apply_suggestions,
   compute_grade, format_number, win_counts, npcs, session_file, read_session, grades_csv, STEP_PROGRAM_NAMES,
@@ -112,6 +114,10 @@ function int_option(values, name, fallback, min = 0) {
 
 function out(line = '') {
   process.stdout.write(line + '\n');
+}
+
+function err(text) {
+  process.stderr.write(text);
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -334,12 +340,15 @@ function measurements_csv(rubric, students) {
   return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
+// The grading file that grade writes.
+const grading_file = (values) => values.out || `grading-${new Date().toISOString().slice(0, 10)}.json`;
+
 async function cmd_grade(paths, values) {
   if (!paths.length) throw new UsageError('grade: which submissions? e.g. logic-game grade submissions.zip');
   const rubric = load_rubric(values);
   const levels = int_option(values, 'levels', rubric.checks.test_levels, 1);
   const max_time = int_option(values, 'max-steps', 500, 1);
-  const out_file = values.out || `grading-${new Date().toISOString().slice(0, 10)}.json`;
+  const out_file = grading_file(values);
   if (!/\.json$/i.test(out_file)) throw new UsageError('--out: the grading file is a .json file');
   if (fs.existsSync(out_file)) throw new UsageError(`${out_file} already exists: remove it, or give another name with --out`);
   if (values.csv && fs.existsSync(values.csv)) throw new UsageError(`${values.csv} already exists: remove it, or give another name with --csv`);
@@ -469,8 +478,56 @@ async function main(argv) {
   }
 }
 
+// ---- Permissions ---------------------------------------------------------------------------
+//
+// The command runs under Node's permission model (see cli/permissions.mjs): it
+// can read, but only write what the command writes, and not start other
+// programs. Not when LOGIC_GAME_NO_PERMISSIONS is set (e.g. to find out whether
+// a problem comes from the permissions), nor with a Node version without the
+// permission model.
+
+// The arguments for the command under the permission model, and the files and
+// folders it writes: { args, written }.
+function permitted_command(argv) {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true });
+  } catch {
+    return { args: argv, written: [] };      // (the command reports the mistake)
+  }
+  const { values, positionals: [command, ...rest] } = parsed;
+  if (values.help) return { args: argv, written: [] };
+  if (command === 'new') return { args: argv, written: rest.slice(0, 1) };                              // new <folder>
+  if (command === 'convert' || command === 'feedback') return { args: argv, written: rest.slice(1, 2) }; // <from> <to>
+  if (command === 'grade') {
+    // (the name of the grading file is decided here: it has today's date in it)
+    const out_file = grading_file(values);
+    return { args: values.out ? argv : ['--out', out_file, ...argv], written: [out_file, values.csv].filter(Boolean) };
+  }
+  return { args: argv, written: [] };
+}
+
+// ---- Start ----------------------------------------------------------------------------------
+
+// (when the output goes to a program that stops reading it, e.g. head: stop quietly)
+process.stdout.on('error', (e) => {
+  if (e.code === 'EPIPE') process.exit(0);
+  throw e;
+});
+
+const argv = process.argv.slice(2);
+let code = null;
+if (!process.permission && !process.env.LOGIC_GAME_NO_PERMISSIONS) {
+  const { args, written } = permitted_command(argv);
+  try {
+    code = await run_with_permissions(fileURLToPath(import.meta.url), args, written);
+  } catch (e) {
+    err(`Error: ${e.message}; set LOGIC_GAME_NO_PERMISSIONS=1 to run it without.\n`);
+    code = 1;
+  }
+}
+if (code === null) code = await main(argv);
 // (clingo runs in a worker thread, which would keep Node running)
-const code = await main(process.argv.slice(2));
 // (all output is written before Node stops: stdout can be a pipe that is written to later)
 await new Promise((resolve) => process.stdout.write('', resolve));
 process.exit(code);
