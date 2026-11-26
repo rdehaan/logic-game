@@ -15,6 +15,12 @@ body {
   background: #eee;
 }
 
+/* Links: a darker blue than the browser's (also for visited links) */
+a:link,
+a:visited {
+  color: #2c5f8a;
+}
+
 h1 {
   padding: 50px 0;
   font-weight: 400;
@@ -1294,7 +1300,7 @@ details.versions-more > :not(summary) {
   padding: 0;
   border: none;
   background: none;
-  color: #0645ad;
+  color: #2c5f8a;
   text-decoration: underline;
   font: inherit;
   cursor: pointer;
