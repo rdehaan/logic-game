@@ -151,6 +151,9 @@ as *Test and measure* in the Grading tab of the web page (grader mode) does, for
 once. The result is a grading file, to import in the Grading tab (*Import grading…*): the test
 results and suggestions are then there for every student, and you grade them in the page. Load
 the submissions in the page too, to see the students' PDF files (the grading is kept).
+The whole way, from Canvas back to Canvas, is in *Grading, step by step* in the
+[README](../README.md#grading-step-by-step-for-teachers); the format of a rubric is explained in
+[rubric.md](rubric.md).
 
 `<submissions>` can be the zip file of *Download submissions* in Canvas (as it is), the zip file
 of one student, game files, or folders of these (in a folder, every file is read, and every
@@ -171,8 +174,8 @@ Wrote grading-2026-11-26.json and measurements.csv (412.7 seconds).
 ```
 
 - `--levels N`: the number of levels to play for each game (default: as in the rubric, 20);
-- `--rubric FILE`: use this rubric (a `.json` file, as the Grading tab downloads it) instead of
-  the default one;
+- `--rubric FILE`: use this rubric (a `.json` file, as the Grading tab downloads it; see
+  [rubric.md](rubric.md)) instead of the default one;
 - `--out FILE`: the name of the grading file (default `grading-<date>.json`; an existing file is
   never overwritten);
 - `--csv FILE`: also write the measurements (wins, times, what the player does not see, NPCs,
@@ -187,7 +190,8 @@ comments, spaces and names of variables): the most similar one is a hint, not pr
 
 Writes the feedback of every student of a grading file (exported from the Grading tab with
 *Export the grading*, or written by `grade`) into a folder: one file per student and format,
-and `grades.csv` with the grades of all students.
+and `grades.csv` with the grades of all students. (`grades.csv` is a table for a spreadsheet, not
+a file that Canvas can import: the grades are entered in Canvas by hand.)
 
 ```
 logic-game feedback grading-2026-11-26.json feedback --format pdf,md

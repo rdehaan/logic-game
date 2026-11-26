@@ -1,5 +1,7 @@
 # logic-game
-A Logic Game
+
+A logic game in which you steer the player with an answer set program (clingo, running in the
+browser), with a command-line version, and a Grading tab for teachers.
 
 Live at https://rdehaan.github.io/logic-game/ (GitHub Pages, deployed from `main` when the tests pass).
 
@@ -18,7 +20,8 @@ programs too. For players and students:
 For teachers, **grader mode** (an option) adds a *Grading* tab: load the submissions of all
 students at once (Canvas' *Download submissions*), test and measure each game, grade it with a
 rubric (with suggested scores, and the evidence for them), read the student's PDF next to the
-rubric, and write feedback to send as a PDF, a web page or text (see *Grader mode* below).
+rubric, and write feedback to send as a PDF, a web page or text (see *Grading, step by step*
+below).
 
 ## How it works
 
@@ -60,6 +63,7 @@ shows how long clingo took for each program in each step.
 | `js/board-image.js` | Pictures of the board (a canvas), for the feedback |
 | `js/grading-store.js` | Where the grading is kept in the browser (IndexedDB) |
 | `js/tutorial.js` | The tutorial for new players (a guided first game), and the list of the first games |
+| `js/grading-tutorial.js` | The grading tutorial: the steps, and the sample batch of two made-up students |
 | `js/editors.js` | The code editors (Ace), and the errors and warnings shown in them |
 | `js/grid-visual.js` | Drawing the board |
 | `js/mode-gringo.js` | Syntax highlighting for ASP in the Ace editor |
@@ -71,6 +75,7 @@ shows how long clingo took for each program in each step.
 | `vendor/fonts/` | Open Sans and Font Awesome, from their npm packages (the page loads nothing from other sites) |
 | `examples/` | The example games |
 | `docs/CLI.md` | The guide to the command-line version |
+| `docs/rubric.md` | The rubric file of the Grading tab, field by field |
 | `stored/` | Programs referred to in the Internals tab |
 | `test/` | The tests (`helpers.mjs`: what several tests share) |
 | `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm, the Ace editor and the fonts from `node_modules/` into `vendor/`) |
@@ -106,15 +111,18 @@ to cell, and the cell with the focus is highlighted with its facts, as when hove
 
 ## Options
 
-In the Control tab (kept in the browser), and in the URL for one visit (`=false` turns one off):
+In the Control tab (kept in the browser), and in the URL for one visit (`=false` turns one off;
+`=true`, `=1`, `=yes` or just the name, as in `?grader`, turn one on):
 `?side_by_side=false` (on screens of 1100 pixels and wider, the board, its slider and buttons
 stay in view on the left while the tabs scroll on the right; on by default), `?mark_changes=true` (mark the cells on the board that changed in the last step; off by default,
 also under the slider below the board), `?solutions=true` (the example games with solutions),
 `?editor=true` (the level editor in the Debug tab), `?internals=true` (the Internals tab),
 `?grader=true` (grader mode: the Grading tab, and *Show everything on the board* under the board,
-`?full_view=true`), `?timeout=30` (the time limit for each call to clingo, in seconds).
+`?full_view=true`), `?only_changes=true` (*Show only what changed* in the Debug tab), `?timeout=30`
+(the time limit for each call to clingo, in seconds).
 
-Other URL options: `?file=flag3` (load an example), `?tutorial=true` (start the tutorial), and
+Other URL options: `?file=flag3` (load an example; without it, the page opens *Find the flag 1
+(with solution)*, `examples/flag1-with-solutions.json`), `?tutorial=true` (start the tutorial), and
 `?tab=N` (open a tab). The tabs are numbered by their place in `index.html`, not by the order in
 which they are shown: 1 Control, 2 Instructions, 3 Game rules, 4 Strategy, 5 Debug, 7 Versions,
 6 Internals (only with `internals=true`) and 8 Grading (only with `grader=true`).
@@ -169,10 +177,14 @@ objects of the game state that are not observed become `decorate(item,R,C,O)`).
   comments and spaces, with every variable written as `V`, and the Jaccard index of runs of five
   tokens (a hint for the grader, not proof of copying). *Compare all submissions* lists the most
   similar pairs.
-- **The rubric** is a JSON file (`"format": "logic-game-rubric"`): required items (all of them give
-  a grade, by default a 6), extra items with points (up to a maximum, 9; all of them give 10),
-  thresholds for the suggestions (`checks`), and standard comments. The default is the rubric of the
-  logic game assignment (`DEFAULT_RUBRIC`); download it, change it and load it for another assignment.
+- **The rubric** is a JSON file (`"format": "logic-game-rubric"`, explained field by field in
+  [docs/rubric.md](docs/rubric.md)): required items, extra items with points, thresholds for the
+  suggestions (`checks`), and standard comments. When all required items are met, the grade is the
+  grade of the required items (by default 6) plus the points of the extra items, at most the maximum
+  (by default 9); when all extra items get all their points, the grade is the grade for all of them
+  (by default 10). When a required item is not met, the grader gives the grade (`compute_grade` in
+  `js/grading.js`). The default is the rubric of the logic game assignment (`DEFAULT_RUBRIC`);
+  download it, change it and load it for another assignment.
   Each item has a `check` (`timing`, `novelty`, `comments`, `visual`, `hidden`, `npc`, `random`,
   `new_levels`, `memory`) that suggests a score with its evidence (`suggest` in `js/grading.js`).
   Suggestions never decide by themselves: *Accept the suggestions* fills in only the items that are
@@ -182,9 +194,10 @@ objects of the game state that are not observed become `decorate(item,R,C,O)`).
   as it is shown (kept as facts, drawn when the feedback is made), the notes of the items, and the
   test results if the grader adds them. Per student as a PDF (`js/pdf.js`: no library is needed,
   the PDF uses the standard fonts), a web page (one file, with the pictures in it) or Markdown; for
-  all students as a zip file, with the grades as CSV (`grades.csv`, also on its own).
+  all students as a zip file, with the grades as CSV (`grades.csv`, also on its own; a table for a
+  spreadsheet, not in the format of Canvas' gradebook import).
 - **Keeping the work.** Everything is kept in the browser (IndexedDB, `js/grading-store.js`;
-  *Reset everything* forgets it too). *Export the grading* gives a JSON file (`"format":
+  *Remove all students* and *Reset everything* remove it). *Export the grading* gives a JSON file (`"format":
   "logic-game-grading"`) with the rubric and all students, without their PDF files; *Import
   grading* merges one: students that are not there yet are added, and of a student in both, the
   version that was changed last is kept (to share the work between graders).
@@ -193,6 +206,59 @@ objects of the game state that are not observed become `decorate(item,R,C,O)`).
   student), and `logic-game feedback <grading file> <folder>` writes the feedback of all students
   (see [docs/CLI.md](docs/CLI.md)). Importing adds the test results of students that were not tested
   in the page yet.
+- **The grading tutorial** (`js/grading-tutorial.js`) is offered on the first visit of the Grading
+  tab, and can be started again from it (*Take the grading tutorial*). It walks through the tab with a
+  sample zip file that it makes itself (two made-up students, `studenta` and `studentb`, with the
+  names Canvas gives files), in a sample session that is kept in memory only
+  (`enter_sample`/`leave_sample` in `js/grader.js`): the grader's own grading is put aside, and
+  comes back when the tutorial is closed.
+
+## Grading, step by step (for teachers)
+
+1. **Turn on grader mode**: in the Control tab, *Grader mode*, or open the page with
+   `?grader=true` (https://rdehaan.github.io/logic-game/?grader=true&tab=8). The *Grading* tab
+   appears. The first time, it offers a short tutorial with two made-up students.
+2. **Download the submissions**: in Canvas, on the page of the assignment, *Download submissions*.
+   This gives one zip file with the files of all students, named after the student
+   (`doejane_12345_678901_hw3.zip`, with `_LATE_` after the name when it was late). Keep it as it is:
+   there is no need to unpack it.
+3. **Optionally, test all submissions at once** on the command line (see
+   [docs/CLI.md](docs/CLI.md)): `logic-game grade submissions.zip` plays every game on new levels
+   (20, unless the rubric or `--levels` says otherwise), suggests scores, and writes `grading-<date>.json`. In the Grading tab, load it with
+   *Import grading…*: every student is then there with the test results and suggestions.
+4. **Load the same zip file in the page**: *Load submissions* in the Grading tab. This is needed
+   even after importing a grading file, because grading files do not contain the students' PDF
+   files. Students that are already there keep their grading.
+5. **Grade each student**: *Grade* (in the list) loads the student's game into the page, and shows
+   their PDF next to the rubric. *Test and measure* (unless the imported file already did) plays the
+   game on new levels and suggests a score for each item, with the evidence; *Accept the
+   suggestions* fills in the items you did not decide yet. Decide every item (and give fewer points
+   where needed), write a comment (standard comments are one click), add notes on lines of the
+   programs and pictures of the board, and set the status to *done*. ▶ goes to the next student.
+6. **Share the work with co-graders**: *Export the grading (.json)* gives a file with all grading
+   work (without the PDF files). A co-grader loads the same zip file and imports that file with
+   *Import grading…*; for a student graded by both, the version that was changed last is kept.
+   Export your grading regularly anyway, to keep it safe.
+7. **Download the feedback and the grades**: *Download all feedback (.zip)* gives a zip file with
+   one feedback file per student (PDF, web page and/or text) and `grades.csv`; *Download the grades
+   (.csv)* gives only `grades.csv`. Its columns are `student`, `canvas_id` (the user id from the
+   file names), `late`, `status`, `grade` (empty when the grade is not final), one column per item
+   of the rubric (`met`/`not met` as `yes`/`no`, or the points of an extra item) and `comment`.
+8. **Put the grades and feedback in Canvas.** `grades.csv` is not in the format that Canvas'
+   gradebook imports, so the grades are entered by hand: for each student, enter the grade in Canvas
+   (for example in SpeedGrader), and attach their feedback file to a comment on their submission (or
+   paste the text of *Copy as text* into the comment). The file names say whose feedback it is
+   (`feedback-<name>-<user id>.pdf`).
+9. **Remove the data when you are done.** The grading is kept in the browser that was used, in
+   IndexedDB (the database `logic-game-grading`): the names and Canvas user ids of the students,
+   their games, scores, comments, grades, and their PDF files. *Remove all students* (in the Grading
+   tab) removes all of it from this browser; *Reset everything* (in the Versions tab) removes it
+   too, with everything else the page keeps. When you changed the game of a student in the page, that
+   version is kept as saved work, like any game (the Versions tab, *Everything in this browser*:
+   forget it there, or use *Forget all saved work*). Export the grading first if you want to keep it.
+
+The grading pop-up (the ⓘ at the top of the Grading tab) has a short version of these steps, and
+the grading tutorial shows them in the page.
 
 ## Saving, versions and sharing
 
@@ -340,13 +406,13 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   restoring versions, project and backup files, game folders (download, load, link), testing a
   strategy, the tutorial, help in the editors, boards of all sizes, the page on a phone, offline
   use, grader mode (the whole board; loading Canvas' download, testing, grading, feedback in
-  every format, keeping the grading, exporting and importing it), and that nothing is loaded from
+  every format, keeping the grading, exporting and importing it, the grading tutorial and its sample
+  session), and that nothing is loaded from
   other sites (fonts included).
 
 The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`).
 On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the
-tests pass. This needs a one-time setting on GitHub: *Settings > Pages > Build and deployment >
-Source: GitHub Actions* (instead of *Deploy from a branch*).
+tests pass (see *Deploying your own copy* below).
 To use a Chromium that is already installed, set `CHROMIUM_PATH` to its executable.
 
 ### Updating clingo, Ace or the fonts
@@ -359,4 +425,82 @@ npm test
 
 and commit `package.json`, `package-lock.json` and `vendor/`. (The same works for
 `ace-builds`, `@fortawesome/fontawesome-free` and `@fontsource/open-sans`.)
-A test fails if `vendor/clingo-wasm/` does not match the version in `package.json`.
+A checklist:
+
+- `npm run vendor` (`tools/vendor.mjs`) empties and rewrites `vendor/clingo-wasm/`, `vendor/ace/`
+  and `vendor/fonts/`; commit the files it removed too (`git add -A vendor/`).
+- A test fails if `vendor/clingo-wasm/` does not match the version in `package.json`
+  (`vendor/clingo-wasm/VERSION` lists the files with their checksums).
+- If the file names of clingo-wasm changed (look at `git status vendor/clingo-wasm/`), update the
+  prefetch links at the top of `index.html` and `PRECACHE` in `sw.js`. Only the browser tests
+  notice a missing file (the offline test checks that `PRECACHE` holds every file the page loads),
+  so run them: `npm run test:browser`, with Chromium installed.
+- The same goes for new font files (`vendor/fonts/`) and Ace files (`vendor/ace/`) that the page loads.
+- Play a game in the page (`npm run serve`), also once after a reload with the network turned off
+  in the browser's developer tools, to see that the offline copy works.
+
+### Adding an example game
+
+1. Put the game file in `examples/` (for example, download it from the Versions tab with *Download
+   the game file*). A version with a winning strategy goes in a file of its own, named
+   `...-with-solutions.json`: the tests check that its strategy wins on fixed random levels, and
+   that every example has no syntax errors and gets no warnings.
+2. Add an `<option>` for it to the list of example games in `index.html` (`id="example-games"`;
+   the games with solutions go in the `optgroup` *Solutions*, shown with `?solutions=true`). A test
+   checks that every listed file exists.
+3. Add it to `PRECACHE` in `sw.js`, so that it also works offline.
+4. Optionally, add it to `FIRST_GAMES` in `js/tutorial.js`: the games offered at the end of the
+   tutorial and in the Control tab.
+
+The command-line version (`logic-game examples`, `--example NAME`) and the similarity check of the
+Grading tab read `examples/` by themselves.
+
+### Notes for contributors
+
+- Modules that the Node tests import (`engine.js`, `asp.js`, `analysis.js`, `hints.js`,
+  `storage.js`, `versions.js`, `folder.js`, `grading.js`, `submissions.js`, `feedback.js`,
+  `pdf.js`, `text-board.js`, `solver.js`, and the command-line version) must not use the DOM
+  (`document`, `window`, ...): the table at the top says which ones (*no DOM*).
+- `docs/CLI.md` must mention every command and every option of `bin/logic-game.mjs`, and the
+  help of the command must list them: a test checks both (`cli.test.mjs`).
+- A new file that the page loads goes into `PRECACHE` in `sw.js` (a browser test checks this).
+- The texts use American spelling, and the names of the editors for the programs: *Player
+  strategy*, *Nature's moves*, *Winning conditions* (and *Auxiliary program*, *Level generation*,
+  *Visibility program*).
+- Run `npm run test:unit` while working, and `npm test` (with the browser tests) before a commit.
+
+## Deploying your own copy
+
+The site is static, so any web server can serve it; the workflow publishes it to GitHub Pages.
+For a copy (a fork) of your own on GitHub:
+
+1. **Turn on GitHub Pages, once**: in the repository, *Settings > Pages > Build and deployment >
+   Source: GitHub Actions* (instead of *Deploy from a branch*).
+2. **Push to `main`**: the workflow (`.github/workflows/test-and-deploy.yml`) runs the tests, and
+   when they pass, publishes the site. What is published is every file in the repository except
+   the ones for development: everything that `git ls-files` lists, without `test/`, `tools/`,
+   `.github/`, `package.json`, `package-lock.json` and `.gitignore` (the step *Collect the files of
+   the site*). So `index.html`, `favicon.svg`, `.nojekyll`, `css/`, `js/`, `docs/`, `examples/`,
+   `vendor/`, `stored/`, `sw.js`, and also `bin/`, `cli/`, `README.md` and `LICENSE`. Files that are
+   not committed (such as `node_modules/`) are never published.
+3. **Change the addresses of the original** to those of your copy. They are written out in:
+   - `bin/logic-game.mjs`: `SITE` (the links to levels that `logic-game test` prints) and the link
+     to the guide in the help;
+   - `docs/CLI.md`: the `git clone` address, the example output of `test`, and the example
+     workflow for continuous integration;
+   - `docs/instructions.html`: the `git clone` address and the link to the guide, in *Playing on
+     your own computer*;
+   - `README.md`: the address of the live site, the `git clone` address, and the link in
+     *Grading, step by step*.
+
+   (`grep -rn rdehaan --exclude-dir=node_modules --exclude-dir=vendor .` finds them all.)
+
+To serve the site anywhere else, copy the same files to a web server. Serve them over HTTPS (or
+from `localhost`): otherwise the browser does not run the service worker, and the game does not
+work offline. (`tools/serve.mjs` shows which content types the files need.)
+
+## License
+
+MIT (see [LICENSE](LICENSE)). The bundled libraries in `vendor/` have their own licenses (in their
+folders): clingo-wasm (Apache 2.0), the Ace editor (BSD), Open Sans (SIL OFL 1.1) and Font Awesome
+Free (the fonts under SIL OFL 1.1, the icons under CC BY 4.0).

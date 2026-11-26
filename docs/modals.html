@@ -135,36 +135,55 @@
         <button class="close-modal" aria-label="close modal" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Grading</h3>
+        <h3>Grading, step by step</h3>
+        <ol>
+          <li>
+            <b>Download.</b> In Canvas, <i>Download submissions</i> (on the page of the assignment)
+            gives one zip file with the files of all students, named after the student (e.g.
+            <tt>doejane_12345_678901_hw3.zip</tt>).
+          </li>
+          <li>
+            <b>Test all at once (optional).</b> On the command line,
+            <tt>logic-game grade submissions.zip</tt> tests every submission and writes a grading file
+            with the test results and suggestions; load it with <i>Import grading&hellip;</i>.
+          </li>
+          <li>
+            <b>Load.</b> Load the same zip file with <i>Load submissions</i>, as it is: the files are
+            grouped per student, zip files in it are unpacked, and the game file and the PDF of each
+            student are found.
+          </li>
+          <li>
+            <b>Grade.</b> Click on <i>Grade</i> in the list: the game of the student is loaded into the
+            page (play it, step through it, look at the Debug tab; your changes do not change what was
+            handed in), and their PDF is shown next to the rubric. <i>Test and measure</i> plays the
+            game on new levels and suggests a score for each item of the rubric, with the evidence.
+            Suggestions are only suggestions: <i>Accept the suggestions</i> takes them over for the
+            items you did not decide yet, and you can change every item. <i>Show everything on the
+            board</i> (under the board) also shows, faded, the objects the player does not see.
+          </li>
+          <li>
+            <b>Feedback.</b> Write a comment (or insert standard comments), add notes on lines of the
+            programs and pictures of the board, and set the status to <i>done</i>.
+          </li>
+          <li>
+            <b>Share.</b> <i>Export the grading</i> gives a file with all your work (but not the PDF
+            files of the students), for other graders to import: students they do not have yet are
+            added, and for the others the version that was changed last is kept.
+          </li>
+          <li>
+            <b>Hand back.</b> <i>Download all feedback</i> gives a zip file with the feedback of every
+            student (PDF, web page or text) and <tt>grades.csv</tt>. That file is a table for a
+            spreadsheet, not a file Canvas can import: enter the grades in Canvas yourself, and give
+            each student their feedback file (or the text of <i>Copy as text</i>) as a comment on their submission.
+          </li>
+        </ol>
         <p>
-          <b>Loading.</b> In Canvas, <i>Download submissions</i> of the assignment gives one zip file
-          with the files of all students, named after the student (e.g.
-          <tt>doejane_12345_678901_hw3.zip</tt>). Load that file as it is: the files are grouped
-          per student, zip files in it are unpacked, and the game file and the PDF of each student are found.
+          <b>Privacy.</b> Your grading, with the names of the students, their grades and their PDF files,
+          is kept in this browser (IndexedDB). <i>Remove all students</i> removes it (export the grading
+          first to keep it); <i>Reset everything</i> in the Versions tab removes it too.
         </p>
         <p>
-          <b>Grading a student.</b> Click on <i>Grade</i> in the list: the game of the student is
-          loaded into the page (as with any game: play it, step through it, look at the Debug tab;
-          your changes to it do not change what was handed in). Their PDF is shown next to the rubric.
-          <i>Test and measure</i> plays the game on new levels and suggests a score for the items
-          of the rubric, with the evidence. Suggestions are only suggestions: <i>Accept the
-          suggestions</i> takes them over for the items you did not decide yet, and you can change every item.
-        </p>
-        <p>
-          <b>Looking closer.</b> <i>Show everything on the board</i> (under the board) also shows the
-          objects the player does not see, faded. In the test results, any level can be loaded onto
-          the board, and the first levels that were generated are shown small, to see whether levels are random.
-        </p>
-        <p>
-          <b>Feedback.</b> Write a comment (or insert standard comments), add notes on lines of the
-          programs (with the program and line of the cursor in an editor), and add pictures of the
-          board (as it is shown at that moment). Download the feedback as a PDF, a web page or text,
-          for one student or for all of them (a zip file), and the grades of all students as a CSV file.
-        </p>
-        <p>
-          <b>Keeping your work.</b> Everything is kept in this browser. <i>Export the grading</i>
-          gives a file with all of it (but not the PDF files of the students); another grader can import
-          it: students they do not have yet are added, and for the others the version that was changed last is kept.
+          The <i>grading tutorial</i> (at the top of the Grading tab) shows all of this with two made-up students.
         </p>
       </div>
     </div>

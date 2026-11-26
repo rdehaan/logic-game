@@ -708,7 +708,8 @@ export function merge_students(ours, theirs) {
 
 const measurement_fields = (st) => ({ measurements: st.measurements, measured_game: st.measured_game || null, similar: st.similar || null, suggestions: st.suggestions || null });
 
-// The grades of all students as CSV (for a spreadsheet, or to upload to Canvas).
+// The grades of all students as CSV, for a spreadsheet. (This is not the format of Canvas'
+// gradebook import: the grades are entered in Canvas by hand.)
 export function grades_csv(rubric, students) {
   const items = rubric_items(rubric);
   const header = ['student', 'canvas_id', 'late', 'status', 'grade', ...items.map((item) => item.id), 'comment'];

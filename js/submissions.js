@@ -1,5 +1,5 @@
 // Reading the submissions of students, for grading:
-// - the zip file that Canvas gives for "Download all submissions": one file per
+// - the zip file that Canvas gives for "Download submissions": one file per
 //   submitted file, named <name>_<user id>_<submission id>_<file name> (with
 //   _LATE_ after the name when it was late), where each file can be a zip file
 //   of its own (with the game file and the PDF), a game file or a PDF;

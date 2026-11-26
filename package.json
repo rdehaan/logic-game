@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "description": "A logic game played with answer set programs (clingo in the browser).",
+  "engines": {
+    "node": ">=22"
+  },
   "bin": {
     "logic-game": "bin/logic-game.mjs"
   },

@@ -196,7 +196,9 @@
       <p class="versions-help">These options are kept in this browser. They can also be set
         in a link (then only for that visit):
         <tt>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;grader=true&amp;timeout=30</tt>
-        (and <tt>=false</tt> to turn one off).</p>
+        (and <tt>=false</tt> to turn one off; <tt>=1</tt>, <tt>=yes</tt> or just the name, as in <tt>?grader</tt>,
+        also turn one on). A link can also set <tt>only_changes</tt> (<i>Show only what changed</i>, in the
+        Debug tab) and <tt>full_view</tt> (<i>Show everything on the board</i>, in grader mode).</p>
     </section>
 
     <section id="section-instructions" data-include="docs/instructions.html"></section>
@@ -414,7 +416,8 @@
         </div>
         <p id="folder-unsupported" class="versions-help" hidden>
           This browser cannot link the page to a folder (Chrome and Edge can).
-          You can download the game as a folder (.zip) with the project file above, and load a folder at the top.
+          Instead, use <i>Download as a folder (.zip)</i> (with the project file, above) to get the game
+          as a folder, and <i>Load a file or a folder</i> (at the top of this tab) to load one.
         </p>
       </details>
 
