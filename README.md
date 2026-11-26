@@ -30,6 +30,7 @@ shows how long clingo took for each program in each step.
 | File | What it does |
 | --- | --- |
 | `index.html` | The page |
+| `favicon.svg` | The icon of the page: the player and the flag (Font Awesome icons, CC BY 4.0) |
 | `docs/instructions.html`, `docs/internals.html`, `docs/modals.html` | The texts of the Instructions and Internals tabs, and the info pop-ups (loaded into the page) |
 | `css/main.css`, `css/visual.css` | The look of the page, and of the board |
 | `js/main.js` | The page: the buttons and the lock of the game rules, playing a game step by step, what the board shows, the Debug tab, options, loading and saving games, game folders, and wiring up the other modules |

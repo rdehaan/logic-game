@@ -14,6 +14,7 @@ const NETWORK_TIMEOUT_MS = 4000;
 const PRECACHE = [
   './',
   'index.html',
+  'favicon.svg',
   'docs/instructions.html',
   'docs/internals.html',
   'docs/modals.html',
