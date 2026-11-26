@@ -2,7 +2,8 @@
 //
 // Needs Playwright's Chromium: run "npx playwright install chromium" once.
 // To use another Chromium, set CHROMIUM_PATH to its executable.
-// The tests are skipped when no browser can be started.
+// The tests are skipped when no browser can be started, except on CI (where
+// the environment variable CI is set): there, that is an error.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -28,14 +29,14 @@ let skip = false;
 test.before(async () => {
   if (!chromium) {
     skip = 'playwright is not installed (npm install)';
-    return;
-  }
-  try {
+  } else try {
     browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
   } catch (e) {
     skip = 'no browser: ' + e.message.split('\n')[0];
-    return;
   }
+  // On CI, the browser tests must run: a green run without them would mean nothing
+  if (skip && process.env.CI) throw new Error(`the browser tests cannot run on CI: ${skip}`);
+  if (skip) return;
   server = createServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${server.address().port}/`;

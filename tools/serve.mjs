@@ -28,8 +28,17 @@ const TYPES = {
 export function createServer() {
   return http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    let file = path.normalize(path.join(root, decodeURIComponent(url.pathname)));
-    if (!file.startsWith(root)) {
+    let pathname;
+    try {
+      pathname = decodeURIComponent(url.pathname);
+      if (pathname.includes('\0')) throw new Error('NUL in path');
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'text/plain' }).end('bad request');
+      return;
+    }
+    let file = path.normalize(path.join(root, pathname));
+    // (with path.sep, so that a sibling folder such as ../repo-other is not let through)
+    if (file !== root && !file.startsWith(root + path.sep)) {
       res.writeHead(403).end();
       return;
     }
@@ -50,5 +59,6 @@ export function createServer() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.argv[2] || 8000);
-  createServer().listen(port, () => console.log(`Serving ${root} at http://localhost:${port}/`));
+  // Only this computer can connect (not others on the same network)
+  createServer().listen(port, '127.0.0.1', () => console.log(`Serving ${root} at http://localhost:${port}/`));
 }

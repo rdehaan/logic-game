@@ -94,8 +94,13 @@ self.addEventListener('fetch', (event) => {
 
 async function network_first(request) {
   const cache = await caches.open(CACHE);
-  // The page itself is stored once, whatever its options (?file=..., ?tab=...)
-  const key = request.mode === 'navigate' ? new URL('./', self.location).href : request;
+  // The page itself is stored once, whatever its options (?file=..., ?tab=...).
+  // (Only the page: other pages of the site, such as docs/instructions.html
+  // opened on its own, are stored under their own name.)
+  const root = new URL('./', self.location);
+  const path = new URL(request.url).pathname;
+  const is_app = request.mode === 'navigate' && (path === root.pathname || path === root.pathname + 'index.html');
+  const key = is_app ? root.href : request;
   const network = fetch(request).then((response) => {
     if (response.ok && response.type === 'basic') cache.put(key, response.clone());
     return response;
@@ -107,7 +112,7 @@ async function network_first(request) {
   } catch {
     // offline: use the stored copy below
   }
-  const stored = await cache.match(key, { ignoreSearch: request.mode === 'navigate' });
+  const stored = await cache.match(key, { ignoreSearch: is_app });
   if (stored) return stored;
   return network;     // nothing stored: wait for the network after all
 }
