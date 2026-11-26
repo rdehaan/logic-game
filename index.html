@@ -20,6 +20,8 @@
   <link rel="prefetch" href="vendor/clingo-wasm/threads.js">
   <link rel="prefetch" href="vendor/clingo-wasm/witnesses.js">
   <link rel="prefetch" href="vendor/clingo-wasm/clingo.js">
+  <!-- (light or dark: set before the page is shown, see the file) -->
+  <script src="js/theme.js"></script>
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/visual.css">
 
@@ -27,7 +29,23 @@
 
 <body>
 
-  <h1>A Logic Game</h1>
+  <header class="site-header">
+    <h1>A Logic Game</h1>
+    <div class="theme-switch" role="radiogroup" aria-label="Colors of the page">
+      <label title="As your browser or system is set">
+        <input type="radio" name="theme" value="auto">
+        <span class="theme-icon" aria-hidden="true">&#xf042;</span><span class="theme-name">Auto</span>
+      </label>
+      <label title="Light colors">
+        <input type="radio" name="theme" value="light">
+        <span class="theme-icon" aria-hidden="true">&#xf185;</span><span class="theme-name">Light</span>
+      </label>
+      <label title="Dark colors (the board stays white)">
+        <input type="radio" name="theme" value="dark">
+        <span class="theme-icon" aria-hidden="true">&#xf186;</span><span class="theme-name">Dark</span>
+      </label>
+    </div>
+  </header>
 
   <main>
     <p id="folder-notice" class="tutorial-invite" hidden>

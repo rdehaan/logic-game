@@ -1978,6 +1978,17 @@ for (const input of document.querySelectorAll('[data-option]')) {
   });
 }
 $('mark-changes').addEventListener('change', () => set_option('mark_changes', $('mark-changes').checked));
+
+// The switch for the colors of the page (Auto, Light, Dark): see js/theme.js
+{
+  const theme_inputs = document.querySelectorAll('.theme-switch input[name="theme"]');
+  const show_choice = () => {
+    for (const input of theme_inputs) input.checked = input.value === window.logic_game_theme.choice;
+  };
+  for (const input of theme_inputs) input.addEventListener('change', () => window.logic_game_theme.set(input.value));
+  document.addEventListener('themechange', show_choice);
+  show_choice();
+}
 apply_options();
 
 // Select a particular tab if specified in the URL

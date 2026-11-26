@@ -42,6 +42,7 @@ shows how long clingo took for each program in each step.
 | `docs/instructions.html`, `docs/internals.html`, `docs/modals.html` | The texts of the Instructions and Internals tabs, and the info pop-ups (loaded into the page) |
 | `css/main.css`, `css/visual.css` | The look of the page, and of the board |
 | `js/main.js` | The page: the buttons and the lock of the game rules, playing a game step by step, what the board shows, the Debug tab, options, loading and saving games, game folders, and wiring up the other modules |
+| `js/theme.js` | Light or dark: the choice of the switch at the top, set on the page before it is shown (a plain script, not a module) |
 | `js/engine.js` | The game engine: how the programs are run and connected (no DOM) |
 | `js/solver.js` | Calls clingo-wasm: time limit, stopping, reading results and errors (no DOM) |
 | `js/asp.js` | Text helpers: composing programs, `RANDINT`, reading clingo's error messages (no DOM) |
@@ -126,6 +127,11 @@ Other URL options: `?file=flag3` (load an example; without it, the page opens *F
 `?tab=N` (open a tab). The tabs are numbered by their place in `index.html`, not by the order in
 which they are shown: 1 Control, 2 Instructions, 3 Game rules, 4 Strategy, 5 Debug, 7 Versions,
 6 Internals (only with `internals=true`) and 8 Grading (only with `grader=true`).
+
+Colors: the switch at the top right of the page chooses *Auto* (light or dark, as the browser or
+the system is set; the default), *Light* or *Dark*, and the choice is kept in the browser. In dark
+mode the board stays white, because games choose the colors of its cells for a white board.
+Printed pages are always light.
 
 ## Feedback for players
 

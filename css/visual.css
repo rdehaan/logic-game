@@ -21,8 +21,8 @@
 }
 
 /* In dark mode, the board is a light card on the dark page */
-@media screen and (prefers-color-scheme: dark) {
-  .grid-visual {
+@media screen {
+  :root[data-theme="dark"] .grid-visual {
     margin: 8px;
     box-shadow: 0 0 0 8px #fff;
   }

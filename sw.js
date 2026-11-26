@@ -37,6 +37,7 @@ const PRECACHE = [
   'js/grid-visual.js',
   'js/hints.js',
   'js/main.js',
+  'js/theme.js',
   'js/modal.js',
   'js/solver.js',
   'js/storage.js',

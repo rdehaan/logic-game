@@ -19,6 +19,11 @@ export default [
     languageOptions: { globals: { ...globals.browser, ace: 'readonly' } },
   },
   {
+    // (a plain script, loaded in <head> before the modules: see the file)
+    files: ['js/theme.js'],
+    languageOptions: { sourceType: 'script' },
+  },
+  {
     files: ['sw.js'],
     languageOptions: { sourceType: 'script', globals: { ...globals.serviceworker } },
   },

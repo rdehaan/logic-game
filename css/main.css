@@ -1,7 +1,9 @@
 @import url("../vendor/fonts/fonts.css");
 
-/* The colors of the page. The dark set (below) follows the browser's (or the
-   system's) setting for dark mode, on screens only: printed pages stay light.
+/* The colors of the page. The dark set (below) is used when data-theme="dark"
+   is on <html>: js/theme.js sets it, from the switch at the top of the page
+   (Auto follows the browser's or the system's setting). On screens only:
+   printed pages stay light.
    The board keeps its light colors in dark mode (see css/visual.css): games
    choose the colors of its cells for a white board. */
 :root {
@@ -48,8 +50,8 @@
   --backdrop: rgba(0, 0, 0, 0.25);
 }
 
-@media screen and (prefers-color-scheme: dark) {
-  :root {
+@media screen {
+  :root[data-theme="dark"] {
     color-scheme: dark;
     --page: #121314;
     --surface: #1e1f22;
@@ -116,6 +118,67 @@ a:visited {
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
+}
+
+/* The title, with the switch for the colors in the top right corner */
+.site-header {
+  position: relative;
+}
+
+.theme-switch {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.theme-switch label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.theme-switch label + label {
+  border-left: 1px solid var(--border-strong);
+}
+
+/* (the radio buttons are not shown, but can be used with the keyboard: Tab, then the arrow keys) */
+.theme-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.theme-switch label:has(input:checked) {
+  color: var(--button-text);
+  background: var(--surface-3);
+  font-weight: 600;
+}
+
+.theme-switch label:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.theme-icon {
+  font-family: FontAwesome;
+  font-weight: 900;
+}
+
+@media print {
+  .theme-switch {
+    display: none;
+  }
 }
 
 h1 {
@@ -345,7 +408,7 @@ input[name="tabs"]:checked + .tab-label {
 
 @media screen and (max-width: 650px) {
   h1 {
-    padding: 20px 0;
+    padding: 44px 0 20px;
   }
 
   main {

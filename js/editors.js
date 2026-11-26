@@ -39,11 +39,10 @@ const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 ace.config.set('basePath', 'vendor/ace');
 ace.config.setModuleUrl('ace/mode/gringo', 'js/mode-gringo.js');
 
-// A light theme, or a dark one when the browser (or the system) asks for dark
-// colors; when that changes, all editors on the page change with it.
-const dark_mode = window.matchMedia('(prefers-color-scheme: dark)');
-const editor_theme = () => dark_mode.matches ? 'ace/theme/tomorrow_night' : 'ace/theme/textmate';
-dark_mode.addEventListener('change', () => {
+// A light theme, or a dark one when the page is dark (data-theme on <html>, see
+// js/theme.js); when that changes, all editors on the page change with it.
+const editor_theme = () => document.documentElement.dataset.theme === 'dark' ? 'ace/theme/tomorrow_night' : 'ace/theme/textmate';
+document.addEventListener('themechange', () => {
   // (Ace keeps the editor of an element in element.env)
   for (const elem of document.querySelectorAll('.ace_editor')) {
     if (elem.env && elem.env.editor) elem.env.editor.setTheme(editor_theme());

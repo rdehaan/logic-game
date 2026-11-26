@@ -2082,6 +2082,71 @@ test('dark mode: dark colors and editors, but the board stays white', async (t) 
   assert.deepEqual(errors, []);
 });
 
+test('the switch at the top chooses the colors: Auto, Light or Dark, and the choice is kept', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const context = await browser.newContext({ serviceWorkers: 'block', colorScheme: 'dark' });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  const errors = [];
+  collect_errors(page, errors);
+  await page.goto(base + '?tab=4');
+  await page.waitForSelector('body[data-ready=true]');
+  const state = () => page.evaluate(() => ({
+    theme: document.documentElement.dataset.theme,
+    checked: document.querySelector('.theme-switch input:checked').value,
+    page: getComputedStyle(document.querySelector('main')).backgroundColor,
+    board: getComputedStyle(document.querySelector('#visual')).backgroundColor,
+    editor_dark: document.querySelector('#player_move_program').classList.contains('ace_dark'),
+    stored: localStorage.getItem('logic-game:theme'),
+  }));
+  const until = (theme) => page.waitForFunction((t) => document.documentElement.dataset.theme === t &&
+    document.querySelector('#player_move_program').classList.contains('ace_dark') === (t === 'dark'), theme);
+  // Auto, with a dark system: dark
+  await until('dark');
+  let s = await state();
+  assert.equal(s.checked, 'auto');
+  assert.equal(s.board, 'rgb(255, 255, 255)');
+  assert.equal(s.stored, null);
+  // Light, although the system is dark
+  await page.click('.theme-switch label:has(input[value=light])');
+  await until('light');
+  s = await state();
+  assert.deepEqual([s.checked, s.page, s.stored], ['light', 'rgb(255, 255, 255)', 'light']);
+  // ... also after a reload (set before the page is shown: no dark page first)
+  await page.reload();
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+  await page.waitForSelector('body[data-ready=true]');
+  await until('light');
+  assert.equal((await state()).checked, 'light');
+  // Dark, with a light system; the board stays white
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.click('.theme-switch label:has(input[value=dark])');
+  await until('dark');
+  s = await state();
+  assert.deepEqual([s.checked, s.board, s.stored], ['dark', 'rgb(255, 255, 255)', 'dark']);
+  assert.notEqual(s.page, 'rgb(255, 255, 255)');
+  // With the keyboard (arrow keys, as radio buttons): back to Auto, which follows the system again
+  await page.focus('.theme-switch input[value=dark]');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await until('light');
+  s = await state();
+  assert.deepEqual([s.checked, s.stored], ['auto', null]);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await until('dark');
+  // A choice made in another tab of the site counts here too
+  const other = await context.newPage();
+  await other.goto(base);
+  await other.waitForSelector('body[data-ready=true]');
+  await other.click('.theme-switch label:has(input[value=light])');
+  await until('light');
+  assert.equal((await state()).checked, 'light');
+  assert.deepEqual(errors, []);
+});
+
 test('on a phone, all eight tabs have a name, in a row that scrolls (not the page)', async (t) => {
   if (skip) {
     t.skip(skip);
