@@ -703,6 +703,37 @@ test('the page works offline after the first visit', async (t) => {
   assert.deepEqual(errors, []);
 });
 
+test('files that are no longer part of the site are removed from the offline copy', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const context = await browser.newContext();
+  t.after(() => context.close());
+  const page = await context.newPage();
+  // What an earlier version of the site could have left: a file it no longer has, and another cache
+  await page.goto(base + 'favicon.svg');
+  await page.evaluate(async () => {
+    await (await caches.open('logic-game')).put('js/renamed-since.js', new Response('// old'));
+    await (await caches.open('logic-game-old')).put('index.html', new Response('old'));
+  });
+  await page.goto(base);
+  await page.waitForSelector('body[data-ready=true]');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null || location.reload());
+  await page.waitForSelector('body[data-ready=true]');
+  const state = await page.evaluate(async () => {
+    const cache = await caches.open('logic-game');
+    return {
+      names: await caches.keys(),
+      old: Boolean(await cache.match('js/renamed-since.js')),
+      page: Boolean(await cache.match('./')),
+      clingo: Boolean(await cache.match('vendor/clingo-wasm/clingo.wasm')),
+    };
+  });
+  assert.deepEqual(state, { names: ['logic-game'], old: false, page: true, clingo: true });
+});
+
 test('the offline copy holds every file that the page loads', async (t) => {
   const page = await open(t, '?editor=true&internals=true&solutions=true');
   if (!page) return;

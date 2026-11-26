@@ -6,6 +6,10 @@
 // - Offline, or when the network does not answer within NETWORK_TIMEOUT_MS,
 //   the stored copy is used.
 //
+// - When a new version of this file is taken into use, stored files that are no
+//   longer in PRECACHE are removed (e.g. after a file of the site was renamed),
+//   and so are caches under other names.
+//
 // A test (test/browser.test.mjs) checks that PRECACHE holds every file the page loads.
 
 const CACHE = 'logic-game';
@@ -85,7 +89,17 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    for (const name of await caches.keys()) {
+      if (name !== CACHE) await caches.delete(name);
+    }
+    const keep = new Set(PRECACHE.map((f) => new URL(f, self.location).href));
+    const cache = await caches.open(CACHE);
+    for (const request of await cache.keys()) {
+      if (!keep.has(request.url)) await cache.delete(request);
+    }
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
