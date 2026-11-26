@@ -344,7 +344,7 @@ function statement(tokens, start, end, atoms, constraints) {
     return true;
   }
   let arrow = -1;
-  for (const [s, e, sep] of split_top(tokens, start, end, [':-'])) {
+  for (const [, e, sep] of split_top(tokens, start, end, [':-'])) {
     if (sep === ':-') {
       arrow = e;
       break;

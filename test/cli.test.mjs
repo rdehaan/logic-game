@@ -41,6 +41,7 @@ test('the board as text', () => {
   // Changed cells are marked with colors (only with ansi)
   const before = 'observe(at(1,1,player)). setting(grid_width(2)). setting(grid_height(1)).';
   const after = 'observe(at(1,2,player)). setting(grid_width(2)). setting(grid_height(1)).';
+  // eslint-disable-next-line no-control-regex
   assert.match(text_board(after, { previous: before, ansi: true })[1], /\x1b\[43m/);
 });
 
@@ -305,6 +306,7 @@ test('cli: names from submissions cannot control the terminal or a spreadsheet, 
   const csv = path.join(tmp, 'm.csv');
   const graded = await run('grade', zip, '--levels', '1', '--out', out, '--csv', csv);
   assert.equal(graded.code, 0, graded.stderr);
+  // eslint-disable-next-line no-control-regex
   assert.doesNotMatch(graded.stdout, /[\x07\x1b]/);
   assert.match(graded.stdout, /- eve \(1\): won 1 of 1/);
   assert.match(fs.readFileSync(csv, 'utf8'), /\r\n"'=HYPERLINK\(""x""\)",3,/);

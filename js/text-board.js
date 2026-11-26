@@ -80,8 +80,10 @@ export function text_board(facts, { previous = null, ansi = false, legend = true
 // the title of the window, and so on): they are left out, also as part of
 // escape sequences (ESC ...), except tabs and newlines. With colors: true,
 // colors (ESC [ ... m, as text_board adds them with ansi) stay.
+// eslint-disable-next-line no-control-regex -- (these characters are what it finds)
 const CONTROLS = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[P^_X][^\x1b]*(?:\x1b\\)?|\x1b[ -~]?|[\x00-\x08\x0b-\x1f\x7f-\x9f]/g;
 
 export function terminal_text(text, { colors = false } = {}) {
+  // eslint-disable-next-line no-control-regex
   return String(text).replace(CONTROLS, (m) => (colors && /^\x1b\[[0-9;]*m$/.test(m) ? m : ''));
 }

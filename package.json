@@ -18,6 +18,7 @@
     "test": "node --test \"test/*.test.mjs\"",
     "test:unit": "node --test \"test/!(browser).test.mjs\"",
     "test:browser": "node --test test/browser.test.mjs",
+    "lint": "eslint .",
     "vendor": "node tools/vendor.mjs",
     "serve": "node tools/serve.mjs",
     "game": "node bin/logic-game.mjs"
@@ -26,9 +27,12 @@
     "clingo-wasm": "0.6.0"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "@fontsource/open-sans": "5.3.0",
     "@fortawesome/fontawesome-free": "7.3.1",
     "ace-builds": "1.45.2",
+    "eslint": "9.39.5",
+    "globals": "17.14.0",
     "playwright": "^1.50.0"
   }
 }

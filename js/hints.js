@@ -116,7 +116,6 @@ function sigs_of(atoms, role) {
   return out;
 }
 
-const any_arity = (s) => s.replace(/\/\d+$/, '/*');
 const describe = (s) => s.replace('/*', '');
 
 // A hint at an atom: { line, col, end_line, end_col, severity, message }.
