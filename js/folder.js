@@ -118,9 +118,11 @@ export function strip_common_dir(paths) {
 }
 
 // ---- Zip files ----------------------------------------------------------------------
-// Only what is needed for a folder of text files: writing without compression
+// Only what is needed for folders of files: writing without compression
 // (any zip program can read that), reading without compression or with
-// deflate (as zip programs write).
+// deflate (as zip programs write). Files are text, or bytes (Uint8Array: e.g.
+// the PDF files and the zip files inside a download of all submissions, which
+// the grader reads).
 
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -145,7 +147,7 @@ function dos_time(date) {
   };
 }
 
-// A zip file (Uint8Array) of { path: text }.
+// A zip file (Uint8Array) of { path: text or Uint8Array }.
 export function make_zip(files, date = new Date()) {
   const enc = new TextEncoder();
   const { time, date: day } = dos_time(date);
@@ -154,7 +156,7 @@ export function make_zip(files, date = new Date()) {
   let offset = 0;
   for (const [path, text] of Object.entries(files)) {
     const name = enc.encode(path);
-    const data = enc.encode(text);
+    const data = text instanceof Uint8Array ? text : enc.encode(text);
     const crc = crc32(data);
     const local = new DataView(new ArrayBuffer(30));
     local.setUint32(0, 0x04034b50, true);
@@ -207,8 +209,8 @@ async function inflate(bytes) {
 }
 
 // The files in a zip file: { path: text } (directories and files of macOS'
-// resource forks are left out).
-export async function read_zip(bytes) {
+// resource forks are left out); with { binary: true }: { path: Uint8Array }.
+export async function read_zip(bytes, { binary = false } = {}) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let end = -1;
   for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 22 - 65535); i--) {
@@ -232,9 +234,11 @@ export async function read_zip(bytes) {
     if (name.endsWith('/') || name.startsWith('__MACOSX/') || /(^|\/)\.DS_Store$/.test(name)) continue;
     const data_start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
     const raw = bytes.subarray(data_start, data_start + size);
-    if (method === 0) out[name] = dec.decode(raw);
-    else if (method === 8) out[name] = dec.decode(await inflate(raw));
+    let data;
+    if (method === 0) data = raw.slice();
+    else if (method === 8) data = await inflate(raw);
     else throw new Error(`the zip file uses a compression that is not supported (${name})`);
+    out[name] = binary ? data : dec.decode(data);
   }
   return out;
 }
