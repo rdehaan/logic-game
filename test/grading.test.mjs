@@ -13,7 +13,7 @@ import {
 } from '../js/grading.js';
 import { read_submissions, parse_canvas_name } from '../js/submissions.js';
 import { make_zip, read_zip, game_to_files } from '../js/folder.js';
-import { compute_grid_ds } from '../js/grid-visual.js';
+import { compute_grid_ds, label_text } from '../js/grid-visual.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { load_examples, ROOT } from './helpers.mjs';
@@ -114,6 +114,21 @@ test('the full view: the objects the player does not see are added, faded', () =
   assert.deepEqual(grid.hidden.get(4), ['flag']);
   assert.ok(grid.fog.has(4));
   assert.equal(compute_grid_ds(level_view('at(1,1,player). at(2,2,flag).', 'setting(grid_width(2)). setting(grid_height(2)).')).cells.size, 2);
+  // Not twice: a game that draws the hidden flag faded itself, or shows it under another name with the same icon
+  const self_drawn = view + ' decorate(item,2,2,flag).';
+  assert.deepEqual(compute_grid_ds(full_view(self_drawn, state)).hidden.get(4), ['flag']);
+  const renamed = 'observe(at(1,2,player)). observe(at(2,2,seen_flag)). setting(grid_width(2)). setting(grid_height(2)). ' +
+    'decorate(label,flag,font_f024). decorate(label,seen_flag,font_f024).';
+  const g = compute_grid_ds(full_view(renamed, state));
+  assert.deepEqual([g.cells.get(4), g.hidden.get(4)], [['seen_flag'], undefined]);
+  // (an object with another icon in the same cell is added)
+  const other = 'observe(at(1,2,player)). observe(at(2,2,tree)). setting(grid_width(2)). setting(grid_height(2)). decorate(label,flag,font_f024). decorate(label,tree,font_f1bb).';
+  assert.deepEqual(compute_grid_ds(full_view(other, state)).hidden.get(4), ['flag']);
+  // An object without a label is shown by its name
+  const unlabelled = compute_grid_ds(full_view(view, state + ' at_time(1,1,1,read_map).'));
+  assert.deepEqual(unlabelled.hidden.get(1), ['read_map']);
+  assert.equal(label_text(unlabelled.labels.get('read_map')), 'read_map');
+  assert.equal(unlabelled.labels.get('flag'), '"flag"');
 });
 
 // ---- Measurements and suggestions (with clingo) ------------------------------------------

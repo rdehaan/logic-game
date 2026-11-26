@@ -11,6 +11,7 @@
 import { GAME_FIELDS, normalize_game, generate_level, GameSession, is_fatal } from './engine.js';
 import { facts_to_answer_set, split_atom, seeded_rng, preprocess_program } from './asp.js';
 import { tokenize, analyze_program } from './analysis.js';
+import { compute_grid_ds } from './grid-visual.js';
 
 // ---- The rubric -----------------------------------------------------------------
 //
@@ -324,10 +325,33 @@ const key_of = (o) => `${o.row},${o.col},${o.object}`;
 // The facts for the board with everything on it: what the player sees (`view`,
 // as GameSession.view() gives it), and the objects of the game state that the
 // player does not see, as decorate(item,R,C,O) (drawn faded on the board).
+// An object is not added to a cell that already shows it, or that shows
+// something that looks the same (the same label): e.g. a game that draws
+// hidden objects faded itself (decorate(item,R,C,O)), or lets the player see
+// an object under another name with the same icon.
 export function full_view(view, game_state) {
+  const grid = compute_grid_ds(view);
   const seen = new Set(observed_objects(view).map(key_of));
-  const hidden = state_objects(game_state).filter((o) => !seen.has(key_of(o)));
-  return view + hidden.map((o) => ` decorate(item,${o.row},${o.col},${o.object}).`).join('');
+  const label = (o) => (grid ? grid.labels.get(o) : undefined);
+  const shown = (o) => {
+    if (seen.has(key_of(o))) return true;
+    if (!grid) return false;
+    const r = Number(o.row);
+    const c = Number(o.col);
+    if (!(r >= 1 && c >= 1 && r <= grid.height && c <= grid.width)) return false;
+    const there = [...(grid.cells.get((r - 1) * grid.width + c) || []), ...(grid.hidden.get((r - 1) * grid.width + c) || [])];
+    return there.includes(o.object) || (label(o.object) != null && there.some((x) => label(x) === label(o.object)));
+  };
+  const added = new Set();
+  const hidden = state_objects(game_state).filter((o) => {
+    if (shown(o) || added.has(key_of(o))) return false;
+    added.add(key_of(o));
+    return true;
+  });
+  // (an object without a label, e.g. one that a game only keeps for itself, is shown by its name)
+  const unlabelled = [...new Set(hidden.map((o) => o.object).filter((x) => label(x) == null))];
+  return view + hidden.map((o) => ` decorate(item,${o.row},${o.col},${o.object}).`).join('') +
+    unlabelled.map((x) => ` decorate(label,${x},"${x.replace(/[\\"]/g, (c) => '\\' + c)}").`).join('');
 }
 
 // The facts for the board of a level, as the level is (everything visible).
