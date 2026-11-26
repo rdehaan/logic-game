@@ -23,6 +23,7 @@ const PRECACHE = [
   'vendor/ace/ace.js',
   'vendor/ace/ext-language_tools.js',
   'vendor/ace/theme-textmate.js',
+  'vendor/ace/theme-tomorrow_night.js',
   'js/mode-gringo.js',
   'js/analysis.js',
   'js/asp.js',

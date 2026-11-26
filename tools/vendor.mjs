@@ -3,8 +3,9 @@
 //   without the TypeScript types);
 // - vendor/fonts/: Open Sans (latin and latin-ext) and the Font Awesome fonts
 //   (with their names from Font Awesome 4, as the page uses them), and fonts.css;
-// - vendor/ace/: the Ace editor (from ace-builds): the editor, the textmate
-//   theme, and the language tools (autocompletion).
+// - vendor/ace/: the Ace editor (from ace-builds): the editor, the two
+//   themes (textmate, and tomorrow_night for dark mode), and the language tools
+//   (autocompletion).
 //
 // To update clingo (or Ace, or a font):
 //   npm install --save-exact clingo-wasm@latest
@@ -84,7 +85,7 @@ const ace_src = path.join(nm, 'ace-builds', 'src-min-noconflict');
 const ace_dst = path.join(root, 'vendor', 'ace');
 fs.rmSync(ace_dst, { recursive: true, force: true });
 fs.mkdirSync(ace_dst, { recursive: true });
-for (const f of ['ace.js', 'theme-textmate.js', 'ext-language_tools.js']) {
+for (const f of ['ace.js', 'theme-textmate.js', 'theme-tomorrow_night.js', 'ext-language_tools.js']) {
   fs.copyFileSync(path.join(ace_src, f), path.join(ace_dst, f));
 }
 fs.copyFileSync(path.join(nm, 'ace-builds', 'LICENSE'), path.join(ace_dst, 'LICENSE'));
