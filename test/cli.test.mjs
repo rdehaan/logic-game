@@ -7,6 +7,8 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { ROOT } from './helpers.mjs';
 import { text_board } from '../js/text-board.js';
+import { make_zip } from '../js/folder.js';
+import { read_session, merge_students, new_student } from '../js/grading.js';
 
 const BIN = path.join(ROOT, 'bin', 'logic-game.mjs');
 
@@ -143,11 +145,104 @@ test('cli: every command and option is in the guide (docs/CLI.md) and in the hel
     assert.ok(help.includes('--' + o), `--${o} is not in the help`);
     assert.ok(guide.includes('--' + o), `--${o} is not in docs/CLI.md`);
   }
-  for (const command of ['new', 'play', 'test', 'check', 'convert', 'examples']) {
+  for (const command of ['new', 'play', 'test', 'check', 'convert', 'examples', 'grade', 'feedback']) {
     assert.ok(guide.includes('logic-game ' + command), `${command} is not in docs/CLI.md`);
   }
   // and the Instructions tab has the basics, with a link to the guide
   const instructions = fs.readFileSync(path.join(ROOT, 'docs', 'instructions.html'), 'utf8');
   assert.match(instructions, /logic-game play/);
   assert.match(instructions, /docs\/CLI\.md/);
+});
+
+// ---- Grading -----------------------------------------------------------------------------
+
+const example = (name) => fs.readFileSync(path.join(ROOT, 'examples', name + '.json'), 'utf8');
+const PDF = new TextEncoder().encode('%PDF-1.4\n%%EOF\n');
+
+test("cli: grade Canvas' download of all submissions, then write the feedback", async (t) => {
+  const tmp = tmpdir(t);
+  const zip = path.join(tmp, 'submissions.zip');
+  fs.writeFileSync(zip, make_zip({
+    'janssenalice_1001_5001_hw3.zip': make_zip({ 'hw3/game.json': example('flag9-with-solutions'), 'hw3/report.pdf': PDF }),
+    'debruijnbob_LATE_1002_5002_game.json': example('flag5-with-solutions'),
+    'smitcarol_1003_5003_notes.txt': 'no game',
+  }));
+  const out = path.join(tmp, 'grading.json');
+  const csv = path.join(tmp, 'm.csv');
+  const graded = await run('grade', zip, '--levels', '2', '--out', out, '--csv', csv);
+  assert.equal(graded.code, 3, graded.stderr);      // (Carol handed in no game)
+  assert.match(graded.stdout, /^3 submissions, 2 levels each:\n/);
+  assert.match(graded.stdout, /- debruijnbob \(1002\), late: won 2 of 2; level generation at most [\d.]+ s.*most similar: flag5-with-solutions \(100%\)\n {4}suggested: not met: novel/);
+  assert.match(graded.stdout, /- janssenalice \(1001\): won 2 of 2;/);
+  assert.match(graded.stdout, /- smitcarol \(1003\): No game file was found/);
+  assert.match(graded.stdout, /Wrote .*grading\.json and .*m\.csv/);
+  // The grading file: for the Grading tab of the web page
+  const session = read_session(fs.readFileSync(out, 'utf8'));
+  const alice = session.students.find((st) => st.canvas_id === '1001');
+  assert.deepEqual(alice.measurements.levels.map((l) => l.verdict), ['win', 'win']);
+  assert.equal(alice.suggestions.npc.value, 'yes');
+  assert.deepEqual(alice.scores, {});       // (without --accept: only suggestions)
+  assert.equal(alice.pdf_files, undefined);
+  assert.deepEqual(alice.pdfs, ['hw3/hw3/report.pdf']);
+  const lines = fs.readFileSync(csv, 'utf8').trim().split('\r\n');
+  assert.match(lines[0], /^student,canvas_id,late,game,levels,won,generation_s,slowest_step_s,not_seen,npcs,/);
+  assert.match(lines[1], /^debruijnbob,1002,yes,yes,2,2,[\d.]+,[\d.]+,flag,,/);
+  assert.match(lines[2], /^janssenalice,1001,,yes,2,2,[\d.]+,[\d.]+,,attacker,2,/);
+  assert.equal(lines[3], 'smitcarol,1003,,no');
+  // Not over an existing file
+  const again = await run('grade', zip, '--out', out);
+  assert.equal(again.code, 1);
+  assert.match(again.stderr, /already exists/);
+  // With --accept, the suggestions are scores
+  const accepted = path.join(tmp, 'accepted.json');
+  assert.equal((await run('grade', zip, '--levels', '1', '--out', accepted, '--accept')).code, 3);
+  const bob = read_session(fs.readFileSync(accepted, 'utf8')).students.find((st) => st.canvas_id === '1002');
+  assert.equal(bob.scores.hidden.value, 'yes');
+  assert.equal(bob.scores.novel.value, 'no');
+
+  // The feedback of all students
+  const folder = path.join(tmp, 'feedback');
+  const fb = await run('feedback', accepted, folder, '--format', 'pdf,md');
+  assert.equal(fb.code, 0, fb.stderr);
+  assert.deepEqual(fs.readdirSync(folder).sort(), ['feedback-debruijnbob-1002.md', 'feedback-debruijnbob-1002.pdf', 'feedback-janssenalice-1001.md',
+    'feedback-janssenalice-1001.pdf', 'feedback-smitcarol-1003.md', 'feedback-smitcarol-1003.pdf', 'grades.csv']);
+  assert.match(fs.readFileSync(path.join(folder, 'feedback-debruijnbob-1002.md'), 'utf8'), /The game is novel \(in some way\): \*\*not met\*\*/);
+  assert.equal(fs.readFileSync(path.join(folder, 'feedback-janssenalice-1001.pdf')).subarray(0, 8).toString(), '%PDF-1.4');
+  assert.match(fb.stdout, /Note: 3 of them have no grade yet/);
+  const wrong = await run('feedback', accepted, folder, '--format', 'docx');
+  assert.equal(wrong.code, 1);
+  assert.match(wrong.stderr, /--format: docx is not one of pdf, html, md/);
+  assert.equal((await run('feedback', path.join(tmp, 'm.csv'), folder)).code, 1);
+});
+
+test('cli: grade folders (each folder in it: one student), with another rubric', async (t) => {
+  const tmp = tmpdir(t);
+  const dir = path.join(tmp, 'subs');
+  fs.mkdirSync(path.join(dir, 'jane', 'report'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'jane', 'game.json'), example('flag1-with-solutions'));
+  fs.writeFileSync(path.join(dir, 'jane', 'report', 'jane.pdf'), PDF);
+  fs.writeFileSync(path.join(dir, 'rich.json'), example('flag2-with-solutions'));
+  const rubric = path.join(tmp, 'rubric.json');
+  fs.writeFileSync(rubric, JSON.stringify({ title: 'Another course', required: { grade: 5, items: [{ id: 'wins', label: 'It wins', check: 'new_levels' }] }, extra: { max: 10, items: [] } }));
+  const out = path.join(tmp, 'g.json');
+  const graded = await run('grade', dir, '--levels', '1', '--rubric', rubric, '--out', out);
+  assert.equal(graded.code, 0, graded.stdout + graded.stderr);
+  assert.match(graded.stdout, /- jane: won 1 of 1;.*\n {4}suggested: 5\n/);
+  assert.match(graded.stdout, /- rich: won 1 of 1;/);
+  const session = read_session(fs.readFileSync(out, 'utf8'));
+  assert.equal(session.rubric.title, 'Another course');
+  assert.deepEqual(session.students.find((st) => st.name === 'jane').pdfs, ['report/jane.pdf']);
+  const bad = await run('grade', dir, '--rubric', path.join(tmp, 'g.json'), '--out', path.join(tmp, 'x.json'));
+  assert.equal(bad.code, 1);
+  assert.match(bad.stderr, /--rubric: this is not a rubric/);
+});
+
+test('importing a grading file adds the test results of students that were not tested yet', () => {
+  const mine = { ...new_student({ key: 'canvas:1', name: 'jane' }), comment: 'mine', status: 'in progress', updated_at: '2026-02-01T00:00:00Z' };
+  const theirs = { ...new_student({ key: 'canvas:1', name: 'jane' }), measurements: { levels: [] }, suggestions: { a: { value: 'yes' } }, updated_at: '2026-01-01T00:00:00Z' };
+  const merged = merge_students([mine], [theirs]);
+  assert.equal(merged.measured, 1);
+  assert.equal(merged.students[0].comment, 'mine');
+  assert.deepEqual(merged.students[0].measurements, { levels: [] });
+  assert.deepEqual(merged.students[0].suggestions, { a: { value: 'yes' } });
 });

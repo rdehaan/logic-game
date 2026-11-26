@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// The game on the command line: play, test a strategy, check programs, and
-// convert between file formats. It uses the same engine and the same clingo
+// The game on the command line: play, test a strategy, check programs,
+// convert between file formats, and grade the games of students. It uses the same engine and the same clingo
 // (clingo-wasm) as the page, so games are played exactly as in the browser.
 //
 //   node bin/logic-game.mjs help
@@ -15,7 +15,13 @@ import { preprocess_program } from '../js/asp.js';
 import { game_hints } from '../js/hints.js';
 import { encode_game } from '../js/storage.js';
 import { text_board } from '../js/text-board.js';
-import { load_game, save_game, kind_of, example_names } from '../cli/game-files.mjs';
+import { load_game, save_game, kind_of, example_names, submission_files, EXAMPLES } from '../cli/game-files.mjs';
+import {
+  DEFAULT_RUBRIC, read_rubric, rubric_items, measure_game, most_similar, fingerprint, suggest_all, apply_suggestions,
+  compute_grade, format_number, win_counts, npcs, session_file, read_session, grades_csv, STEP_PROGRAM_NAMES,
+} from '../js/grading.js';
+import { read_submissions } from '../js/submissions.js';
+import { feedback_model, feedback_markdown, feedback_html, feedback_pdf, feedback_name } from '../js/feedback.js';
 
 const SITE = 'https://rdehaan.github.io/logic-game/';
 
@@ -43,6 +49,17 @@ Commands:
       --strict                    Also fail on warnings
   convert <from> <to>             Convert a game: to a folder, a .zip, or a .json game file
       --project                   Write a project file (for the browser's Versions tab) instead
+  grade <submissions...>          Test the games of students, and suggest scores (for the Grading tab of the web page)
+                                  <submissions>: Canvas' zip file of all submissions, zip files, game files,
+                                  or folders of these (each folder in a folder: one student)
+      --levels N                  The number of levels to play for each game (default: from the rubric, 20)
+      --rubric FILE               Use this rubric (.json) instead of the default one
+      --out FILE                  Write the grading file to FILE (default grading-<date>.json)
+      --csv FILE                  Also write the measurements and suggested scores as CSV
+      --accept                    Take over the suggestions as scores (as "Accept the suggestions")
+  feedback <grading> <folder>     Write the feedback of every student of a grading file (exported from the
+                                  Grading tab, or written by grade) into a folder, with grades.csv
+      --format LIST               pdf, html and/or md, separated by commas (default pdf)
   examples                        List the example games
   help                            Show this help (also: --help, -h)
 
@@ -54,8 +71,9 @@ Options for all commands:
 The full guide: docs/CLI.md (https://github.com/rdehaan/logic-game/blob/main/docs/CLI.md).
 
 Exit codes: 0 when all is well (play: won; test: every level won; check: no
-errors), 1 for an error in using the command, 3 when the game was not won, a
-test level was not won, or check found errors.
+errors; grade: every submission has a game), 1 for an error in using the
+command, 3 when the game was not won, a test level was not won, check found
+errors, or a submission has no game.
 `;
 
 const OPTIONS = {
@@ -71,6 +89,11 @@ const OPTIONS = {
   json: { type: 'boolean' },
   strict: { type: 'boolean' },
   project: { type: 'boolean' },
+  rubric: { type: 'string' },
+  out: { type: 'string' },
+  csv: { type: 'string' },
+  accept: { type: 'boolean' },
+  format: { type: 'string' },
   timeout: { type: 'string' },
   'max-steps': { type: 'string' },
   'no-color': { type: 'boolean' },
@@ -271,9 +294,153 @@ async function cmd_test([p], values) {
   return won === results.length ? 0 : 3;
 }
 
+// ---- grade, feedback ------------------------------------------------------------------------
+//
+// The same measurements and suggestions as the Grading tab of the web page
+// (js/grading.js); the grading file that grade writes is imported there
+// (Import grading...), and feedback writes the feedback of a grading file.
+
+function load_rubric(values) {
+  if (!values.rubric) return read_rubric(DEFAULT_RUBRIC);
+  if (!fs.existsSync(values.rubric)) throw new UsageError(`--rubric: ${values.rubric} does not exist`);
+  try {
+    return read_rubric(fs.readFileSync(values.rubric, 'utf8'));
+  } catch (e) {
+    throw new UsageError(`--rubric: ${e.message}`);
+  }
+}
+
+const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
+
+// The measurements of the CSV file of grade.
+function measurements_csv(rubric, students) {
+  const items = rubric_items(rubric);
+  const header = ['student', 'canvas_id', 'late', 'game', 'levels', 'won', 'generation_s', 'slowest_step_s', 'not_seen', 'npcs',
+    'different_levels', 'memory_steps', 'steps', 'most_similar', 'similarity', ...items.map((item) => 'suggested_' + item.id), 'suggested_grade'];
+  const rows = students.map((st) => {
+    const m = st.measurements;
+    if (!m) return [st.name, st.canvas_id || '', st.late ? 'yes' : '', st.game ? 'yes' : 'no'];
+    const top = (st.similar || [])[0];
+    const sug = st.suggestions || {};
+    const g = compute_grade(rubric, apply_suggestions(rubric, {}, sug));
+    const slowest = Math.max(0, ...Object.values(m.program_ms).map((x) => x.max));
+    return [st.name, st.canvas_id || '', st.late ? 'yes' : '', 'yes', m.levels.length, win_counts(m).win || 0,
+      (Math.max(0, ...m.generation_ms) / 1000).toFixed(2), (slowest / 1000).toFixed(2), Object.keys(m.hidden).join(' '),
+      npcs(m, rubric.checks).join(' '), m.distinct_levels, m.memory_steps, m.steps, top ? top.name : '', top ? Math.round(top.overall * 100) + '%' : '',
+      ...items.map((item) => (sug[item.id] && sug[item.id].value) || ''), g.below_pass ? '' : format_number(g.computed)];
+  });
+  const cell = (x) => (/[",\n\r;]/.test(String(x)) ? '"' + String(x).replace(/"/g, '""') + '"' : String(x));
+  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
+}
+
+async function cmd_grade(paths, values) {
+  if (!paths.length) throw new UsageError('grade: which submissions? e.g. logic-game grade submissions.zip');
+  const rubric = load_rubric(values);
+  const levels = int_option(values, 'levels', rubric.checks.test_levels, 1);
+  const max_time = int_option(values, 'max-steps', 500, 1);
+  const out_file = values.out || `grading-${new Date().toISOString().slice(0, 10)}.json`;
+  if (!/\.json$/i.test(out_file)) throw new UsageError('--out: the grading file is a .json file');
+  if (fs.existsSync(out_file)) throw new UsageError(`${out_file} already exists: remove it, or give another name with --out`);
+  if (values.csv && fs.existsSync(values.csv)) throw new UsageError(`${values.csv} already exists: remove it, or give another name with --csv`);
+  const solver = make_solver(values);
+  let list;
+  try {
+    list = submission_files(paths);
+  } catch (e) {
+    throw new UsageError(e.message);
+  }
+  const { students, notes } = await read_submissions(list);
+  for (const note of notes) out('Note: ' + note);
+  if (!students.length) {
+    out('No submissions were found.');
+    return 3;
+  }
+  // The games to compare with: the examples, and the other submissions
+  const examples = example_names().map((name) => ({ name, fingerprint: fingerprint(JSON.parse(fs.readFileSync(path.join(EXAMPLES, name + '.json'), 'utf8'))) }));
+  const prints = new Map(students.filter((st) => st.game).map((st) => [st.key, fingerprint(st.game)]));
+  const progress = process.stderr.isTTY;
+  const t0 = Date.now();
+  out(`${students.length} submission${students.length === 1 ? '' : 's'}, ${levels} level${levels === 1 ? '' : 's'} each:`);
+  let missing = 0;
+  for (const [i, st] of students.entries()) {
+    const who = `${st.name}${st.canvas_id ? ` (${st.canvas_id})` : ''}${st.late ? ', late' : ''}`;
+    delete st.pdf_files;      // (not in a grading file)
+    if (!st.game) {
+      missing++;
+      out(`- ${who}: ${st.warnings.join(' ')}`);
+      continue;
+    }
+    const m = await measure_game(solver, st.game, {
+      levels, max_time,
+      on_progress: ({ level }) => { if (progress) process.stderr.write(`\r  ${i + 1}/${students.length} ${st.name}: level ${level} of ${levels}\u2026\x1b[K`); },
+    });
+    if (progress) process.stderr.write('\r\x1b[K');
+    st.measurements = m;
+    st.similar = most_similar(st.game, [...examples, ...students.filter((x) => x !== st && x.game).map((x) => ({ name: `${x.name} (a submission)`, fingerprint: prints.get(x.key) }))], 3);
+    st.suggestions = suggest_all(rubric, m, st.similar);
+    if (values.accept) st.scores = apply_suggestions(rubric, st.scores, st.suggestions);
+    const g = compute_grade(rubric, apply_suggestions(rubric, {}, st.suggestions));
+    const slowest = Object.entries(m.program_ms).sort((a, b) => b[1].max - a[1].max)[0];
+    const top = st.similar[0];
+    out(`- ${who}: won ${win_counts(m).win || 0} of ${m.levels.length}; level generation at most ${seconds(Math.max(0, ...m.generation_ms))}` +
+      (slowest ? `, ${STEP_PROGRAM_NAMES[slowest[0]] || slowest[0]} at most ${seconds(slowest[1].max)} in a step` : '') +
+      (top ? `; most similar: ${top.name} (${Math.round(top.overall * 100)}%)` : ''));
+    const not_met = rubric.required.items.filter((item) => st.suggestions[item.id] && st.suggestions[item.id].value === 'no').map((item) => item.id);
+    out(`    suggested: ${g.below_pass ? `not met: ${not_met.join(', ')} (then you give the grade); extra points +${format_number(g.points)}` : `${format_number(g.computed)}`}` +
+      (g.undecided.length ? ` (${g.undecided.length} item${g.undecided.length === 1 ? '' : 's'} for you to decide: ${g.undecided.join(', ')})` : ''));
+    for (const w of st.warnings) out(`    note: ${w}`);
+  }
+  fs.writeFileSync(out_file, JSON.stringify(session_file({ rubric, students }), null, 1) + '\n');
+  if (values.csv) fs.writeFileSync(values.csv, measurements_csv(rubric, students));
+  out(`\nWrote ${out_file}${values.csv ? ` and ${values.csv}` : ''} (${((Date.now() - t0) / 1000).toFixed(1)} seconds).`);
+  out('In the web page (grader mode), Grading tab: Import grading... loads it; load the submissions there too, to see the PDF files.');
+  return missing ? 3 : 0;
+}
+
+const FORMATS = ['pdf', 'html', 'md'];
+
+async function cmd_feedback([file, folder], values) {
+  if (!file || !folder) throw new UsageError('feedback: from which grading file, into which folder? e.g. logic-game feedback grading.json feedback');
+  const formats = (values.format || 'pdf').split(',').map((f) => f.trim().toLowerCase()).filter(Boolean);
+  const wrong = formats.filter((f) => !FORMATS.includes(f));
+  if (wrong.length || !formats.length) throw new UsageError(`--format: ${wrong.join(', ') || '(none)'} is not one of ${FORMATS.join(', ')}`);
+  if (!fs.existsSync(file)) throw new UsageError(`${file} does not exist`);
+  if (fs.existsSync(folder) && !fs.statSync(folder).isDirectory()) throw new UsageError(`${folder} is not a folder`);
+  let session;
+  try {
+    session = read_session(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    throw new UsageError(`${file}: ${e.message}`);
+  }
+  const rubric = values.rubric ? load_rubric(values) : session.rubric || read_rubric(DEFAULT_RUBRIC);
+  fs.mkdirSync(folder, { recursive: true });
+  let pictures = 0;
+  let open = 0;
+  for (const st of session.students) {
+    const model = feedback_model(rubric, st);
+    pictures += model.images.length;
+    const name = path.join(folder, feedback_name(st));
+    if (formats.includes('pdf')) fs.writeFileSync(name + '.pdf', feedback_pdf(model));
+    if (formats.includes('html')) fs.writeFileSync(name + '.html', feedback_html(model));
+    if (formats.includes('md')) fs.writeFileSync(name + '.md', feedback_markdown(model));
+    const g = compute_grade(rubric, st.scores, st.grade_override);
+    if (g.grade == null) open++;
+    out(`- ${st.name}: ${g.text}`);
+  }
+  fs.writeFileSync(path.join(folder, 'grades.csv'), grades_csv(rubric, session.students));
+  const n = session.students.length;
+  out(`Wrote the feedback of ${n} student${n === 1 ? '' : 's'} (${formats.join(', ')}) and grades.csv into ${folder}.`);
+  if (open) out(`Note: ${open} of them ${open === 1 ? 'has' : 'have'} no grade yet (items not decided, or a requirement not met without a grade given).`);
+  if (pictures) out('(Pictures of the board are only drawn by the web page: here, only their captions are in the feedback.)');
+  return 0;
+}
+
 // ---- Main -------------------------------------------------------------------------------
 
-const COMMANDS = { new: cmd_new, play: cmd_play, test: cmd_test, check: cmd_check, convert: cmd_convert, examples: cmd_examples };
+const COMMANDS = {
+  new: cmd_new, play: cmd_play, test: cmd_test, check: cmd_check, convert: cmd_convert, examples: cmd_examples,
+  grade: cmd_grade, feedback: cmd_feedback,
+};
 
 async function main(argv) {
   let parsed;

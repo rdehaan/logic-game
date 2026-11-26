@@ -854,7 +854,8 @@ export class GraderTab {
       this.render_student();
       this.render_rubric_summary();
       this.status('grading-batch-status', `Imported ${file.name}: ${merged.added} student${merged.added === 1 ? '' : 's'} added, ` +
-        `${merged.updated} updated (theirs was changed later), ${merged.kept} kept as they were.` +
+        `${merged.updated} updated (theirs was changed later), ${merged.kept} kept as they were` +
+        (merged.measured ? `, ${merged.measured} with their test results added` : '') + '.' +
         (merged.added ? ' Their PDF files are not in a grading file: load the submissions to see them.' : ''));
     } catch (e) {
       this.status('grading-batch-status', 'Importing failed: ' + e.message, true);

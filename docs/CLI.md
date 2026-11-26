@@ -144,6 +144,60 @@ logic-game convert ~/Downloads/my-project.json my-game     # a project from the 
 logic-game convert my-game my-game.json                    # a folder as one game file (to hand in)
 ```
 
+### `logic-game grade <submissions...>`
+
+For teachers: tests the games of students, and suggests scores for the items of the rubric,
+as *Test and measure* in the Grading tab of the web page (grader mode) does, for all students at
+once. The result is a grading file, to import in the Grading tab (*Import grading…*): the test
+results and suggestions are then there for every student, and you grade them in the page. Load
+the submissions in the page too, to see the students' PDF files (the grading is kept).
+
+`<submissions>` can be the zip file of *Download submissions* in Canvas (as it is), the zip file
+of one student, game files, or folders of these (in a folder, every file is read, and every
+folder in it is the submission of one student).
+
+```
+logic-game grade ~/Downloads/submissions.zip --levels 20 --csv measurements.csv
+```
+
+```
+30 submissions, 20 levels each:
+- doejane (1001): won 20 of 20; level generation at most 0.4 s, strategy at most 0.2 s in a step; most similar: flag9 (41%)
+    suggested: 9 (2 items for you to decide: documented, visual)
+- roerich (1002), late: won 12 of 20; level generation at most 1.2 s, nature's moves at most 0.1 s in a step; most similar: flag5-with-solutions (97%)
+    suggested: not met: novel (then you give the grade); extra points +2 (2 items for you to decide: documented, visual)
+...
+Wrote grading-2026-11-26.json and measurements.csv (412.7 seconds).
+```
+
+- `--levels N`: the number of levels to play for each game (default: as in the rubric, 20);
+- `--rubric FILE`: use this rubric (a `.json` file, as the Grading tab downloads it) instead of
+  the default one;
+- `--out FILE`: the name of the grading file (default `grading-<date>.json`; an existing file is
+  never overwritten);
+- `--csv FILE`: also write the measurements (wins, times, what the player does not see, NPCs,
+  different levels, memory, the most similar game) and the suggested scores, one row per student;
+- `--accept`: take over the suggestions as scores (as *Accept the suggestions* in the page does);
+  without it, the suggestions are only suggestions, and you decide in the page.
+
+The games are compared with the example games and with each other (the programs without
+comments, spaces and names of variables): the most similar one is a hint, not proof of copying.
+
+### `logic-game feedback <grading> <folder> [--format LIST]`
+
+Writes the feedback of every student of a grading file (exported from the Grading tab with
+*Export the grading*, or written by `grade`) into a folder: one file per student and format,
+and `grades.csv` with the grades of all students.
+
+```
+logic-game feedback grading-2026-11-26.json feedback --format pdf,md
+```
+
+- `--format LIST`: `pdf`, `html` and/or `md` (Markdown), separated by commas (default `pdf`);
+- `--rubric FILE`: grade with this rubric instead of the one in the grading file.
+
+Pictures of the board are only drawn by the web page: the feedback written here has their captions.
+
 ### Options for all commands
 
 - `--timeout S`: stop a call to clingo after S seconds (default 10), as on the page;
@@ -156,7 +210,7 @@ Short forms: `-v` for `--verbose`, `-q` for `--quiet`.
 ### Exit codes
 
 `0` when all went well (`play`: the game was won; `test`: every level was won; `check`: no
-errors), `3` when not, and `1` when the command was used wrongly (for example a game that does
+errors; `grade`: every submission has a game), `3` when not, and `1` when the command was used wrongly (for example a game that does
 not exist). So the commands can be used in scripts, and in continuous integration.
 
 ## Working with git

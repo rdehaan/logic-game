@@ -50,7 +50,7 @@ shows how long clingo took for each program in each step.
 | `js/folder.js` | The folder format (one `.lp` file per program), and zip files (no DOM) |
 | `js/folder-link.js` | Linking the page to a game folder on disk (Chrome and Edge) |
 | `js/text-board.js` | The board as text, for the command-line version (no DOM) |
-| `bin/logic-game.mjs` | The command-line version (see [docs/CLI.md](docs/CLI.md)) |
+| `bin/logic-game.mjs` | The command-line version, also for grading (see [docs/CLI.md](docs/CLI.md)) |
 | `cli/game-files.mjs` | Reading and writing games on disk for the command-line version: folders, .zip, game and project files, examples |
 | `js/grader.js` | The Grading tab (grader mode) |
 | `js/grading.js` | Grading: the rubric and the grade, measuring a game, comments, similarity, suggested scores, grading sessions (no DOM) |
@@ -188,6 +188,11 @@ objects of the game state that are not observed become `decorate(item,R,C,O)`).
   "logic-game-grading"`) with the rubric and all students, without their PDF files; *Import
   grading* merges one: students that are not there yet are added, and of a student in both, the
   version that was changed last is kept (to share the work between graders).
+- **On the command line**, `logic-game grade <submissions>` tests all submissions at once and writes
+  a grading file to import in the Grading tab (with the test results and suggestions of every
+  student), and `logic-game feedback <grading file> <folder>` writes the feedback of all students
+  (see [docs/CLI.md](docs/CLI.md)). Importing adds the test results of students that were not tested
+  in the page yet.
 
 ## Saving, versions and sharing
 
@@ -254,6 +259,7 @@ logic-game play ~/my-game                    # play the level, with the board as
 logic-game play ~/my-game --seed 7 --step    # level 7 of a test, one step at a time
 logic-game test ~/my-game --levels 50        # how often does the strategy win?
 logic-game convert game.json ~/my-game       # between folders, .zip, game and project files
+logic-game grade submissions.zip             # for teachers: test all submissions (Canvas' zip file)
 logic-game help
 ```
 
@@ -309,7 +315,7 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   (no clingo needed); the example games get no warnings;
 - `storage.test.mjs`: share links (every example survives the round trip) and saved work;
 - `folder.test.mjs`: the folder format (every example survives the round trip) and zip files;
-- `cli.test.mjs`: the command-line version (new, check, play, test, convert, the board as text),
+- `cli.test.mjs`: the command-line version (new, check, play, test, convert, grade, feedback, the board as text),
   and that every command and option is in its help and in docs/CLI.md;
 - `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
   test results, a full storage, and project and backup files;

@@ -651,27 +651,38 @@ export function read_session(text) {
 
 // Merge the students of another session into ours: a student that is only in
 // theirs is added; for a student in both, the record that was changed last is
-// kept (but our submitted game and files stay, if theirs has none).
-// Returns { students, added, updated, kept }.
+// kept (but our submitted game and files stay, if theirs has none). Measurements
+// that we do not have yet are taken over in any case (e.g. from the command
+// line: logic-game grade).
+// Returns { students, added, updated, kept, measured }.
 export function merge_students(ours, theirs) {
   const by_key = new Map(ours.map((st) => [st.key, st]));
   let added = 0;
   let updated = 0;
   let kept = 0;
+  let measured = 0;
   for (const st of theirs) {
     const mine = by_key.get(st.key);
     if (!mine) {
       by_key.set(st.key, st);
       added++;
     } else if ((st.updated_at || '') > (mine.updated_at || '') && has_work(st)) {
-      by_key.set(st.key, { ...st, game: st.game || mine.game, pdfs: st.pdfs && st.pdfs.length ? st.pdfs : mine.pdfs, files: st.files && st.files.length ? st.files : mine.files });
+      by_key.set(st.key, {
+        ...st, game: st.game || mine.game, pdfs: st.pdfs && st.pdfs.length ? st.pdfs : mine.pdfs, files: st.files && st.files.length ? st.files : mine.files,
+        ...(!st.measurements && mine.measurements ? measurement_fields(mine) : {}),
+      });
       updated++;
+    } else if (st.measurements && !mine.measurements) {
+      by_key.set(st.key, { ...mine, ...measurement_fields(st) });
+      measured++;
     } else {
       kept++;
     }
   }
-  return { students: [...by_key.values()], added, updated, kept };
+  return { students: [...by_key.values()], added, updated, kept, measured };
 }
+
+const measurement_fields = (st) => ({ measurements: st.measurements, measured_game: st.measured_game || null, similar: st.similar || null, suggestions: st.suggestions || null });
 
 // The grades of all students as CSV (for a spreadsheet, or to upload to Canvas).
 export function grades_csv(rubric, students) {

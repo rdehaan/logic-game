@@ -94,3 +94,33 @@ export function save_game(p, game, { title = '', project = null, as_project = fa
     fs.writeFileSync(p, JSON.stringify(compact(game), null, 2) + '\n');
   }
 }
+
+// The files to read for grading, from paths on the command line: files as they
+// are (zip, json, pdf), and folders: the files in a folder are read one by one,
+// except that each folder in it is one student's submission (as a zip file of it).
+// Returns [{ name, bytes }].
+export function submission_files(paths) {
+  const list = [];
+  const folder_zip = (dir) => {
+    const files = {};
+    for (const f of fs.readdirSync(dir, { recursive: true }).map(String)) {
+      const full = path.join(dir, f);
+      if (fs.statSync(full).isFile()) files[f.split(path.sep).join('/')] = new Uint8Array(fs.readFileSync(full));
+    }
+    return make_zip(files);
+  };
+  for (const p of paths) {
+    if (!fs.existsSync(p)) throw new Error(`${p} does not exist`);
+    if (!fs.statSync(p).isDirectory()) {
+      list.push({ name: path.basename(p), bytes: new Uint8Array(fs.readFileSync(p)) });
+      continue;
+    }
+    for (const entry of fs.readdirSync(p, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name.startsWith('.')) continue;
+      const full = path.join(p, entry.name);
+      if (entry.isDirectory()) list.push({ name: entry.name + '.zip', bytes: folder_zip(full) });
+      else if (entry.isFile()) list.push({ name: entry.name, bytes: new Uint8Array(fs.readFileSync(full)) });
+    }
+  }
+  return list;
+}
