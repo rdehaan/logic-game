@@ -486,8 +486,9 @@ For a copy (a fork) of your own on GitHub:
    `vendor/`, `stored/`, `sw.js`, and also `bin/`, `cli/`, `README.md` and `LICENSE`. Files that are
    not committed (such as `node_modules/`) are never published.
 3. **Change the addresses of the original** to those of your copy. They are written out in:
-   - `bin/logic-game.mjs`: `SITE` (the links to levels that `logic-game test` prints) and the link
-     to the guide in the help;
+   - `package.json`: `homepage` (the address of the site) and `repository`; the command-line
+     version takes from there the links to levels that `logic-game test` prints, and the link to
+     the guide in its help;
    - `docs/CLI.md`: the `git clone` address, the example output of `test`, and the example
      workflow for continuous integration;
    - `docs/instructions.html`: the `git clone` address and the link to the guide, in *Playing on

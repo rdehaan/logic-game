@@ -25,7 +25,11 @@ import {
 import { read_submissions } from '../js/submissions.js';
 import { feedback_model, feedback_markdown, feedback_html, feedback_pdf, feedback_name } from '../js/feedback.js';
 
-const SITE = 'https://rdehaan.github.io/logic-game/';
+// The addresses of the site and of the repository: from package.json (a copy of the game
+// on another site only changes them there)
+const PACKAGE = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const SITE = PACKAGE.homepage.replace(/\/?$/, '/');
+const REPOSITORY = PACKAGE.repository.url.replace(/^git\+/, '').replace(/\.git$/, '');
 
 const HELP = `The logic game on the command line.
 
@@ -71,7 +75,7 @@ Options for all commands:
   --max-steps N                   Stop a game after N steps (default 500)
   --no-color                      No colors in the output (also when NO_COLOR is set)
 
-The full guide: docs/CLI.md (https://github.com/rdehaan/logic-game/blob/main/docs/CLI.md).
+The full guide: docs/CLI.md (${REPOSITORY}/blob/main/docs/CLI.md).
 
 Exit codes: 0 when all is well (play: won; test: every level won; check: no
 errors; grade: every submission has a game, and it could be tested), 1 for

@@ -3,6 +3,11 @@
   "private": true,
   "type": "module",
   "description": "A logic game played with answer set programs (clingo in the browser).",
+  "homepage": "https://rdehaan.github.io/logic-game/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rdehaan/logic-game.git"
+  },
   "engines": {
     "node": ">=22"
   },
