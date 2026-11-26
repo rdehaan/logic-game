@@ -1948,6 +1948,10 @@ test('grading: zip files with Zip64 fields, and an entry that cannot be read', a
 test('the file pickers can be used with the keyboard, and show the focus', async (t) => {
   const page = await open(t, '?tab=7&grader=true');
   if (!page) return;
+  // (a listener from the start: Playwright only takes over file dialogs once one is there,
+  // and with only waitForEvent below, the key could come first, and the dialog be missed)
+  page.on('filechooser', () => {});
+  await page.waitForTimeout(100);
   for (const [id, tab] of [['file-input', 7], ['folder-input', 7], ['grading-input', 8], ['grading-import', 8]]) {
     await page.click(`label[for=tab${tab}]`);
     // (from the element before it, with Tab: as someone with a keyboard would)
@@ -1961,6 +1965,10 @@ test('the file pickers can be used with the keyboard, and show the focus', async
     assert.equal(outline, 'solid', `the label of #${id} shows the focus`);
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.keyboard.press('Enter')]);
     assert.equal(await chooser.element().evaluate((e) => e.id), id);
+    // (close it, with nothing chosen: while one is open, the browser opens no other; the
+    // folder picker needs a folder, an empty one)
+    const folder = await chooser.element().evaluate((e) => e.webkitdirectory);
+    await chooser.setFiles(folder ? fs.mkdtempSync(path.join(os.tmpdir(), 'lg-empty-')) : []);
   }
   assert.deepEqual(page.errors, []);
 });
