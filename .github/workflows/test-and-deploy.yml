@@ -19,6 +19,7 @@ permissions:
   contents: read
 
 jobs:
+  # All tests, also those in the browser (Chromium), on Linux
   test:
     runs-on: ubuntu-latest
     steps:
@@ -28,8 +29,31 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npx playwright install --with-deps chromium
       - run: npm test
+
+  # The tests without a browser (the engine, grading, and the command line,
+  # which teachers run on their own computers) on Windows, macOS and Linux, with
+  # every version of Node that package.json allows and that is supported
+  # (the long-term support versions)
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22, 24, 26]
+    runs-on: ${{ matrix.os }}
+    steps:
+      # (on Windows, git would otherwise turn the line endings of the files into CRLF)
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
 
   # The site is put together in a job of its own. The deploy job comes after
   # it, and by then the uploaded artifact is always in the list that
@@ -37,7 +61,7 @@ jobs:
   # failed with "Found 0 artifact(s)", because right after the upload the
   # artifact is not always in that list yet.)
   build:
-    needs: test
+    needs: [test, unit]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
@@ -48,7 +72,7 @@ jobs:
       - name: Collect the files of the site
         run: |
           mkdir _site
-          git ls-files | grep -vE '^(test|tools|\.github)/|^package(-lock)?\.json$|^\.gitignore$' \
+          git ls-files | grep -vE '^(test|tools|\.github)/|^package(-lock)?\.json$|^\.gitignore$|^eslint\.config\.js$' \
             | xargs cp --parents -t _site
       # Each attempt of a run gets an artifact of its own: when a run is run
       # again, the artifact of the earlier attempt is still there, and with

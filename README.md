@@ -369,6 +369,7 @@ npm run serve                        # then open http://localhost:8000/ (npm run
 npm test                             # all tests (takes a few minutes)
 npm run test:unit                    # only the tests that do not need a browser
 npm run test:browser                 # only the tests in the browser
+npm run lint                         # ESLint (eslint.config.js): mistakes such as unused variables
 npm run game -- play flag3           # the command-line version (see docs/CLI.md)
 ```
 
@@ -412,8 +413,10 @@ The tests (in `test/`, run with Node's built-in test runner) check:
   session), and that nothing is loaded from
   other sites (fonts included).
 
-The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`).
-On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the
+The tests run on GitHub for every push and pull request (`.github/workflows/test-and-deploy.yml`):
+all of them (and `npm run lint`) on Linux, and the tests without a browser also on Windows and
+macOS, each with Node 22, 24 and 26, since teachers run the command-line version on their own
+computers. On a push to `main`, the same workflow then publishes the site to GitHub Pages, but only if the
 tests pass (see *Deploying your own copy* below).
 To use a Chromium that is already installed, set `CHROMIUM_PATH` to its executable.
 
@@ -469,7 +472,8 @@ Grading tab read `examples/` by themselves.
 - The texts use American spelling, and the names of the editors for the programs: *Player
   strategy*, *Nature's moves*, *Winning conditions* (and *Auxiliary program*, *Level generation*,
   *Visibility program*).
-- Run `npm run test:unit` while working, and `npm test` (with the browser tests) before a commit.
+- Run `npm run test:unit` while working, and `npm run lint` and `npm test` (with the browser
+  tests) before a commit. A new test file `test/*.test.mjs` is part of both test commands.
 
 ## Deploying your own copy
 
@@ -481,7 +485,7 @@ For a copy (a fork) of your own on GitHub:
 2. **Push to `main`**: the workflow (`.github/workflows/test-and-deploy.yml`) runs the tests, and
    when they pass, publishes the site. What is published is every file in the repository except
    the ones for development: everything that `git ls-files` lists, without `test/`, `tools/`,
-   `.github/`, `package.json`, `package-lock.json` and `.gitignore` (the step *Collect the files of
+   `.github/`, `package.json`, `package-lock.json`, `eslint.config.js` and `.gitignore` (the step *Collect the files of
    the site*). So `index.html`, `favicon.svg`, `.nojekyll`, `css/`, `js/`, `docs/`, `examples/`,
    `vendor/`, `stored/`, `sw.js`, and also `bin/`, `cli/`, `README.md` and `LICENSE`. Files that are
    not committed (such as `node_modules/`) are never published.
