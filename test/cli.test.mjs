@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { ROOT } from './helpers.mjs';
-import { text_board } from '../js/text-board.js';
+import { text_board, terminal_text } from '../js/text-board.js';
+import { permission_flags } from '../cli/permissions.mjs';
 import { make_zip } from '../js/folder.js';
 import { read_session, merge_students, new_student } from '../js/grading.js';
 
@@ -41,6 +42,13 @@ test('the board as text', () => {
   const before = 'observe(at(1,1,player)). setting(grid_width(2)). setting(grid_height(1)).';
   const after = 'observe(at(1,2,player)). setting(grid_width(2)). setting(grid_height(1)).';
   assert.match(text_board(after, { previous: before, ansi: true })[1], /\x1b\[43m/);
+});
+
+test('text for the terminal: without control characters, but with colors when asked', () => {
+  const evil = 'a\x1b]0;title\x07b\x1b[2Jc\x1b[31md\x9b2Je\rf\x00g\x1bPq#0\x1b\\h\ti\nj\x7f';
+  assert.equal(terminal_text(evil), 'ab' + 'c' + 'd2Je' + 'f' + 'g' + 'h\ti\nj');
+  assert.equal(terminal_text(evil, { colors: true }), 'abc\x1b[31md2Jefgh\ti\nj');
+  assert.equal(terminal_text('Ünïcode ✓'), 'Ünïcode ✓');
 });
 
 test('cli: help, and wrong commands', async () => {
@@ -245,4 +253,101 @@ test('importing a grading file adds the test results of students that were not t
   assert.equal(merged.students[0].comment, 'mine');
   assert.deepEqual(merged.students[0].measurements, { levels: [] });
   assert.deepEqual(merged.students[0].suggestions, { a: { value: 'yes' } });
+});
+
+test('cli: runs under the permission model: it only writes what the command writes, and starts no programs', async (t) => {
+  const flags = permission_flags([]);
+  if (!flags) return;       // (a Node version without the permission model)
+  const tmp = tmpdir(t);
+  const allowed = path.join(tmp, 'out');
+  const probe = `
+    const fs = require('node:fs');
+    const { Worker } = require('node:worker_threads');
+    const tries = {
+      write_in: () => { fs.mkdirSync(${JSON.stringify(path.join(allowed, 'a'))}, { recursive: true }); fs.writeFileSync(${JSON.stringify(path.join(allowed, 'a', 'x.txt'))}, 'x'); },
+      write_next_to: () => fs.writeFileSync(${JSON.stringify(path.join(tmp, 'outside.txt'))}, 'x'),
+      read: () => fs.readFileSync(${JSON.stringify(path.join(ROOT, 'package.json'))}),
+      program: () => require('node:child_process').execFileSync(process.execPath, ['-e', '1']),
+      worker: () => new Worker('1', { eval: true }).terminate(),
+    };
+    const result = {};
+    for (const [name, f] of Object.entries(tries)) {
+      try { f(); result[name] = 'yes'; } catch (e) { result[name] = e.code; }
+    }
+    console.log(JSON.stringify(result));`;
+  const result = await new Promise((resolve, reject) => {
+    execFile(process.execPath, [...permission_flags([allowed]), '-e', probe], (error, stdout, stderr) => (error ? reject(error) : resolve({ stdout, stderr })));
+  });
+  assert.deepEqual(JSON.parse(result.stdout), { write_in: 'yes', write_next_to: 'ERR_ACCESS_DENIED', read: 'yes', program: 'ERR_ACCESS_DENIED', worker: 'yes' });
+  assert.equal(result.stderr, '');      // (no warnings)
+  assert.ok(fs.existsSync(path.join(allowed, 'a', 'x.txt')));
+  assert.ok(!fs.existsSync(path.join(tmp, 'outside.txt')));
+});
+
+test('cli: output into a program that stops reading (e.g. head) ends quietly', async () => {
+  const child = spawn(process.execPath, [BIN, 'examples'], { stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stdout.destroy();
+  let stderr = '';
+  child.stderr.on('data', (d) => { stderr += d; });
+  const code = await new Promise((resolve) => child.on('close', resolve));
+  assert.equal(stderr, '');
+  assert.equal(code, 0);
+});
+
+test('cli: names from submissions cannot control the terminal or a spreadsheet, and feedback stays in its folder', async (t) => {
+  const tmp = tmpdir(t);
+  const zip = path.join(tmp, 'submissions.zip');
+  fs.writeFileSync(zip, make_zip({
+    'ev\x1b]0;a title\x07e_1_2_game.json': example('flag1-with-solutions'),
+    '=HYPERLINK("x")_3_4_game.json': example('flag1-with-solutions'),
+  }));
+  const out = path.join(tmp, 'grading.json');
+  const csv = path.join(tmp, 'm.csv');
+  const graded = await run('grade', zip, '--levels', '1', '--out', out, '--csv', csv);
+  assert.equal(graded.code, 0, graded.stderr);
+  assert.doesNotMatch(graded.stdout, /[\x07\x1b]/);
+  assert.match(graded.stdout, /- eve \(1\): won 1 of 1/);
+  assert.match(fs.readFileSync(csv, 'utf8'), /\r\n"'=HYPERLINK\(""x""\)",3,/);
+  // A grading file changed by hand: the Canvas id is part of the file name
+  const session = JSON.parse(fs.readFileSync(out, 'utf8'));
+  session.students[1].canvas_id = '1/../../outside';
+  fs.writeFileSync(out, JSON.stringify(session));
+  const folder = path.join(tmp, 'feedback');
+  const fb = await run('feedback', out, folder, '--format', 'md');
+  assert.equal(fb.code, 0, fb.stderr);
+  assert.deepEqual(fs.readdirSync(tmp).sort(), ['feedback', 'grading.json', 'm.csv', 'submissions.zip']);
+  assert.deepEqual(fs.readdirSync(folder).sort(), ['feedback-HYPERLINK-x-3.md', 'feedback-ev-0-a-title-e-1-outside.md', 'grades.csv']);
+  assert.match(fs.readFileSync(path.join(folder, 'grades.csv'), 'utf8'), /\r\n"'=HYPERLINK\(""x""\)",3,/);
+  session.students[1].name = { toString: 'x' };
+  fs.writeFileSync(out, JSON.stringify(session));
+  const wrong = await run('feedback', out, folder);
+  assert.equal(wrong.code, 1);
+  assert.match(wrong.stderr, /a student \(.*\) without a proper name or Canvas id/);
+});
+
+test('cli: files in folders that are symbolic links are not read', async (t) => {
+  const tmp = tmpdir(t);
+  const secret = path.join(tmp, 'secret.json');
+  fs.writeFileSync(secret, example('flag1-with-solutions'));
+  const dir = path.join(tmp, 'subs');
+  fs.mkdirSync(path.join(dir, 'jane'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'jane', 'notes.txt'), 'my game');
+  fs.mkdirSync(path.join(tmp, 'game'));
+  try {
+    fs.symlinkSync(secret, path.join(dir, 'jane', 'game.json'));
+    fs.symlinkSync(tmp, path.join(dir, 'jane', 'linked-folder'), 'dir');
+    fs.symlinkSync(secret, path.join(dir, 'rich.json'));
+    fs.symlinkSync(path.join(ROOT, 'examples', 'flag1', '..', '..', 'README.md'), path.join(tmp, 'game', 'strategy.lp'));
+  } catch {
+    return;       // (no symbolic links here, e.g. on Windows without the right to make them)
+  }
+  fs.writeFileSync(path.join(tmp, 'game', 'nature.lp'), 'n.');
+  const out = path.join(tmp, 'g.json');
+  const graded = await run('grade', dir, '--levels', '1', '--out', out);
+  assert.equal(graded.code, 3);
+  assert.match(graded.stdout, /^1 submission, 1 level each:\n- jane: No game file was found/);
+  assert.deepEqual(read_session(fs.readFileSync(out, 'utf8')).students[0].files, ['notes.txt']);
+  // (a game folder: the strategy is a symbolic link, so it is empty)
+  const checked = await run('check', path.join(tmp, 'game'));
+  assert.match(checked.stdout, /strategy\.lp: note: This program has no rules yet/);
 });

@@ -98,7 +98,7 @@ export function files_to_game(contents) {
   const game = {};
   let found = 0;
   for (const field of GAME_FIELDS) {
-    const text = contents[files[field]];
+    const text = Object.hasOwn(contents, files[field]) ? contents[files[field]] : null;
     if (text != null) found++;
     // (the trailing newline that editors add is not part of the program)
     game[field] = text == null ? '' : text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
@@ -207,9 +207,70 @@ export function make_zip(files, date = new Date()) {
 // programs wrote names without the flag for UTF-8.
 const CP437 = 'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u00a0';
 
-async function inflate(bytes) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+// Limits for unpacking zip files, against "zip bombs": small zip files that
+// unpack to gigabytes, and would make the page or the command run out of
+// memory. Real submissions stay far below them: a class of 300 students, each
+// with a game file and a PDF of a few MB, unpacks to about 1 GB, from a zip
+// file of nearly that size (PDF files hardly compress).
+// - ZIP_MAX_ENTRY_SIZE: one file, unpacked (a scanned PDF can be tens of MB);
+// - ZIP_MAX_TOTAL_SIZE, ZIP_MAX_RATIO: all files together, also those in zip
+//   files inside zip files: at most 500 MB, or 4 times the size of what was
+//   loaded if that is more (each level of zip files inside zip files counts:
+//   a student's zip file in Canvas' zip file counts twice);
+// - ZIP_MAX_ENTRIES: the number of files in one zip file.
+export const ZIP_MAX_ENTRY_SIZE = 100e6;
+export const ZIP_MAX_TOTAL_SIZE = 500e6;
+export const ZIP_MAX_RATIO = 4;
+export const ZIP_MAX_ENTRIES = 10000;
+
+// What may still be unpacked, shared by all zip files that are read for one
+// load (pass it to read_zip as `budget`). `loaded`: the number of bytes loaded.
+export function zip_budget(loaded = 0) {
+  const limit = Math.max(ZIP_MAX_TOTAL_SIZE, ZIP_MAX_RATIO * loaded);
+  return { limit, left: limit };
+}
+
+// The error when all files together are too large: then nothing is read
+// (an entry that is too large on its own is only left out).
+export class ZipLimitError extends Error {}
+
+const mb = (n) => `${Math.round(n / 1e6)} MB`;
+
+// Unpack deflated data, a piece at a time, so that unpacking stops as soon as
+// the result is longer than `max` bytes (then it returns null), and not after.
+async function inflate(bytes, max) {
+  const PIECE = 16 * 1024;
+  let at = 0;
+  const input = new ReadableStream({
+    pull(controller) {
+      if (at >= bytes.length) {
+        controller.close();
+        return;
+      }
+      controller.enqueue(bytes.slice(at, at + PIECE));
+      at += PIECE;
+    },
+  });
+  const reader = input.pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks = [];
+  let length = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.length;
+    if (length > max) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(length);
+  let i = 0;
+  for (const c of chunks) {
+    out.set(c, i);
+    i += c.length;
+  }
+  return out;
 }
 
 // The files in a zip file: { path: text } (directories and files of macOS'
@@ -217,10 +278,15 @@ async function inflate(bytes) {
 // Zip files as zip programs write them are read: also with Zip64 fields (for
 // large files, which some programs write for any file), with data before the
 // zip file itself, and with names in the old encoding of DOS.
-// An entry that cannot be read (encrypted, or compressed with another method
-// than deflate) makes the whole file fail, unless `skipped` is a list: then
+// An entry that cannot be read (encrypted, compressed with another method
+// than deflate, larger than ZIP_MAX_ENTRY_SIZE when unpacked, or damaged:
+// another unpacked size than the zip file says, or data that it shares with
+// another entry) makes the whole file fail, unless `skipped` is a list: then
 // it is left out, and { name, reason } is added to the list.
-export async function read_zip(bytes, { binary = false, skipped = null } = {}) {
+// `budget` (see zip_budget) is what may be unpacked in all; when it runs out,
+// a ZipLimitError is thrown. A zip file with more than ZIP_MAX_ENTRIES files
+// is refused.
+export async function read_zip(bytes, { binary = false, skipped = null, budget = zip_budget(bytes.length) } = {}) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const u16 = (i) => view.getUint16(i, true);
   const u32 = (i) => view.getUint32(i, true);
@@ -256,7 +322,9 @@ export async function read_zip(bytes, { binary = false, skipped = null } = {}) {
       return [...raw].map((b) => (b < 128 ? String.fromCharCode(b) : CP437[b - 128])).join('');
     }
   };
-  const out = {};
+  if (count > ZIP_MAX_ENTRIES) throw new Error(`this zip file has too many files (${count}; at most ${ZIP_MAX_ENTRIES} can be read)`);
+  // First the list of entries (from the central directory), then their data
+  const entries = [];
   let p = cd_offset + shift;
   for (let k = 0; k < count; k++) {
     if (p + 46 > bytes.length || u32(p) !== 0x02014b50) throw new Error('the zip file is damaged (or only a part of one: download it again)');
@@ -283,11 +351,35 @@ export async function read_zip(bytes, { binary = false, skipped = null } = {}) {
     }
     p += 46 + name_length + extra_length + comment_length;
     if (name.endsWith('/') || name.startsWith('__MACOSX/') || /(^|\/)\.DS_Store$/.test(name)) continue;
+    local += shift;
+    const entry = { name, flags, method, size, original, local, start: local, end: local, problem: null };
+    if (local + 30 > bytes.length || u32(local) !== 0x04034b50) {
+      entry.problem = 'is damaged';
+    } else {
+      entry.data_start = local + 30 + u16(local + 26) + u16(local + 28);
+      entry.end = entry.data_start + size;
+      if (entry.end > bytes.length) entry.problem = 'is damaged (its data is not all in the zip file)';
+    }
+    entries.push(entry);
+  }
+  // Entries whose data overlap (e.g. several entries with the same data: a way
+  // to make a zip bomb) are damaged
+  const by_start = entries.filter((e) => !e.problem).sort((a, b) => a.start - b.start);
+  let last = null;
+  for (const e of by_start) {
+    if (last && e.start < last.end) {
+      e.problem = last.problem = 'is damaged (its data overlaps with that of another file in the zip file)';
+    }
+    if (!last || e.end > last.end) last = e;
+  }
+  // (a normal object, but '__proto__' as a file name is a file, not its prototype)
+  const out = {};
+  const put = (name, value) => Object.defineProperty(out, name, { value, enumerable: true, writable: true, configurable: true });
+  for (const { name, flags, method, size, original, data_start, problem } of entries) {
     const skip = (reason) => {
       if (!skipped) throw new Error(`${name} in the zip file ${reason}`);
       skipped.push({ name, reason });
     };
-    local += shift;
     if (flags & 1) {
       skip('is encrypted (with a password)');
       continue;
@@ -296,20 +388,32 @@ export async function read_zip(bytes, { binary = false, skipped = null } = {}) {
       skip(`is compressed in a way that is not supported (method ${method}${{ 9: ', deflate64', 12: ', bzip2', 14: ', LZMA', 93: ', zstd', 95: ', xz', 98: ', PPMd' }[method] || ''}): make the zip file with another program`);
       continue;
     }
-    if (local + 30 > bytes.length || u32(local) !== 0x04034b50) {
-      skip('is damaged');
+    if (problem) {
+      skip(problem);
       continue;
     }
-    const data_start = local + 30 + u16(local + 26) + u16(local + 28);
+    if (original > ZIP_MAX_ENTRY_SIZE) {
+      skip(`is too large when unpacked (${mb(original)}; at most ${mb(ZIP_MAX_ENTRY_SIZE)} can be read)`);
+      continue;
+    }
+    if (original > budget.left) {
+      throw new ZipLimitError(`the files in the zip file are too large together when unpacked (more than ${mb(budget.limit)}, ` +
+        `in all the zip files that were loaded at once): load fewer at a time`);
+    }
     const raw = bytes.subarray(data_start, data_start + size);
     let data;
     try {
-      data = method === 0 ? raw.slice() : await inflate(raw);
+      data = method === 0 ? (size === original ? raw.slice() : null) : await inflate(raw, original);
     } catch {
       skip('is damaged (it cannot be unpacked)');
       continue;
     }
-    out[name] = binary ? data : dec.decode(data);
+    if (!data || data.length !== original) {
+      skip('is damaged (its size when unpacked is not the one the zip file gives)');
+      continue;
+    }
+    budget.left -= original;
+    put(name, binary ? data : dec.decode(data));
   }
   return out;
 }

@@ -47,6 +47,16 @@ test.after(async () => {
   if (server) server.close();
 });
 
+// Collect the errors that happen in a page into a list: errors in its scripts,
+// and what the Content-Security-Policy of the page blocks (which the browser
+// only reports in the console).
+function collect_errors(page, errors) {
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (/Content Security Policy/.test(m.text())) errors.push(m.text());
+  });
+}
+
 // Open the page, and collect the errors that happen in it.
 async function open(t, query = '') {
   if (skip) {
@@ -57,7 +67,7 @@ async function open(t, query = '') {
   const page = await browser.newPage({ serviceWorkers: 'block' });
   page.errors = [];
   page.external = [];
-  page.on('pageerror', (e) => page.errors.push(e.message));
+  collect_errors(page, page.errors);
   // The page does not need anything from other sites
   // (the browser's own files, e.g. of its PDF viewer, are not from other sites)
   await page.route((url) => !url.href.startsWith(base) && !/^(blob|chrome|chrome-extension):/.test(url.href), (route) => {
@@ -674,7 +684,7 @@ test('the page works offline after the first visit', async (t) => {
   t.after(() => context.close());
   const page = await context.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  collect_errors(page, errors);
   await page.goto(base);
   await page.waitForSelector('body[data-ready=true]');
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -783,6 +793,26 @@ test('the texts of the tabs and the info pop-ups are loaded', async (t) => {
   // (no javascript: links: the page has a Content-Security-Policy)
   assert.equal(await page.locator('a[href^="javascript:"]').count(), 0);
   assert.deepEqual(page.errors, []);
+});
+
+test('the Content-Security-Policy of the page blocks scripts that are not files of the site', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  // (e.g. a script in a text from a student that ends up in the page by mistake)
+  const blocked = await page.evaluate(() => new Promise((resolve) => {
+    document.addEventListener('securitypolicyviolation', (e) => resolve(e.effectiveDirective), { once: true });
+    const script = document.createElement('script');
+    script.textContent = 'window.inline_script_ran = true;';
+    document.body.append(script);
+    const img = document.createElement('img');
+    img.setAttribute('onerror', 'window.inline_script_ran = true;');
+    img.src = 'data:,';
+    document.body.append(img);
+  }));
+  assert.match(blocked, /^script-src/);
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.inline_script_ran), undefined);
+  assert.ok(page.errors.length && page.errors.every((e) => /Content Security Policy/.test(e)));
 });
 
 // Hover (with a mouse event) over row/column of an editor; returns the help shown, or null.
@@ -1509,7 +1539,7 @@ test('game folders: a linked folder gets every change, and changes to its files 
   t.after(() => context.close());
   const page = await context.newPage();
   page.errors = [];
-  page.on('pageerror', (e) => page.errors.push(e.message));
+  collect_errors(page, page.errors);
   page.on('dialog', (dialog) => dialog.accept());
   await with_test_folder(page);
   await page.goto(base + '?file=flag3&tab=7');

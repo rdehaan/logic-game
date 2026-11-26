@@ -46,6 +46,9 @@ test('the feedback: grade, items, comment, notes on lines, pictures', () => {
   // (only images, nothing else, as the source of a picture)
   assert.ok(!feedback_html(model, [{ data_url: 'javascript:alert(1)' }]).includes('javascript:'));
   assert.equal(feedback_name({ name: 'De Haan, Jé', canvas_id: '7' }), 'feedback-De-Haan-Je-7');
+  // (a grading file can be changed by hand: the name is a plain file name)
+  assert.equal(feedback_name({ name: '../Eve', canvas_id: '1/../../../../tmp/x' }), 'feedback-Eve-1-tmp-x');
+  assert.equal(feedback_name({ name: '', canvas_id: null }), 'feedback-student');
 });
 
 test('the feedback with test results', () => {

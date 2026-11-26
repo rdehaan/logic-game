@@ -3,6 +3,10 @@
 
 <head>
   <meta charset="utf-8">
+  <!-- Only the site's own scripts, styles, fonts and pictures (also in the feedback that the page
+       shows: it is made from what students handed in). blob: is for clingo.wasm after its download,
+       the PDF files of students and downloads; 'wasm-unsafe-eval' lets clingo's WebAssembly run. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' blob:; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; frame-src blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>A logic game</title>

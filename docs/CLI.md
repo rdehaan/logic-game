@@ -183,6 +183,12 @@ Wrote grading-2026-11-26.json and measurements.csv (412.7 seconds).
 The games are compared with the example games and with each other (the programs without
 comments, spaces and names of variables): the most similar one is a hint, not proof of copying.
 
+Submissions come from others, so `grade` is careful with them: a file in a zip file that is
+larger than 100 MB when unpacked, or that is damaged, is left out (with a note); all files
+together may unpack to at most 500 MB (or 4 times the size of what you give it, if that is
+more), or nothing is read; symbolic links in folders are not read; and a game that cannot be
+tested gets a note, and the others are still tested.
+
 ### `logic-game feedback <grading> <folder> [--format LIST]`
 
 Writes the feedback of every student of a grading file (exported from the Grading tab with
@@ -207,10 +213,19 @@ Pictures of the board are only drawn by the web page: the feedback written here 
 
 Short forms: `-v` for `--verbose`, `-q` for `--quiet`.
 
+### Permissions
+
+The commands run under Node's permission model: they can read files, but they only write what
+the command writes (the folder of `new` and `feedback`, the result of `convert`, the files of
+`grade`), and they cannot start other programs. The games of students are programs written by
+others: this is a second safeguard, next to refusing programs with scripts. To run a command
+without it (for example to find out whether a problem comes from it), set the environment
+variable `LOGIC_GAME_NO_PERMISSIONS=1`.
+
 ### Exit codes
 
 `0` when all went well (`play`: the game was won; `test`: every level was won; `check`: no
-errors; `grade`: every submission has a game), `3` when not, and `1` when the command was used wrongly (for example a game that does
+errors; `grade`: every submission has a game, and it could be tested), `3` when not, and `1` when the command was used wrongly (for example a game that does
 not exist). So the commands can be used in scripts, and in continuous integration.
 
 ## Working with git

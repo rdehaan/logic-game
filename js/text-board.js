@@ -74,3 +74,14 @@ export function text_board(facts, { previous = null, ansi = false, legend = true
   }
   return lines;
 }
+
+// Text for a terminal. Text from games and submissions can hold control
+// characters, which a terminal takes as commands (to move the cursor, change
+// the title of the window, and so on): they are left out, also as part of
+// escape sequences (ESC ...), except tabs and newlines. With colors: true,
+// colors (ESC [ ... m, as text_board adds them with ansi) stay.
+const CONTROLS = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[P^_X][^\x1b]*(?:\x1b\\)?|\x1b[ -~]?|[\x00-\x08\x0b-\x1f\x7f-\x9f]/g;
+
+export function terminal_text(text, { colors = false } = {}) {
+  return String(text).replace(CONTROLS, (m) => (colors && /^\x1b\[[0-9;]*m$/.test(m) ? m : ''));
+}
