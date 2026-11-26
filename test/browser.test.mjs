@@ -590,6 +590,22 @@ test('testing a strategy on many levels, and playing a level of the test again',
   await other.waitForSelector('body[data-ready=true]');
   await other.waitForSelector('#board-message:not([hidden])');
   assert.equal(await other.evaluate(() => window.logic_game.editors.value('level_state')), level_state);
+  // Any level of the test can be loaded by its number, also one that was won
+  await page.click('label[for=tab4]');
+  assert.equal(await page.isVisible('#test-level'), true);
+  const lost = await items.evaluateAll((lis) => lis.map((li) => Number(/^Level (\d+)/.exec(li.textContent)[1])));
+  const won = [1, 2, 3, 4, 5, 6].find((n) => !lost.includes(n));
+  const chosen = won ?? lost[0];
+  await page.fill('#test-level-number', String(chosen));
+  await page.click('#test-level-load');
+  await page.waitForFunction((n) => document.getElementById('board-message').textContent === `This is level ${n} of the test. Play plays it exactly as in the test.`, chosen);
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.match(await game_output(page), won != null ? /^WIN!/ : /^LOSE!/);
+  // (a number outside the test)
+  await page.fill('#test-level-number', '7');
+  await page.click('#test-level-load');
+  assert.equal(await page.textContent('#test-level-status'), 'The test played levels 1 to 6.');
 });
 
 test('the page works offline after the first visit', async (t) => {

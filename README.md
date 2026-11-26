@@ -125,7 +125,8 @@ match what `js/engine.js` passes between the programs.
 *Test your strategy* (in the Strategy tab) plays the game on many random levels without
 drawing them, and lists the levels that were not won. Level *n* is generated and played with
 random numbers from seed *n*, so each of them can be played again exactly (*Load this level*),
-or shared as a link (`#game=...&seed=n`).
+or shared as a link (`#game=...&seed=n`). Under the list, any level of the last test (also one
+that was won) can be loaded or linked to by its number.
 
 ## Saving, versions and sharing
 

@@ -242,8 +242,9 @@
       <h3>Test your strategy</h3>
       <p>
         This plays the game on many random levels (without drawing them),
-        to see how often your strategy wins. Every level can be played again
-        exactly: load it to watch what happens, or copy a link to it.
+        to see how often your strategy wins. Afterwards, the levels it did not
+        win are listed, and every level of the test can be played again exactly:
+        load it onto the board to watch what happens, or copy a link to it.
       </p>
       <div class="test-controls">
         Levels:&nbsp;<input type="number" id="test-levels" min="1" max="1000" value="20">
@@ -253,6 +254,12 @@
       </div>
       <p id="test-summary"></p>
       <ul id="test-results" class="test-results"></ul>
+      <div id="test-level" class="test-controls" hidden>
+        Play any level of this test again: level&nbsp;<input type="number" id="test-level-number" min="1" value="1" aria-label="The number of the level">
+        <button data-action="load_test_level" class="control-button" id="test-level-load">Load</button>
+        <button data-action="copy_test_level_link" class="control-button" id="test-level-link">Copy link</button>
+        <span id="test-level-status"></span>
+      </div>
     </section>
 
     <section id="section-debug">

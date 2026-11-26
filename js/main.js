@@ -314,6 +314,8 @@ let generating = false;
 let level_seed = null;
 let testing = false;
 let test_cancelled = false;
+// The last test: the game as it was tested (encoded, for links), and the verdict of each level
+let last_test = null;
 
 // What the board is based on:
 // - level_basis: where the level came from ({ source, at, programs }), with the
@@ -1385,10 +1387,14 @@ async function run_test() {
   $('test-cancel').hidden = false;
   $('test-summary').textContent = '';
   $('test-results').replaceChildren();
+  $('test-level').hidden = true;
+  $('test-level-status').textContent = '';
+  last_test = null;
   const tested = current;     // (the test result is kept with this game)
   const game = editors.game();
   const code = await encode_game(game);
   const counts = {};
+  const verdicts = [];
   const t0 = performance.now();
   try {
     await test_strategy(solver, game, {
@@ -1396,6 +1402,7 @@ async function run_test() {
       cancelled: () => test_cancelled,
       on_level: (r) => {
         counts[r.verdict] = (counts[r.verdict] || 0) + 1;
+        verdicts[r.seed] = r.verdict;
         $('test-progress').textContent = `Level ${r.seed} of ${levels} played..`;
         $('test-summary').textContent = test_summary(counts);
         if (r.verdict !== 'win') $('test-results').append(test_result_item(r, code));
@@ -1408,6 +1415,14 @@ async function run_test() {
     const n = Object.values(counts).reduce((a, b) => a + b, 0);
     $('test-progress').textContent = (test_cancelled ? `Cancelled after ${n} levels` : `Done`) +
       ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
+    // Any level of the test can be played again (not only the ones listed)
+    if (n > 0) {
+      last_test = { code, verdicts, levels: verdicts.length - 1 };
+      const number = $('test-level-number');
+      number.max = String(last_test.levels);
+      if (!(Number(number.value) >= 1 && Number(number.value) <= last_test.levels)) number.value = '1';
+      $('test-level').hidden = false;
+    }
     // The result is kept with this version of the programs (see the Versions tab)
     if (!test_cancelled && n > 0) {
       const s = versions_tab.record_test(tested, game, n, counts);
@@ -1449,6 +1464,33 @@ function test_result_item(r, code) {
     li.append(' ', load, ' ', link);
   }
   return li;
+}
+
+// The level of the last test whose number is filled in (or null, with the reason shown).
+function chosen_test_level() {
+  const status = $('test-level-status');
+  status.textContent = '';
+  if (!last_test) return null;
+  const seed = Number($('test-level-number').value);
+  if (!Number.isInteger(seed) || seed < 1 || seed > last_test.levels) {
+    status.textContent = `The test played levels 1 to ${last_test.levels}.`;
+    return null;
+  }
+  if (last_test.verdicts[seed] === 'no level') {
+    status.textContent = `No level was generated for level ${seed}.`;
+    return null;
+  }
+  return seed;
+}
+
+function load_test_level() {
+  const seed = chosen_test_level();
+  if (seed != null) load_seeded_level(seed);
+}
+
+function copy_test_level_link() {
+  const seed = chosen_test_level();
+  if (seed != null) copy_text(link_to(last_test.code, seed), $('test-level-status'));
 }
 
 function cancel_test() {
@@ -1520,7 +1562,7 @@ async function start_tutorial() {
 const actions = {
   do_generate, clear_level, reset_level, do_play, do_pause, do_step, do_stop,
   lock_level_generation, unlock_level_generation, lock_rules, unlock_rules, update_interface: show_edited_level, load_game, download_game,
-  share_game, revert_to_original, forget_saved_work, reset_everything, run_test, cancel_test,
+  share_game, revert_to_original, forget_saved_work, reset_everything, run_test, cancel_test, load_test_level, copy_test_level_link,
   take_snapshot: () => versions_tab.take_snapshot(),
   download_project: () => versions_tab.download_project(),
   download_backup: () => versions_tab.download_backup(),

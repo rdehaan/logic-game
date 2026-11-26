@@ -544,6 +544,10 @@ input.share-link {
 }
 
 /* Testing a strategy on many levels */
+#test-level {
+  margin: 8px 0;
+}
+
 .test-controls input[type="number"] {
   width: 5em;
   padding: 3px;
