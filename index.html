@@ -52,9 +52,9 @@
       <div id="visual"></div>
     </div>
     <div id="timeline-box" class="timeline" hidden>
-      <button id="timeline-prev" class="control-button" title="Previous time (←)">&#x25C0;</button>
+      <button id="timeline-prev" aria-label="Previous time" class="control-button" title="Previous time (←)">&#x25C0;</button>
       <input type="range" id="timeline" min="1" max="1" value="1" aria-label="Step to show">
-      <button id="timeline-next" class="control-button" title="Next time (→)">&#x25B6;</button>
+      <button id="timeline-next" aria-label="Next time" class="control-button" title="Next time (→)">&#x25B6;</button>
       <span id="timeline-label"></span>
       <label class="inline-check timeline-option"><input type="checkbox" id="mark-changes"> Mark the cells that changed since the time before</label>
     </div>
@@ -207,24 +207,24 @@
         <button data-action="lock_rules" class="control-button" id="lock-button">&#x25CF; Lock</button>
         <button data-action="unlock_rules" class="control-button" id="unlock-button">&#x25CB; Unlock to edit</button>
       </div>
-      <h3>Auxiliary <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
+      <h3>Auxiliary <a href="javascript:void(0)" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</a></h3>
       <p>
         This is an auxiliary program that is added to all programs.
       </p>
       <pre id="aux_program"></pre>
-      <h3>Level generation <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
+      <h3>Level generation <a href="javascript:void(0)" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</a></h3>
       <p>
         This program expresses how levels are generated.
       </p>
       <pre id="level_gen_program"></pre>
 
-      <h3>Visibility <a href="javascript:void()" class="modal-link" data-open="modal-level-programs">&#xf05a;</a></h3>
+      <h3>Visibility <a href="javascript:void(0)" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</a></h3>
       <p>
         This program expresses what the player can observe.
       </p>
       <pre id="visibility_program"></pre>
 
-      <h3>Nature's moves <a href="javascript:void()" class="modal-link" data-open="modal-natures-moves">&#xf05a;</a></h3>
+      <h3>Nature's moves <a href="javascript:void(0)" class="modal-link" data-open="modal-natures-moves" aria-label="About nature's moves">&#xf05a;</a></h3>
       <p>
         This program expresses nature's moves&mdash;i.e.,
         how the state of the board changes as a result of
@@ -232,7 +232,7 @@
       </p>
       <pre id="nature_program"></pre>
 
-      <h3>Winning conditions <a href="javascript:void()" class="modal-link" data-open="modal-winning-conditions">&#xf05a;</a></h3>
+      <h3>Winning conditions <a href="javascript:void(0)" class="modal-link" data-open="modal-winning-conditions" aria-label="About the winning conditions">&#xf05a;</a></h3>
       <p>
         This program expresses when the game is won or lost.
       </p>
@@ -240,7 +240,7 @@
     </section>
 
     <section id="section-player-strategy">
-      <h3>Player strategy <a href="javascript:void()" class="modal-link" data-open="modal-player-program">&#xf05a;</a></h3>
+      <h3>Player strategy <a href="javascript:void(0)" class="modal-link" data-open="modal-player-program" aria-label="About the player strategy">&#xf05a;</a></h3>
       <p>
         This program computes the player's move(s).
       </p>
@@ -305,9 +305,9 @@
       <pre id="debug-messages" class="code debug-messages" hidden></pre>
       <div id="debug-steps" class="debug-steps">
         <div class="timeline debug-timeline">
-          <button id="debug-prev" class="control-button" title="Previous step">&#x25C0;</button>
+          <button id="debug-prev" aria-label="Previous step" class="control-button" title="Previous step">&#x25C0;</button>
           <input type="range" id="debug-timeline" min="1" max="1" value="1" aria-label="Step to show">
-          <button id="debug-next" class="control-button" title="Next step">&#x25B6;</button>
+          <button id="debug-next" aria-label="Next step" class="control-button" title="Next step">&#x25B6;</button>
         </div>
         <p id="debug-step-label" class="debug-step-label"></p>
         <label class="inline-check debug-only-changes"><input type="checkbox" id="option-only-changes" data-option="only_changes"> Show only what changed since the step before</label>
@@ -381,7 +381,7 @@
         <p>
           The <i>project file</i> holds your current version, all snapshots (with
           their notes and test results) and the original game. Save it wherever you
-          keep your files (for example in your Google Drive or OneDrive folder, or on a
+          keep your files (for example in a cloud storage folder, or on a
           USB stick), and load it above on any computer to go on where you left off.
           Work saved in a browser can get lost (for example when the browser's
           data is cleared), so download your project now and then.
@@ -462,7 +462,7 @@
         handed in, test them, grade them with the rubric, and write feedback to send to the
         students (as a PDF, a web page or text). Your grading is kept in this browser; export it
         to keep it safe, or to hand it to another grader.
-        <a href="javascript:void()" class="modal-link" data-open="modal-grading">&#xf05a;</a>
+        <a href="javascript:void(0)" class="modal-link" data-open="modal-grading" aria-label="About grading">&#xf05a;</a>
       </p>
 
       <details class="versions-more" data-remember="grading-submissions" open>
@@ -505,9 +505,9 @@
 
       <div id="grading-student" class="grading-student" hidden>
         <div class="grading-header">
-          <button data-action="grading_prev" class="control-button" id="grading-prev" title="The student before">&#x25C0;</button>
+          <button data-action="grading_prev" class="control-button" id="grading-prev" aria-label="Previous student" title="The student before">&#x25C0;</button>
           <h3 id="grading-name"></h3>
-          <button data-action="grading_next" class="control-button" id="grading-next" title="The next student">&#x25B6;</button>
+          <button data-action="grading_next" class="control-button" id="grading-next" aria-label="Next student" title="The next student">&#x25B6;</button>
           <label class="inline-check">Status:
             <select id="grading-status">
               <option value="new">not started</option>

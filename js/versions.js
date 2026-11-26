@@ -11,7 +11,7 @@
 //   snapshot of that version (one is made if there is none yet).
 // - Differences: line by line (Myers' algorithm), for each program.
 // - Project files: the current version, the original game and all snapshots
-//   in one JSON file, to keep anywhere (e.g. in a Google Drive folder) and
+//   in one JSON file, to keep anywhere (e.g. in a cloud storage folder) and
 //   load again on another computer. A backup file holds all games of this
 //   browser.
 //

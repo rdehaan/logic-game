@@ -6,7 +6,7 @@
 // - vendor/ace/: the Ace editor (from ace-builds): the editor, the textmate
 //   theme, and the language tools (autocompletion).
 //
-// To update clingo (or a font):
+// To update clingo (or Ace, or a font):
 //   npm install --save-exact clingo-wasm@latest
 //   npm run vendor
 //   npm test

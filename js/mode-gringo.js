@@ -1,5 +1,4 @@
-// This file is released under the MIT license.
-// See LICENSE.md.
+// This file is released under the MIT license, as potassco.github.io (where it comes from).
 //
 // The code in this file is taken (in modified form) from:
 // https://github.com/potassco/potassco.github.io

@@ -529,7 +529,9 @@ input.share-link {
 }
 
 .timeline input[type="range"] {
-  flex: 1 1 200px;
+  /* (may shrink, so that the buttons stay on the same line on a phone) */
+  flex: 1 1 0;
+  min-width: 0;
   max-width: 400px;
 }
 

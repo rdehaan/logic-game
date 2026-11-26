@@ -73,7 +73,7 @@ shows how long clingo took for each program in each step.
 | `docs/CLI.md` | The guide to the command-line version |
 | `stored/` | Programs referred to in the Internals tab |
 | `test/` | The tests (`helpers.mjs`: what several tests share) |
-| `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm into `vendor/`) |
+| `tools/` | `serve.mjs` (local web server), `vendor.mjs` (copies clingo-wasm, the Ace editor and the fonts from `node_modules/` into `vendor/`) |
 
 ## The game rules, and what the board shows
 
@@ -215,7 +215,7 @@ comparing, the project file, working in a folder, share links, and everything in
   the current version, the original and the snapshots; a single program can be taken from an
   older version.
 - *Project file*: one JSON file (`"format": "logic-game-project"`) with the current version, the
-  original game and all snapshots; students keep it anywhere (e.g. in a Google Drive folder)
+  original game and all snapshots; students keep it anywhere (e.g. in a cloud storage folder)
   and load it again on another computer. A *backup* file holds all games of the browser.
   Game files can be loaded too; *Download as a folder (.zip)* gives a game folder (see below).
 - *Everything in this browser*: all games with saved work or snapshots, to open, download or
@@ -263,7 +263,7 @@ logic-game grade submissions.zip             # for teachers: test all submission
 logic-game help
 ```
 
-In the browser (Versions tab): *Download as a folder (.zip)*, and *Select folder* (or a `.zip`)
+In the browser (Versions tab): *Download as a folder (.zip)*, and *Select folder* (or *Select file* for a `.zip`)
 to load one. In Chrome and Edge, *Link a folder…* links the page to a game folder on disk
 (`js/folder-link.js`, with the File System Access API): every change in the page is written
 into the files, and changes to the files (by an editor, or by `git checkout`) are loaded into
@@ -275,7 +275,7 @@ The full guide to the command-line version is [docs/CLI.md](docs/CLI.md); the In
 tab of the page has the basics (*Playing on your own computer*).
 
 `play`, `test` and `check` exit with code 3 when the game is not won, a level of the test is
-not won, or there are errors, so they can be used in scripts and in CI.
+not won, or there are errors (and `grade` when a submission has no game), so they can be used in scripts and in CI.
 
 ## Offline use
 
@@ -297,9 +297,9 @@ take about 0.4 s.
 You need [Node.js](https://nodejs.org/) 22 or newer.
 
 ```
-npm install                          # once: clingo-wasm and Playwright, for the tests
+npm install                          # once: clingo-wasm, and for development Playwright, Ace and the fonts
 npx playwright install chromium      # once: the browser for the browser tests
-npm run serve                        # then open http://localhost:8000/
+npm run serve                        # then open http://localhost:8000/ (npm run serve -- 8080: another port)
 npm test                             # all tests (takes a few minutes)
 npm run test:unit                    # only the tests that do not need a browser
 npm run test:browser                 # only the tests in the browser
@@ -308,6 +308,11 @@ npm run game -- play flag3           # the command-line version (see docs/CLI.md
 
 Opening `index.html` directly from disk does not work (browsers do not run web
 workers from `file://` URLs); use `npm run serve`.
+
+Without a browser, the tests in `browser.test.mjs` are *skipped*, not failed, so `npm test`
+still passes: look for `# skipped` in the summary. Run `npx playwright install chromium`, or set
+`CHROMIUM_PATH` to the executable of a Chromium that is already installed. On CI (where the
+environment variable `CI` is set) a missing browser is an error instead.
 
 The tests (in `test/`, run with Node's built-in test runner) check:
 - `asp.test.mjs`: the text helpers and the board (no clingo needed);
@@ -344,7 +349,7 @@ tests pass. This needs a one-time setting on GitHub: *Settings > Pages > Build a
 Source: GitHub Actions* (instead of *Deploy from a branch*).
 To use a Chromium that is already installed, set `CHROMIUM_PATH` to its executable.
 
-### Updating clingo (or the fonts)
+### Updating clingo, Ace or the fonts
 
 ```
 npm install --save-exact clingo-wasm@latest

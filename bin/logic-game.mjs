@@ -60,6 +60,7 @@ Commands:
   feedback <grading> <folder>     Write the feedback of every student of a grading file (exported from the
                                   Grading tab, or written by grade) into a folder, with grades.csv
       --format LIST               pdf, html and/or md, separated by commas (default pdf)
+      --rubric FILE               Grade with this rubric instead of the one in the grading file
   examples                        List the example games
   help                            Show this help (also: --help, -h)
 

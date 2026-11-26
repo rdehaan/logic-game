@@ -247,7 +247,7 @@ next(RANDINT(1,3),C,flag) :- at(R,C,flag).</pre>
       <pre class="example-code">
 % Goal: reach the flag
 win :- at(R,C,player), at(R,C,flag).
-% You lose if time runs out..
+% You lose if time runs out.
 lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
 
       <h3>How to instruct the player?</h3>
@@ -363,8 +363,8 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         <li>see how well each version did when you tested your strategy
           (the result of <i>Test your strategy</i> is kept with the version);</li>
         <li>download your whole project (all versions) as a file, and load
-          it again later or on another computer; keep it in a cloud folder
-          such as Google Drive or OneDrive, so that it is not lost.</li>
+          it again later or on another computer; keep it in a cloud storage
+          folder, so that it is not lost.</li>
       </ul>
       <p>
         The page also keeps snapshots by itself, so going back is always possible:
@@ -454,7 +454,7 @@ logic-game convert project.json my-game   # convert files (e.g. from the Version
       </p>
       <p>
         Items on the grid may be visualized with an icon in the
-        <a href="https://fontawesome.com/icons">Font Awesome</a>
+        <a href="https://fontawesome.com/icons" target="_blank" rel="noopener">Font Awesome</a>
         font (version 7, free icons in the solid and brands styles) as follows.
         To depict an item named <tt>obj</tt> in the logic programs
         by an icon with unicode representation <tt>fXXX</tt>
@@ -473,7 +473,7 @@ decorate(label,bug,font_f188).</pre>
         <tt>decorate(bgcolor,R,C,Color)</tt>, which color the cell
         <tt>R,C</tt>.
         The color <tt>Color</tt> can be a
-        <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/named-color">CSS color name</a>
+        <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/named-color" target="_blank" rel="noopener">CSS color name</a>
         written in lowercase (such as <tt>lightgreen</tt>),
         or a hexadecimal color code prefixed by <tt>hex_</tt>
         (such as <tt>hex_ff8800</tt> for <tt>#ff8800</tt>,
@@ -520,7 +520,7 @@ decorate(bgcolor,R,C,hex_ddf) :- at(R,C,water), not observe(fog(R,C)),
       </p>
       <p>
         Atoms over <tt>decorate</tt> derived by the visibility program are only
-        used for the visualization: they are <b>*not*</b> passed on to the
+        used for the visualization: they are <b>not</b> passed on to the
         player's program. So they cannot reveal anything to the player.
       </p>
       <p>
