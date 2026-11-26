@@ -1216,9 +1216,6 @@ pre.debug-messages {
 }
 
 .control-button.primary-button {
-  margin-bottom: 6px;
-  padding: 9px 18px;
-  font-weight: 600;
   color: #fff;
   background: #E69500;
   border-color: #E69500;
