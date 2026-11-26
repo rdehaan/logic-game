@@ -8,9 +8,14 @@
 //
 // The page (main.js) passes in what the tutorial needs from it (`app`):
 //   open_game()          -> opens a fresh copy of the tutorial game
+//   close()              -> (optional) called when the tutorial is closed
 //   load_example(name)   -> loads an example game (e.g. 'flag2')
 //   results()            -> { games, verdict }: the number of games played so far, and the last verdict
 //   select_tab(n), program(), set_program(text), snapshots()
+//
+// The same card is used for other tutorials (the grading tutorial, see
+// grading-tutorial.js): they pass their own steps, their own key to remember
+// that they were seen, and the id of their own invitation.
 
 const STATE_KEY = 'logic-game:tutorial';
 const POLL_MS = 250;
@@ -96,7 +101,7 @@ function make_steps(app) {
       title: 'A first rule',
       target: () => $('player_move_program'),
       text: `<p>At every step, the game runs your program, and the player makes the move that it derives with
-        <tt>do/1</tt>: <tt>do(move(up))</tt>, <tt>do(move(down))</tt>, <tt>do(move(left))</tt> or <tt>do(move(right))</tt>.</p>
+        <code>do/1</code>: <code>do(move(up))</code>, <code>do(move(down))</code>, <code>do(move(left))</code> or <code>do(move(right))</code>.</p>
         <p>Type this line into the editor (with the period at the end):</p>${code(FIRST_RULE)}`,
       enter: () => app.select_tab(4),
       done: () => squeeze(app.program()).includes(squeeze(FIRST_RULE)),
@@ -115,12 +120,12 @@ function make_steps(app) {
     {
       title: 'Looking at the board',
       target: () => $('player_move_program'),
-      text: `<p>Your program sees the board through <tt>observe/1</tt>:
-        <tt>observe(at(R,C,player))</tt> holds when the player is in row <tt>R</tt> and column <tt>C</tt>,
-        and <tt>observe(at(R,C,flag))</tt> when the flag is there.
+      text: `<p>Your program sees the board through <code>observe/1</code>:
+        <code>observe(at(R,C,player))</code> holds when the player is in row <code>R</code> and column <code>C</code>,
+        and <code>observe(at(R,C,flag))</code> when the flag is there.
         Words that start with a capital letter are <i>variables</i>.</p>
-        <p>Replace your program with these two rules (<tt>%</tt> starts a comment):</p>${code(STRATEGY)}
-        <p>The rule <tt>A :- B, C.</tt> means: <tt>A</tt> holds if <tt>B</tt> and <tt>C</tt> hold.</p>`,
+        <p>Replace your program with these two rules (<code>%</code> starts a comment):</p>${code(STRATEGY)}
+        <p>The rule <code>A :- B, C.</code> means: <code>A</code> holds if <code>B</code> and <code>C</code> hold.</p>`,
       enter: () => app.select_tab(4),
       done: () => {
         const p = squeeze(app.program());
@@ -145,7 +150,7 @@ function make_steps(app) {
         (what the player observed) and which move came out.
         Move through the game with the slider there (or the one under the board); the <b>Step</b> button plays one step at a time.</p>
         <p>Mistakes are marked in the editors while you type (try leaving out a period),
-        with an explanation under the editor. Hover over a word like <tt>observe</tt> for help.</p>`,
+        with an explanation under the editor. Hover over a word like <code>observe</code> for help.</p>`,
     },
     {
       title: 'The rules of the game',
@@ -183,10 +188,12 @@ function make_steps(app) {
 }
 
 export class Tutorial {
-  constructor({ storage, app }) {
+  constructor({ storage, app, steps = make_steps, key = STATE_KEY, invite = 'tutorial-invite' }) {
     this.storage = storage;
     this.app = app;
-    this.steps = make_steps(app);
+    this.key = key;
+    this.invite_id = invite;
+    this.steps = steps(app);
     this.index = -1;
     this.timer = null;
     this.target = null;
@@ -197,7 +204,7 @@ export class Tutorial {
 
   get seen() {
     try {
-      return Boolean(this.storage && this.storage.getItem(STATE_KEY));
+      return Boolean(this.storage && this.storage.getItem(this.key));
     } catch {
       return false;
     }
@@ -205,7 +212,7 @@ export class Tutorial {
 
   remember(state) {
     try {
-      this.storage.setItem(STATE_KEY, JSON.stringify({ state, at: new Date().toISOString() }));
+      this.storage.setItem(this.key, JSON.stringify({ state, at: new Date().toISOString() }));
     } catch {
       // (then the invitation comes back next time)
     }
@@ -213,13 +220,13 @@ export class Tutorial {
 
   // The invitation for new players (not shown when the tutorial was seen or dismissed).
   invite() {
-    const box = $('tutorial-invite');
+    const box = $(this.invite_id);
     if (!box || this.seen) return;
     box.hidden = false;
   }
 
   dismiss_invite() {
-    $('tutorial-invite').hidden = true;
+    $(this.invite_id).hidden = true;
     this.remember('dismissed');
   }
 
@@ -230,7 +237,7 @@ export class Tutorial {
   }
 
   async start() {
-    $('tutorial-invite').hidden = true;
+    $(this.invite_id).hidden = true;
     this.remember('started');
     this.make_card();
     await this.app.open_game();
@@ -238,6 +245,7 @@ export class Tutorial {
   }
 
   stop(finished = false) {
+    const was_running = Boolean(this.card);      // (also when starting failed halfway)
     clearInterval(this.timer);
     this.timer = null;
     this.highlight(null);
@@ -245,6 +253,8 @@ export class Tutorial {
     this.card = null;
     this.index = -1;
     this.remember(finished ? 'finished' : 'closed');
+    // (returns what close() returns: a promise, when closing takes a while)
+    return was_running && this.app.close ? this.app.close() : undefined;
   }
 
   go(index) {

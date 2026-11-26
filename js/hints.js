@@ -2,9 +2,9 @@
 // predicates from the engine (its input) and passes some on (its output).
 // Using the wrong ones is not an error for clingo, but the game will not
 // work as intended. These hints point out such mistakes, for example:
-// - the player's program never derives do/1 (so the player never moves);
-// - the player's program uses at/3, which it does not get (it sees observe/1);
-// - do(up) is derived, but nature's program only reacts to do(move(D));
+// - the player strategy never derives do/1 (so the player never moves);
+// - the player strategy uses at/3, which it does not get (it sees observe/1);
+// - do(up) is derived, but the nature's moves program only reacts to do(move(D));
 // - remeber/1 is derived but never used (did you mean remember/1?).
 //
 // This module does not use the DOM, so the tests can run it in Node.
@@ -28,13 +28,13 @@ export const INTERFACES = {
     main: [['observe/1', 'the player never observes anything: the visibility program should derive observe(...) atoms, such as observe(at(R,C,O))']],
   },
   player_move_program: {
-    name: "player's program",
+    name: 'player strategy',
     inputs: ['observe/1', 'setting/1', 'current_time/1', 'memory/1'],
     outputs: ['do/1', 'remember/1', 'forget/1'],
-    main: [['do/1', 'the player never makes a move: the player\'s program should derive do(...) atoms (such as do(move(up)), depending on the game)']],
+    main: [['do/1', 'the player never makes a move: the player strategy should derive do(...) atoms (such as do(move(up)), depending on the game)']],
   },
   nature_program: {
-    name: "nature's program",
+    name: "nature's moves",
     inputs: ['at/3', 'at_time/4', 'state_time/1', 'current_time/1', 'do/1', 'setting/1', 'decorate/*'],
     outputs: ['next/3', 'wipe_player_memory/0'],
     main: [['next/3', 'the board is empty after the first step: the next state consists of exactly the next(R,C,O) atoms that nature derives, so objects that stay in place need a rule too, e.g. next(R,C,O) :- at(R,C,O), ...']],
@@ -62,8 +62,8 @@ const NAMES = {
   aux_program: 'the auxiliary program',
   level_gen_program: 'level generation',
   visibility_program: 'the visibility program',
-  player_move_program: "the player's program",
-  nature_program: "nature's program",
+  player_move_program: 'the player strategy',
+  nature_program: "the nature's moves program",
   goal_program: 'the winning conditions',
   level_settings: 'the level settings',
 };
@@ -264,7 +264,7 @@ export function game_hints(game, skip = new Set()) {
         if (reported.has(text)) continue;
         reported.add(text);
         const examples = [...new Set(reactions.map((r) => `do(${term_to_string(r.args[0])})`))].slice(0, 4);
-        hints.player_move_program.push(at(move, 'warning', `Nature's program does not react to moves like ${text}: it only looks at ${examples.join(', ')}.` +
+        hints.player_move_program.push(at(move, 'warning', `The nature's moves program does not react to moves like ${text}: it only looks at ${examples.join(', ')}.` +
           (examples.some((x) => x.includes('_')) ? ' (_ stands for anything.)' : '')));
       }
     }
@@ -344,8 +344,8 @@ export function special_help(field, s) {
     role = `This program gets it from the game.`;
   } else if (iface && in_list(s, iface.outputs)) {
     const to = {
-      'do/1': "nature's program", 'remember/1': "the player's memory", 'forget/1': "the player's memory",
-      'observe/1': "the player's program", 'next/3': 'the next state of the game', 'wipe_player_memory/0': "the player's memory",
+      'do/1': "the nature's moves program", 'remember/1': "the player's memory", 'forget/1': "the player's memory",
+      'observe/1': 'the player strategy', 'next/3': 'the next state of the game', 'wipe_player_memory/0': "the player's memory",
       'at/3': 'the level state', 'setting/1': 'the level settings', 'decorate/*': 'the drawing of the board', 'debug/*': 'the level state',
     }[key];
     role = to ? `This program passes it on to ${to}.` : 'This program passes it on to the game.';
@@ -389,10 +389,10 @@ export function completions(field, game) {
 // ---- Why the player made no move (or several) ----------------------------------------------
 
 // A hint for a step in which the player made no move, or several moves at once:
-// { text, lines } (lines: the lines of the player's program to look at, from 1),
-// or null when the player made exactly one move. `program` is the player's
-// program the step was played with, `moves` the moves it derived ('do(..). do(..).'),
-// and `problem` the problem of the player's program in that step (or null).
+// { text, lines } (lines: the lines of the player strategy to look at, from 1),
+// or null when the player made exactly one move. `program` is the player
+// strategy the step was played with, `moves` the moves it derived ('do(..). do(..).'),
+// and `problem` the problem of the player strategy in that step (or null).
 export function move_hint(program, moves, problem) {
   const made = facts_to_answer_set(moves || '');
   if (made.length === 1) return null;

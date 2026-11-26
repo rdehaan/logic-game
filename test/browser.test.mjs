@@ -174,7 +174,7 @@ test('errors during a game are reported with the program and line', async (t) =>
   await page.selectOption('#speed-selector', '100');
   await page.click('#play-button');
   await wait_for_verdict(page);
-  assert.match(await game_output(page), /Player program: error:\n {4}Player strategy, line 2, column 41: syntax error/);
+  assert.match(await game_output(page), /Player strategy: error:\n {4}Player strategy, line 2, column 41: syntax error/);
 });
 
 test('a program that does not terminate is stopped, and the page stays responsive', async (t) => {
@@ -187,7 +187,7 @@ test('a program that does not terminate is stopped, and the page stays responsiv
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
   assert.ok(Date.now() - t0 < 1000);
   await wait_for_verdict(page, /STOPPED!/, 20000);
-  assert.match(await game_output(page), /^STOPPED! \(Nature program: clingo took longer than 2 seconds and was stopped\)/);
+  assert.match(await game_output(page), /^STOPPED! \(Nature's moves: clingo took longer than 2 seconds and was stopped\)/);
   assert.equal(await page.isEnabled('#play-button'), true);
 });
 
@@ -200,7 +200,7 @@ test('the Stop button stops clingo, and the next game works', async (t) => {
   await page.click('#stop-button');
   await page.waitForFunction(() => document.getElementById('stop-button').disabled, null, { timeout: 5000 });
   assert.equal(await page.isEnabled('#play-button'), true);
-  // Back to the nature program of the example (the changed one was saved)
+  // Back to the nature's moves program of the example (the changed one was saved)
   page.on('dialog', (dialog) => dialog.accept());
   await page.waitForSelector('#work-notice:not([hidden])');
   await page.click('button[data-action=revert_to_original]');
@@ -289,7 +289,7 @@ test('a violated constraint is marked in the editor, and a lost game points to t
   assert.match(output, /- Winning conditions: no answer set, because this constraint is violated:\n {4}Winning conditions, line 3: :- current_time\(2\)\./);
   assert.match(output, /^LOSE! \(lose\(timeout\)\)\n\(There is 1 error or warning in the programs that may explain this/);
   const items = await page.locator('#goal_program-problems li').allTextContents();
-  assert.deepEqual(items, ['Warning (line 3): This constraint was violated during the game, so the winning conditions had no answer set (see the game output).']);
+  assert.deepEqual(items, ['Warning (line 3): This constraint was violated during the game, so the winning conditions program had no answer set (see the game output).']);
 });
 
 test('problems with the board are shown under it', async (t) => {
@@ -1106,9 +1106,9 @@ test('help about special predicates in the editors', async (t) => {
   if (!page) return;
   await set_program(page, 'player_move_program', 'do(move(down)) :- observe(at(R1,C,player)), at(R2,C,flag).\nfoo :- bar.');
   assert.equal(await hover_help(page, 'player_move_program', 0, 1),
-    "do/1do(X): a move of the player, such as do(move(up)). This program passes it on to nature's program.");
+    "do/1do(X): a move of the player, such as do(move(up)). This program passes it on to the nature's moves program.");
   assert.match(await hover_help(page, 'player_move_program', 0, 20), /^observe\/1observe\(X\): what the player observes.*This program gets it from the game\.$/);
-  assert.match(await hover_help(page, 'player_move_program', 0, 45), /^at\/3at\(R,C,O\).*The player's program does not get it \(it is used by level generation/);
+  assert.match(await hover_help(page, 'player_move_program', 0, 45), /^at\/3at\(R,C,O\).*The player strategy does not get it \(it is used by level generation/);
   assert.equal(await hover_help(page, 'player_move_program', 1, 1), null);       // not special
   // Autocompletion while typing
   await page.evaluate(() => {
@@ -1701,7 +1701,7 @@ test('a test result stays with the game that was tested; loading another game st
   await page.waitForFunction(() => /Level \d+ of 200/.test(document.getElementById('test-progress').textContent));
   await page.click('label[for=tab1]');
   await page.click('#first-games button[data-example=flag5]');
-  await page.waitForFunction(() => /^Cancelled after/.test(document.getElementById('test-progress').textContent));
+  await page.waitForFunction(() => /^Canceled after/.test(document.getElementById('test-progress').textContent));
   assert.deepEqual(await page.evaluate(() => window.logic_game.versions.list('example:flag5')), []);
   assert.deepEqual(await page.evaluate(() => window.logic_game.versions.list('example:flag3-with-solutions')), []);
   // A test that finishes is kept with its own game
@@ -2068,4 +2068,109 @@ test('on a phone, all eight tabs have a name, in a row that scrolls (not the pag
     const box = await page.locator(`label[for=tab${tab}]`).boundingBox();
     assert.ok(box.x >= 0 && box.x + box.width <= width + 1, `tab ${tab}: ${JSON.stringify(box)}`);
   }
+});
+
+// ---- The grading tutorial ------------------------------------------------------------------
+
+test('the grading tutorial is offered once, on the first visit of grader mode', async (t) => {
+  const page = await open(t, '?tab=8');
+  if (!page) return;
+  // (not without grader mode)
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  await page.click('label[for=tab1]');
+  await page.check('#option-grader');
+  await page.click('label[for=tab8]');
+  assert.equal(await page.isVisible('#grading-tutorial-invite'), true);
+  await page.click('#grading-tutorial-invite button[data-action=dismiss_grading_tutorial]');
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.click('label[for=tab8]');
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  assert.deepEqual(page.errors, []);
+});
+
+test("the grading tutorial: a sample batch from load to feedback, and the grader's own grading is kept", async (t) => {
+  const page = await open(t, '?grader=true&tab=8');
+  if (!page) return;
+  await page.evaluate(() => window.logic_game.grader.ready);
+  // The grader's own work: three students, and a comment on one of them
+  await load_submissions(page);
+  await page.click('#grading-students button[data-key="canvas:1002"]');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'debruijnbob');
+  await page.fill('#grading-comment', 'My own comment.');
+  await page.selectOption('#grading-status', 'done');
+  const own = await student_rows(page);
+  assert.equal(own[0][1], 'done');
+  assert.equal(await page.isVisible('#grading-tutorial-invite'), true);
+  await page.click('#grading-tutorial-invite button[data-action=start_grading_tutorial]');
+  const count = () => page.textContent('.tutorial-count');
+  const next = () => page.click('.tutorial-next');
+  await page.waitForFunction(() => document.querySelector('.tutorial-count')?.textContent === '1 of 12');
+  // The sample session starts empty
+  assert.equal(await page.isVisible('#grading-students'), false);
+  await next();
+  // Loading the sample batch (made by the tutorial, as Canvas names the files)
+  assert.equal(await page.isDisabled('.tutorial-next'), true);
+  assert.match(await page.getAttribute('#grading-form', 'class') || '', /tutorial-target/);
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after');
+  assert.deepEqual(await student_rows(page), [['studenta', 'not started', ''], ['studentb late', 'not started', '']]);
+  await next();
+  // Grade studenta: the game is loaded, with the PDF
+  await page.click('#grading-students button[data-key="sample:canvas:1"]');
+  await page.waitForSelector('.tutorial-after');
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'studenta');
+  await page.waitForFunction(() => /^blob:/.test(document.getElementById('grading-pdf').src));
+  await next();
+  // Test and measure (3 levels)
+  assert.equal(await page.inputValue('#grading-levels'), '3');
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after', { timeout: 120000 });
+  assert.match(await page.textContent('#grading-results'), /New levels: 3 played/);
+  await next();
+  await page.click('.tutorial-do-it');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  assert.equal(await page.inputValue('[data-item=npc] select'), 'yes');
+  await next();
+  await next();
+  // Feedback: a standard comment
+  await page.click('.tutorial-do-it');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  assert.match(await page.inputValue('#grading-comment'), /^Well done/);
+  await next();
+  await next();
+  await page.selectOption('#grading-status', 'done');
+  await page.waitForFunction(() => !document.querySelector('.tutorial-next').disabled);
+  assert.deepEqual((await student_rows(page))[0].slice(0, 2), ['studenta', 'done']);
+  await next();
+  await next();
+  await next();
+  assert.equal(await count(), '12 of 12');
+  await page.click('.tutorial-next');
+  await page.waitForSelector('#tutorial-card', { state: 'detached' });
+  // The grader's own grading is back, with the game that was on the page
+  await page.waitForFunction(() => document.getElementById('game-title').textContent === 'debruijnbob');
+  assert.deepEqual(await student_rows(page), own);
+  assert.equal(await page.inputValue('#grading-comment'), 'My own comment.');
+  assert.deepEqual(await page.evaluate(() => [...window.logic_game.work.origins(), ...window.logic_game.versions.origins()].filter((o) => o.includes('sample'))), []);
+  // It can be started again from the Grading tab, and closed at any step
+  await page.click('#grading-tutorial-start');
+  await page.waitForFunction(() => document.querySelector('.tutorial-count')?.textContent === '1 of 12');
+  await next();
+  await page.click('.tutorial-do-it');
+  await page.waitForSelector('.tutorial-after');
+  await page.click('.tutorial-close');
+  await page.waitForSelector('#tutorial-card', { state: 'detached' });
+  await page.waitForFunction((n) => document.querySelectorAll('#grading-students tbody tr').length === n, own.length);
+  assert.deepEqual(await student_rows(page), own);
+  // The browser's storage holds the grader's own grading only, after a reload; the tutorial is not offered again
+  await page.evaluate(() => window.logic_game.grader.flush());
+  await page.reload();
+  await page.waitForSelector('body[data-ready=true]');
+  await page.evaluate(() => window.logic_game.grader.ready);
+  assert.deepEqual(await student_rows(page), own);
+  assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
+  assert.deepEqual(page.errors, []);
+  assert.deepEqual(page.external, []);
 });

@@ -1,10 +1,10 @@
 // Drawing the board from the facts that the player observes (and the decorations).
 //
 // The board is built from DOM elements, never from HTML text: labels and
-// colours come from the programs of a game, and a game can come from anyone
+// colors come from the programs of a game, and a game can come from anyone
 // (e.g. through a share link), so they must not be able to inject HTML or
-// scripts into the page. Labels are shown as text, and colours are only
-// accepted as hex_RGB / hex_RRGGBB (and with alpha) or as plain colour names.
+// scripts into the page. Labels are shown as text, and colors are only
+// accepted as hex_RGB / hex_RRGGBB (and with alpha) or as plain color names.
 //
 // compute_grid_ds() does not use the DOM (the tests run it in Node).
 import { facts_to_answer_set, split_atom } from './asp.js';
@@ -13,8 +13,8 @@ const number = (text) => (/^-?\d+$/.test(text) ? Number(text) : null);
 
 // The board described by a program of facts, or null if it has no size:
 // { height, width, cells: Map(index -> [object]), fog: Set(index),
-//   bg: Map(index -> colour), hidden: Map(index -> [object]),
-//   labels: Map(object -> label), colors: Map(object -> colour) }
+//   bg: Map(index -> color), hidden: Map(index -> [object]),
+//   labels: Map(object -> label), colors: Map(object -> color) }
 // (cells are numbered from 1, row by row).
 export function compute_grid_ds(facts) {
   const atoms = facts_to_answer_set(facts).map(split_atom);
@@ -90,8 +90,8 @@ export function label_text(label) {
   return label;
 }
 
-// A colour as CSS, or null if it is not a colour that is accepted:
-// hex_RGB, hex_RGBA, hex_RRGGBB, hex_RRGGBBAA, or a plain colour name.
+// A color as CSS, or null if it is not a color that is accepted:
+// hex_RGB, hex_RGBA, hex_RRGGBB, hex_RRGGBBAA, or a plain color name.
 export function css_color(color) {
   if (color == null) return null;
   const hex = /^hex_([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(color);

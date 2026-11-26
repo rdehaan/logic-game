@@ -66,7 +66,7 @@
           <code>T</code> so far.
           A new time slice is added at each step.
           Old slices are kept only if one of the programs that get the
-          game state (visibility, nature, winning conditions, the auxiliary
+          game state (visibility, nature's moves, winning conditions, the auxiliary
           program, or the level settings) mentions <code>at_time</code> or
           <code>state_time</code>; otherwise only the latest slice is kept.
           This gives the same results, but is much faster: with the whole
@@ -146,15 +146,16 @@ state_time(0).
       </p>
       <ol>
         <li>
-          <b>Winning conditions.</b> The goal program is run on the
+          <b>Winning conditions.</b> The winning conditions program is run on the
           current state. If it derives <code>lose</code> or <code>win</code>,
           the game ends here. This happens before the player moves,
           so in step 1 the initial state is checked as well.
         </li>
         <li>
           <b>Engine timeout.</b> If 500 steps have already been played,
-          the engine stops the game with <code>TIMEOUT!</code>, which counts as
-          a loss. This catches games that would otherwise go on forever.
+          the engine stops the game with <code>TIMEOUT!</code>. This is not
+          a win, but it is not reported as a loss either: tests and grading
+          count it separately, as <i>timed out</i>. This catches games that would otherwise go on forever.
         </li>
         <li>
           <b>Drawing the grid.</b> The grid is drawn from the player
@@ -163,7 +164,7 @@ state_time(0).
           not the true state of the game.
         </li>
         <li>
-          <b>Player strategy.</b> The player program is run on the
+          <b>Player strategy.</b> The player strategy is run on the
           player input and the player's memory. This gives the moves
           (<code>do</code>) and the memory updates (<code>remember</code>,
           <code>forget</code>).
@@ -173,7 +174,7 @@ state_time(0).
           player's memory.
         </li>
         <li>
-          <b>Nature.</b> The nature program is run on the current state
+          <b>Nature's moves.</b> The nature's moves program is run on the current state
           and the player's moves. Its <code>next</code> atoms become the next
           time slice of the game state.
         </li>
@@ -196,7 +197,7 @@ state_time(0).
         Whenever a program has no answer set or contains an error, the
         engine uses one of the fallbacks described below, and the game
         output says so (for example
-        <code>- Nature program: no answer set (state unchanged)</code>).
+        <code>- Nature's moves: no answer set (state unchanged)</code>).
       </p>
 
       <h2>Overview per program</h2>
@@ -241,9 +242,9 @@ state_time(0).
         </tr>
         <tr>
           <td>Player strategy</td>
-          <td>player input, player memory, auxiliary program, player strategy program</td>
+          <td>player input, player memory, auxiliary program, player strategy</td>
           <td><code>do</code><br><code>remember</code>, <code>forget</code></td>
-          <td>nature program<br>memory update</td>
+          <td>nature's moves program<br>memory update</td>
           <td>yes, anew every step</td>
           <td>no moves, memory unchanged</td>
         </tr>
@@ -256,8 +257,8 @@ state_time(0).
           <td>memory unchanged</td>
         </tr>
         <tr>
-          <td>Nature</td>
-          <td>current-state rules, game state, player moves, nature program, level settings, auxiliary program</td>
+          <td>Nature's moves</td>
+          <td>current-state rules, game state, player moves, nature's moves program, level settings, auxiliary program</td>
           <td><code>next</code><br><code>wipe_player_memory</code></td>
           <td>next time slice of the game state<br>memory wipe</td>
           <td>yes, anew every step</td>
@@ -306,7 +307,7 @@ state_time(0).
 
       <h3>Player strategy</h3>
       <p>
-        The player program gets exactly four things: the player input
+        The player strategy gets exactly four things: the player input
         (<code>observe</code>, <code>setting</code> and <code>current_time</code>
         facts), the player's
         memory (<code>memory</code> facts), the auxiliary program, and the
@@ -334,12 +335,12 @@ new_memory(X) :- remember(X).</pre>
         <code>memory</code>, and these form the player's new memory.
         So <code>remember</code> wins over <code>forget</code>: an atom that is
         both remembered and forgotten in the same step is kept.
-        A <code>memory(...)</code> atom that the player program derives itself
+        A <code>memory(...)</code> atom that the player strategy derives itself
         (rather than gets as input) is not stored: only
         <code>remember</code> stores things.
       </p>
 
-      <h3>Nature</h3>
+      <h3>Nature's moves</h3>
       <p>
         Nature sees the true state, the player's moves as
         <code>do(...)</code> facts, and the level settings.
@@ -355,14 +356,14 @@ state_time(T+1) :- current_time(T).
       <p>
         Note that only <code>next</code> atoms survive: an object that
         has no <code>next</code> atom simply disappears from the game.
-        This is why nature programs usually contain rules like
+        This is why nature's moves programs usually contain rules like
         <code>next(R,C,flag) :- at(R,C,flag).</code>
         If there are no <code>next</code> atoms at all, the new time slice
         is empty, but time still advances
         (thanks to the <code>state_time</code> rule).
       </p>
       <p>
-        If the nature program has no answer set (for instance because a
+        If the nature's moves program has no answer set (for instance because a
         constraint like <code>:- do(X), do(Y), X != Y.</code> is violated),
         the engine falls back to <code>next(R,C,O) :- at(R,C,O).</code>:
         time moves on but nothing changes.
@@ -371,7 +372,7 @@ state_time(T+1) :- current_time(T).
 
       <h3>Winning conditions</h3>
       <p>
-        The goal program sees the current state, the level settings,
+        The winning conditions program sees the current state, the level settings,
         and <code>current_time(T)</code>, which is the number of steps taken
         so far (0 at the start).
         If its answer set contains any atom over <code>lose</code>, the game is
@@ -437,13 +438,13 @@ setting(col(1)). ... setting(col(8)).</pre>
         level settings.
       </p>
       <p>
-        <b>Step 1, winning conditions.</b> The goal program sees
+        <b>Step 1, winning conditions.</b> The winning conditions program sees
         <code>current_time(0)</code>, <code>at(1,1,player)</code> and
         <code>at(5,7,flag)</code>. Neither <code>win</code> nor
         <code>lose(timeout)</code> is derived, so the game continues.
       </p>
       <p>
-        <b>Step 1, player strategy.</b> The player program is run on the
+        <b>Step 1, player strategy.</b> The player strategy is run on the
         player input above, the (empty) memory, the auxiliary program and
         the player strategy:
       </p>
@@ -459,7 +460,7 @@ do(move(right)) :- observe(at(R,C1,player)), observe(at(R,C2,flag)), C1 &lt; C2.
       <pre class="example-code">
 do(move(down)).</pre>
       <p>
-        <b>Step 1, nature.</b> The nature program is run on the
+        <b>Step 1, nature's moves.</b> The nature's moves program is run on the
         current-state rules, the game state, the fact
         <code>do(move(down)).</code>, the level settings and the auxiliary
         program. The kept atoms are:
@@ -499,7 +500,7 @@ setting(grid_width(8)).
         After step 10 the game state has slices 0 to 10, with
         <code>at_time(10,5,7,player)</code> and
         <code>at_time(10,5,7,flag)</code> in the last one.
-        At the start of step 11, the goal program sees
+        At the start of step 11, the winning conditions program sees
         <code>current_time(10)</code>, <code>at(5,7,player)</code> and
         <code>at(5,7,flag)</code>, so it derives <code>win</code>, and the game
         is won. (The time bound of 15 is not reached, so
@@ -512,8 +513,8 @@ setting(grid_width(8)).
         This second example is a small made-up game on a 1x4 grid:
         the player starts in cell (1,1), there is an item
         <code>amnesia</code> in cell (1,3), and the flag is in cell (1,4).
-        The auxiliary, nature and winning conditions programs are those
-        of <i>Find the flag 1</i>, with two extra rules in the nature
+        The auxiliary, nature's moves and winning conditions programs are those
+        of <i>Find the flag 1</i>, with two extra rules in the nature's moves
         program:
       </p>
       <pre class="example-code">
@@ -596,13 +597,13 @@ remember(flag_at(1,4)).
 memory(steps(1)).
 memory(flag_at(1,4)).</pre>
       <p>
-        Nature moves the player to (1,4). At the start of step 4, the goal
+        Nature moves the player to (1,4). At the start of step 4, the winning conditions
         program derives <code>win</code>.
       </p>
 
       <h2>Appendix: notes</h2>
       <p>
-        Some behaviour of the engine that is easy to miss.
+        Some behavior of the engine that is easy to miss.
         Most of these points are also mentioned in the Instructions tab.
       </p>
       <ul>
@@ -620,7 +621,7 @@ memory(flag_at(1,4)).</pre>
         </li>
         <li>
           <b>The history is available when it is used.</b> A visibility,
-          nature or goal program that mentions <code>at_time</code> or
+          nature's moves or winning conditions program that mentions <code>at_time</code> or
           <code>state_time</code> gets all <code>at_time</code> facts since time 0,
           and can look at earlier states (the history then grows with every
           step, so each step's programs get a little larger). Otherwise only
@@ -634,24 +635,24 @@ memory(flag_at(1,4)).</pre>
         </li>
         <li>
           <b><code>RANDINT</code> is only replaced in some programs</b>:
-          level generation, player strategy and nature. It is not replaced
+          level generation, player strategy and nature's moves. It is not replaced
           in the visibility, winning conditions or auxiliary programs.
         </li>
         <li>
           <b>Nature without <code>next</code> atoms empties the board.</b>
-          If the nature program has an answer set but derives no
+          If the nature's moves program has an answer set but derives no
           <code>next</code> atoms, the fallback is not used, and the new time
           slice is empty. Time still advances, because the game state also
           records <code>state_time(T)</code> for every time <code>T</code>.
           (The fallback that keeps everything in place is only used when
-          the nature program has no answer set.)
+          the nature's moves program has no answer set.)
         </li>
         <li>
           <b>Level generation leftovers.</b> <code>debug</code> atoms from level
           generation end up in the level state, but are dropped when the
           initial state is made. The <code>decorate</code> atoms from level
           generation are part of the level settings, so the visibility,
-          nature and goal programs can see them (the player cannot).
+          nature's moves and winning conditions programs can see them (the player cannot).
         </li>
         <li>
           <b>Memory details.</b> If an atom is both remembered and forgotten
@@ -697,17 +698,17 @@ memory(flag_at(1,4)).</pre>
           <b>Warnings about special predicates.</b> While you type, the
           programs are also compared with what the engine gives them and
           takes from them (the table above). For example, there is a
-          warning when the player's program never derives
+          warning when the player strategy never derives
           <code>do/1</code>, uses <code>at/3</code> (which it does not get),
           derives a misspelled <code>remeber/1</code>, or derives moves that
-          nature's program never looks at. These warnings come from a
+          the nature's moves program never looks at. These warnings come from a
           simple analysis of the program text (<code>js/hints.js</code>), so
           they are hints: clingo does not consider these errors.
         </li>
         <li>
-          <b>No stratification check.</b> Player programs are not
+          <b>No stratification check.</b> Player strategies are not
           restricted. (Earlier versions had an unused check that the player
-          program is stratified and "simple", using
+          strategy is stratified and "simple", using
           <code>stored/stratified.lp</code>; the program is kept for reference.)
         </li>
       </ul>

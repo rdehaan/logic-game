@@ -33,7 +33,7 @@ export const CHECKS = {
   timing: 'how long level generation and the programs take',
   novelty: 'how similar the game is to the example games and to the other submissions',
   comments: 'how many comments the programs have',
-  visual: 'the labels and colours the game uses (the grader decides)',
+  visual: 'the labels and colors the game uses (the grader decides)',
   hidden: 'whether the player cannot see some objects',
   npc: 'whether objects other than the player move',
   random: 'whether level generation makes different levels',
@@ -360,7 +360,7 @@ export function level_view(level_state, level_settings) {
   return objects.map((a) => `observe(at(${a.args.join(',')})).`).join(' ') + ' ' + (level_settings || '');
 }
 
-// The labels and colours that a game uses (in its level settings and decorations).
+// The labels and colors that a game uses (in its level settings and decorations).
 export function decoration_stats(level_settings, decorations = '') {
   const atoms = facts_to_answer_set((level_settings || '') + ' ' + (decorations || '')).map(split_atom).filter((a) => a.name === 'decorate');
   const count = (kind) => new Set(atoms.filter((a) => a.args[0] === kind).map((a) => a.args.slice(1).join(','))).size;
@@ -474,7 +474,7 @@ async function measure_play(solver, game, rng, max_time, out, cancelled, seed) {
   let message = '';
   while (!session.verdict) {
     if (cancelled()) {
-      message = 'cancelled';
+      message = 'canceled';
       break;
     }
     const step = await session.step();
@@ -554,7 +554,7 @@ export function suggest(item, m, checks = DEFAULT_CHECKS, similar = null) {
     case 'visual': {
       if (!m || !m.levels.length || !m.levels[0].decorations) return s('', 'the grader decides');
       const d = m.levels.find((l) => l.decorations).decorations;
-      return s('', `the grader decides (the game uses ${plural(d.labels, 'label')}, ${d.icons} of them icons, ${plural(d.colors, 'colour')}, ${plural(d.backgrounds, 'background colour')})`);
+      return s('', `the grader decides (the game uses ${plural(d.labels, 'label')}, ${d.icons} of them icons, ${plural(d.colors, 'color')}, ${plural(d.backgrounds, 'background color')})`);
     }
     case 'hidden': {
       if (!m || !m.steps) return s('', 'not measured yet');
@@ -725,7 +725,8 @@ export function merge_students(ours, theirs) {
 
 const measurement_fields = (st) => ({ measurements: st.measurements, measured_game: st.measured_game || null, similar: st.similar || null, suggestions: st.suggestions || null });
 
-// The grades of all students as CSV (for a spreadsheet, or to upload to Canvas).
+// The grades of all students as CSV, for a spreadsheet. (This is not the format of Canvas'
+// gradebook import: the grades are entered in Canvas by hand.)
 export function grades_csv(rubric, students) {
   const items = rubric_items(rubric);
   const header = ['student', 'canvas_id', 'late', 'status', 'grade', ...items.map((item) => item.id), 'comment'];

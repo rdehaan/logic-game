@@ -69,7 +69,7 @@ Commands:
 Options for all commands:
   --timeout S                     The time limit for each call to clingo, in seconds (default 10)
   --max-steps N                   Stop a game after N steps (default 500)
-  --no-color                      No colours in the output (also when NO_COLOR is set)
+  --no-color                      No colors in the output (also when NO_COLOR is set)
 
 The full guide: docs/CLI.md (https://github.com/rdehaan/logic-game/blob/main/docs/CLI.md).
 

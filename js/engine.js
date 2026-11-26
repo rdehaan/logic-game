@@ -173,7 +173,7 @@ export async function generate_player_input(solver, game, game_state) {
     return { player_input: '', decorations: '', problem: problem('Visibility program', result, solver) };
   }
   return {
-    // What the player gets to see (passed on to the player's program)
+    // What the player gets to see (passed on to the player strategy)
     player_input: answer_set_to_facts(filter_answer_set(result.atoms, ['observe', 'setting', 'current_time'])),
     // What is only used for visualization (never passed on to the player)
     decorations: answer_set_to_facts(filter_answer_set(result.atoms, ['decorate'])),
@@ -190,7 +190,7 @@ export async function generate_player_move(solver, game, player_input, player_me
     part('player_move_program', preprocess_program(game.player_move_program, rng)),
   ]);
   if (result.status !== 'ok') {
-    return { player_moves: '', memory_updates: '', problem: problem('Player program', result, solver) };
+    return { player_moves: '', memory_updates: '', problem: problem('Player strategy', result, solver) };
   }
   return {
     player_moves: answer_set_to_facts(filter_answer_set(result.atoms, ['do'])),
@@ -236,7 +236,7 @@ export async function generate_next_state(solver, game, game_state, player_moves
     // Check whether nature wipes the player's memory
     wipe_memory = filter_answer_set(result.atoms, ['wipe_player_memory']).length > 0;
   } else {
-    nature_problem = problem('Nature program', result, solver);
+    nature_problem = problem("Nature's moves", result, solver);
     const moves = player_moves.split(' ').filter(Boolean);
     if (result.status === 'unsat' && moves.length > 1) {
       nature_problem.text += `\n    The player made ${moves.length} moves in this step (${moves.join(' ')});` +
@@ -317,7 +317,7 @@ export function needs_history(game) {
 export const SLOW_MS = 2000;
 
 const TIMED_PROGRAMS = [
-  ['goal', 'winning conditions'], ['player', "player's program"], ['nature', "nature's program"], ['visibility', 'visibility program'],
+  ['goal', 'winning conditions'], ['player', 'player strategy'], ['nature', "nature's moves"], ['visibility', 'visibility program'],
 ];
 
 // ---- Playing a game ----------------------------------------------------------
@@ -465,7 +465,7 @@ export class GameSession {
     }
     report_line('Player moves', move.player_moves);
     report_line('Memory updates', move.memory_updates);
-    report += problem_line('Player program', move.problem, 'no moves, memory unchanged');
+    report += problem_line('Player strategy', move.problem, 'no moves, memory unchanged');
 
     // Update the player's memory
     this.player_memory = update_player_memory(this.player_memory, move.memory_updates).player_memory;
@@ -479,7 +479,7 @@ export class GameSession {
     }
     this.game_state = this.keep_history ? nature.next_state : nature.next_slice;
     report_line('Next state (from nature)', nature.nexts);
-    report += problem_line('Nature program', nature.problem, 'state unchanged');
+    report += problem_line("Nature's moves", nature.problem, 'state unchanged');
 
     // Wipe the player's memory if nature says so
     if (nature.wipe_memory) {
@@ -503,7 +503,7 @@ export class GameSession {
     let out = this.verbose && parts.length ? '- Time in clingo: ' + parts.join(', ') + '\n' : '';
     for (const [key, name] of TIMED_PROGRAMS) {
       if (this.times[key] > this.slow_ms) {
-        out += `- Note: the ${name} took ${(this.times[key] / 1000).toFixed(1)} seconds in this step` +
+        out += `- Note: ${name} took ${(this.times[key] / 1000).toFixed(1)} seconds in this step` +
           ' (large groundings make programs slow; the engine stops a program after ' +
           `${Math.round(this.solver.timeout_ms / 1000)} seconds)\n`;
       }

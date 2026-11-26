@@ -148,7 +148,7 @@ export class PdfDocument {
     this.y -= 6;
   }
 
-  // Code, in a grey box (lines are wrapped).
+  // Code, in a gray box (lines are wrapped).
   code(text, { size = 9 } = {}) {
     const lines = wrap(text, this.width - 12, 'mono', size);
     const line_h = size * 1.25;

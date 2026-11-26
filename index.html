@@ -201,7 +201,9 @@
       <p class="versions-help">These options are kept in this browser. They can also be set
         in a link (then only for that visit):
         <code>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;grader=true&amp;timeout=30</code>
-        (and <code>=false</code> to turn one off).</p>
+        (and <code>=false</code> to turn one off; <code>=1</code>, <code>=yes</code> or just the name, as in <code>?grader</code>,
+        also turn one on). A link can also set <code>only_changes</code> (<i>Show only what changed</i>, in the
+        Debug tab) and <code>full_view</code> (<i>Show everything on the board</i>, in grader mode).</p>
     </section>
 
     <section id="section-instructions" data-include="docs/instructions.html"></section>
@@ -299,7 +301,7 @@
 
       <h2>Game output</h2>
       <p>
-        For each step of the last game: what went into the player's program
+        For each step of the last game: what went into the player strategy
         (what the player observed, and the player's memory), what came out
         (the player's moves and the updates to the memory), and the next state
         of the game that nature computed (and how long clingo took).
@@ -421,7 +423,8 @@
         </div>
         <p id="folder-unsupported" class="versions-help" hidden>
           This browser cannot link the page to a folder (Chrome and Edge can).
-          You can download the game as a folder (.zip) with the project file above, and load a folder at the top.
+          Instead, use <i>Download as a folder (.zip)</i> (with the project file, above) to get the game
+          as a folder, and <i>Load a file or a folder</i> (at the top of this tab) to load one.
         </p>
       </details>
 
@@ -465,12 +468,18 @@
     <section id="section-internals" data-include="docs/internals.html"></section>
 
     <section id="section-grading">
+      <p id="grading-tutorial-invite" class="tutorial-invite" hidden>
+        <span>New to grading? A short tutorial shows the Grading tab with two made-up students (your own grading is not changed).</span>
+        <button data-action="start_grading_tutorial" class="control-button">Start the grading tutorial</button>
+        <button data-action="dismiss_grading_tutorial" class="control-button">No, thanks</button>
+      </p>
       <p>
         The Grading tab is for teachers and teaching assistants: load the games that students
         handed in, test them, grade them with the rubric, and write feedback to send to the
         students (as a PDF, a web page or text). Your grading is kept in this browser; export it
         to keep it safe, or to hand it to another grader.
         <button type="button" class="modal-link" data-open="modal-grading" aria-label="About grading">&#xf05a;</button>
+        <button data-action="start_grading_tutorial" class="link-button" id="grading-tutorial-start">Take the grading tutorial</button>
       </p>
 
       <details class="versions-more" data-remember="grading-submissions" open>

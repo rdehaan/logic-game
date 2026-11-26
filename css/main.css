@@ -1036,7 +1036,6 @@ table.saved-games td.buttons {
   padding-left: 20px;
 }
 
-.tutorial-body tt,
 .tutorial-body code {
   font-size: 0.95em;
   border: 0;
@@ -1497,7 +1496,7 @@ details.versions-more > :not(summary) {
   outline-offset: -5px;
 }
 
-/* (a bar at the left, not only a colour) */
+/* (a bar at the left, not only a color) */
 .ace_editor .fact-linked {
   position: absolute;
   background: rgba(74, 144, 200, 0.25);
@@ -1511,7 +1510,7 @@ details.versions-more > :not(summary) {
   font-weight: 600;
 }
 
-/* A level that is out of date (the level programs changed since it was made): greyed out */
+/* A level that is out of date (the level programs changed since it was made): grayed out */
 .visual-container.outdated .grid-visual {
   opacity: 0.4;
   filter: grayscale(1);

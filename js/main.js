@@ -15,6 +15,7 @@ import { WorkStore, encode_game, decode_game, game_id, same_game } from './stora
 import { VersionStore, read_file, file_stem } from './versions.js';
 import { VersionsTab } from './versions-tab.js';
 import { Tutorial, first_games_html } from './tutorial.js';
+import { grading_tutorial_steps, sample_submissions, GRADING_TUTORIAL_KEY } from './grading-tutorial.js';
 import { files_to_game, file_names, game_to_files, make_zip, read_zip, strip_common_dir, MANIFEST } from './folder.js';
 import {
   FolderLink, folder_links_supported, folder_is_empty, remember_folder, remembered_folder, forget_folder, permission,
@@ -896,7 +897,7 @@ async function play_loop() {
     else shown_snapshot = -1;
     const step = await session.step();
     snapshots.at(-1).moves = step.verdict ? null : (step.moves || '');
-    snapshots.at(-1).player_problem = (step.problems || []).find((p) => p && p.program === 'Player program') || null;
+    snapshots.at(-1).player_problem = (step.problems || []).find((p) => p && p.program === 'Player strategy') || null;
     editors.show_run_problems(step.problems);
     if (stop_requested) continue;
     if (step.report) add_to_game_output(step.report, session.time_step);
@@ -1582,7 +1583,7 @@ async function run_test() {
     $('test-cancel').hidden = true;
     update_controls();
     const n = Object.values(counts).reduce((a, b) => a + b, 0);
-    $('test-progress').textContent = (test_cancelled ? `Cancelled after ${n} levels` : `Done`) +
+    $('test-progress').textContent = (test_cancelled ? `Canceled after ${n} levels` : `Done`) +
       ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
     // Any level of the test can be played again (not only the ones listed)
     if (n > 0) {
@@ -1719,6 +1720,7 @@ $('first-games').addEventListener('click', (e) => {
 
 async function start_tutorial() {
   try {
+    if (grading_tutorial.running) await grading_tutorial.stop();
     await tutorial.start();
   } catch (e) {
     tutorial.stop();
@@ -1774,7 +1776,41 @@ const grader = new GraderTab({
   board_facts: () => drawn_facts,
   board_caption,
   download: save,
+  forget_work: (origin) => {
+    work.forget(origin);
+    versions.forget(origin);
+  },
 });
+
+// The grading tutorial (grading-tutorial.js): offered on the first visit of the
+// Grading tab, and started from it. It grades a sample in a session of its own.
+const grading_tutorial = new Tutorial({
+  storage,
+  key: GRADING_TUTORIAL_KEY,
+  invite: 'grading-tutorial-invite',
+  steps: grading_tutorial_steps,
+  app: {
+    grader,
+    select_tab,
+    load_sample: async () => grader.load_list(await sample_submissions()),
+    open_game: async () => {
+      if (tutorial.running) tutorial.stop();
+      await stop_game_if_playing();
+      select_tab(8);
+      await grader.enter_sample();
+    },
+    close: () => grader.leave_sample().catch((e) => console.warn('grading tutorial:', e)),
+  },
+});
+
+async function start_grading_tutorial() {
+  try {
+    await grading_tutorial.start();
+  } catch (e) {
+    grading_tutorial.stop();
+    set_engine_status('The grading tutorial could not be started: ' + e.message, true);
+  }
+}
 
 // ---- Wiring ------------------------------------------------------------------------
 
@@ -1788,6 +1824,8 @@ const actions = {
   download_backup: () => versions_tab.download_backup(),
   start_tutorial,
   dismiss_tutorial: () => tutorial.dismiss_invite(),
+  start_grading_tutorial,
+  dismiss_grading_tutorial: () => grading_tutorial.dismiss_invite(),
   download_folder, open_folder, relink_folder,
   unlink_folder: () => unlink_folder(true),
   dismiss_folder_notice: () => { $('folder-notice').hidden = true; },
@@ -1917,6 +1955,7 @@ function apply_options() {
   document.querySelector('label[for="tab8"]').style.display = options.grader ? '' : 'none';
   if (!options.grader && $('tab8').checked) select_tab(1);
   $('full-view-box').hidden = !options.grader;
+  if (options.grader) grading_tutorial.invite();
   if (board_view_shown !== Boolean(options.grader && options.full_view)) {
     board_view_shown = Boolean(options.grader && options.full_view);
     redraw_board();
@@ -2042,4 +2081,4 @@ window.addEventListener('hashchange', async () => {
 });
 
 // (for debugging in the browser console)
-window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial, grader, game_output: game_output_text };
+window.logic_game = { solver, editors, clingo, work, versions, versions_tab, tutorial, grader, grading_tutorial, game_output: game_output_text };
