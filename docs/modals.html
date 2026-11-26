@@ -14,14 +14,14 @@
         <p>
           The level generation program specifies how levels are generated.
           An answer set for this program encodes the level
-          using atoms with predicate names <tt>at</tt>,
-          <tt>setting</tt>, and <tt>decorate</tt>.
+          using atoms with predicate names <code>at</code>,
+          <code>setting</code>, and <code>decorate</code>.
         </p>
         <p>
           The visibility program defines what parts of the game are
           observable to the player.
-          The predicate name <tt>observe</tt> is used for this.
-          It may also derive atoms over <tt>decorate</tt>, which are only
+          The predicate name <code>observe</code> is used for this.
+          It may also derive atoms over <code>decorate</code>, which are only
           used to visualize the game and are not passed on to the player.
         </p>
         <p>
@@ -48,13 +48,13 @@
           This program expresses how the game
           progresses from one state to the next.
           An answer set of this program,
-          restricted to atoms over the predicate <tt>next</tt>,
+          restricted to atoms over the predicate <code>next</code>,
           constitutes the next state of the game,
           where these atoms are translated to use the predicate
-          <tt>at</tt> instead of <tt>next</tt>.
+          <code>at</code> instead of <code>next</code>.
         </p>
         <p>
-          If the answer set contains the atom <tt>wipe_player_memory</tt>,
+          If the answer set contains the atom <code>wipe_player_memory</code>,
           the player's memory is wiped:
           the player starts the next time step with an empty memory.
         </p>
@@ -78,9 +78,9 @@
           or whether it continues.
         </p>
         <p>
-          If an answer set of the program contains any atoms over <tt>lose</tt>,
+          If an answer set of the program contains any atoms over <code>lose</code>,
           the player loses the game.
-          Otherwise, if this answer set contains any atoms over <tt>win</tt>,
+          Otherwise, if this answer set contains any atoms over <code>win</code>,
           the player wins.
           Otherwise, the game continues.
           This is checked at the start of each time step,
@@ -104,21 +104,21 @@
           This program specifies what move(s) the player performs at each
           time step, and how the player's memory is updated.
           The program gets what the player can observe
-          (atoms over <tt>observe</tt>), the level settings
-          (atoms over <tt>setting</tt>), the player's memory
-          (atoms over <tt>memory</tt>), the current time
-          (<tt>current_time(t)</tt>), and the auxiliary program.
+          (atoms over <code>observe</code>), the level settings
+          (atoms over <code>setting</code>), the player's memory
+          (atoms over <code>memory</code>), the current time
+          (<code>current_time(t)</code>), and the auxiliary program.
           An answer set <i>A</i> of the resulting program is taken.
-          This answer set restricted to atoms over <tt>do</tt>
+          This answer set restricted to atoms over <code>do</code>
           constitutes the moves that the player performs.
-          This answer set restricted to atoms over <tt>remember</tt>
-          and <tt>forget</tt> specifies how the player's memory changes.
+          This answer set restricted to atoms over <code>remember</code>
+          and <code>forget</code> specifies how the player's memory changes.
         </p>
         <p>
           The player's memory in the next time step consists
-          of (i) all atoms <tt>memory(M)</tt> such that <tt>forget(M)</tt>
+          of (i) all atoms <code>memory(M)</code> such that <code>forget(M)</code>
           does not occur in <i>A</i>,
-          and (ii) all atoms <tt>memory(M)</tt> such that <tt>remember(M)</tt>
+          and (ii) all atoms <code>memory(M)</code> such that <code>remember(M)</code>
           occurs in <i>A</i>,
           unless nature wipes the player's memory,
           in which case the player's memory in the next time step is empty.
@@ -139,7 +139,7 @@
         <p>
           <b>Loading.</b> In Canvas, <i>Download submissions</i> of the assignment gives one zip file
           with the files of all students, named after the student (e.g.
-          <tt>doejane_12345_678901_hw3.zip</tt>). Load that file as it is: the files are grouped
+          <code>doejane_12345_678901_hw3.zip</code>). Load that file as it is: the files are grouped
           per student, zip files in it are unpacked, and the game file and the PDF of each student are found.
         </p>
         <p>
