@@ -7,7 +7,7 @@
         The Instructions tab gives the same picture in less detail.
       </p>
 
-      <h3>The basic mechanism</h3>
+      <h2>The basic mechanism</h2>
       <p>
         The programs never call each other directly. All communication
         goes through plain text, handled by the game engine.
@@ -102,7 +102,7 @@ at(R,C,O) :- at_time(T,R,C,O), current_time(T).</pre>
         Below, these two rules are called the <i>current-state rules</i>.
       </p>
 
-      <h3>Before the game: generating the level</h3>
+      <h2>Before the game: generating the level</h2>
       <p>
         When <i>Generate level</i> is pressed, the engine takes the
         <b>level generation</b> program, replaces every
@@ -138,7 +138,7 @@ state_time(0).
         <tt>debug</tt>) are dropped here.
       </p>
 
-      <h3>One time step, in order</h3>
+      <h2>One time step, in order</h2>
       <p>
         Right before the first step, the engine runs the visibility
         program once on the initial state, to get the first player input.
@@ -199,7 +199,7 @@ state_time(0).
         <tt>- Nature program: no answer set (state unchanged)</tt>).
       </p>
 
-      <h3>Overview per program</h3>
+      <h2>Overview per program</h2>
       <p>
         The table below lists, for every program run by the engine,
         what text is glued together (in this order), which atoms are kept
@@ -282,7 +282,7 @@ state_time(0).
       </table>
       </div>
 
-      <h4>Visibility</h4>
+      <h3>Visibility</h3>
       <p>
         The visibility program sees the true state of the game, as
         <tt>at(R,C,O)</tt> (and, if it wants to, the full
@@ -304,7 +304,7 @@ state_time(0).
         None of them are passed to the player.
       </p>
 
-      <h4>Player strategy</h4>
+      <h3>Player strategy</h3>
       <p>
         The player program gets exactly four things: the player input
         (<tt>observe</tt>, <tt>setting</tt> and <tt>current_time</tt>
@@ -319,7 +319,7 @@ state_time(0).
         to the memory update.
       </p>
 
-      <h4>Memory update</h4>
+      <h3>Memory update</h3>
       <p>
         If the player derived at least one <tt>remember</tt> or
         <tt>forget</tt> atom, the engine computes the new memory as
@@ -339,7 +339,7 @@ new_memory(X) :- remember(X).</pre>
         <tt>remember</tt> stores things.
       </p>
 
-      <h4>Nature</h4>
+      <h3>Nature</h3>
       <p>
         Nature sees the true state, the player's moves as
         <tt>do(...)</tt> facts, and the level settings.
@@ -369,7 +369,7 @@ state_time(T+1) :- current_time(T).
         In that case the memory is not wiped.
       </p>
 
-      <h4>Winning conditions</h4>
+      <h3>Winning conditions</h3>
       <p>
         The goal program sees the current state, the level settings,
         and <tt>current_time(T)</tt>, which is the number of steps taken
@@ -379,7 +379,7 @@ state_time(T+1) :- current_time(T).
         is won. Otherwise the game continues.
       </p>
 
-      <h3>Worked example 1: Find the flag 1</h3>
+      <h2>Worked example 1: Find the flag 1</h2>
       <p>
         Let's follow the first step of <i>Find the flag 1 (with solution)</i>
         on an 8x6 grid. The player starts in the top-left cell and the
@@ -506,7 +506,7 @@ setting(grid_width(8)).
         <tt>lose(timeout)</tt> is not derived.)
       </p>
 
-      <h3>Worked example 2: fog and memory</h3>
+      <h2>Worked example 2: fog and memory</h2>
       <p>
         The first example has no hidden information and no memory.
         This second example is a small made-up game on a 1x4 grid:
@@ -600,7 +600,7 @@ memory(flag_at(1,4)).</pre>
         program derives <tt>win</tt>.
       </p>
 
-      <h3>Appendix: notes</h3>
+      <h2>Appendix: notes</h2>
       <p>
         Some behaviour of the engine that is easy to miss.
         Most of these points are also mentioned in the Instructions tab.

@@ -262,7 +262,7 @@ function show_debug_step(report, text = '', previous = null) {
       elem.append(p);
       continue;
     }
-    const h = document.createElement('h4');
+    const h = document.createElement('h3');
     h.className = 'debug-program';
     h.textContent = part.label;
     elem.append(h);
@@ -329,7 +329,11 @@ function update_debug_view() {
     $('debug-step-label').textContent = '';
     show_debug_step(null, 'The game is being played…');
   } else if (report) {
-    $('debug-step-label').textContent = `Step ${snap.time + 1}: the player saw the board of time ${snap.time} (on the board), and decided on a move.`;
+    // (the times are those of the board: the step at time t starts from the board of time t)
+    const end = shown_snapshot === snapshots.length - 1 && final_verdict;
+    $('debug-step-label').textContent = end
+      ? `Time ${snap.time} (as on the board): what the player saw, and the end of the game (${final_verdict.toUpperCase()}).`
+      : `Time ${snap.time} (as on the board): what the player saw, and the move it decided on (which leads to time ${snap.time + 1}).`;
     show_debug_step(report, '', step_reports.get(snap.time) || null);
   } else {
     $('debug-step-label').textContent = `Time ${snap.time}: the end of the game.`;
@@ -427,8 +431,12 @@ function changed_since(game) {
 
 // ---- The buttons, and what the board shows ------------------------------------------
 
+// The text of a button, after a symbol (which screen readers skip).
 function set_label(button, icon, text) {
-  button.textContent = icon + ' ' + text;
+  const symbol = document.createElement('span');
+  symbol.setAttribute('aria-hidden', 'true');
+  symbol.textContent = icon;
+  button.replaceChildren(symbol, '\u00A0' + text);
 }
 
 // Enable the buttons that can be used now, and say why the others cannot.
@@ -461,6 +469,8 @@ function update_controls() {
   const test_button = $('test-button');
   set_button(test_button, !playing && !testing && !generating, why);
   test_button.textContent = level_locked ? 'Test' : 'Lock rules and test';
+  // (while testing, the progress next to the button says what goes on)
+  $('test-why').textContent = test_button.disabled && !testing ? why : '';
 
   // The lock of the game rules
   lock_button.disabled = level_locked;
@@ -468,7 +478,8 @@ function update_controls() {
   $('rules-lock').classList.toggle('unlocked', !level_locked);
   $('section-game-rules').classList.toggle('rules-unlocked', !level_locked);
   $('rules-lock-text').textContent = level_locked
-    ? 'The game rules are locked: games are played with these programs. Unlock them to change them.'
+    ? 'The game rules are locked: games are played with these programs. Unlock them to change them.' +
+      (unlock_button.disabled ? ` (${why})` : '')
     : 'The game rules are unlocked: you can change them. Lock them again to generate a level or play.' +
       (outdated.length ? ` The level on the board is out of date (you changed the ${names(outdated)}): locking removes it, so generate a new one.` : '');
   $('visual-container').classList.toggle('outdated', outdated.length > 0);
@@ -510,7 +521,8 @@ function update_board_status() {
       const changed = changed_since(run_basis);
       if (changed.length) {
         text += ` Since then, you changed: ${changed.map((k) => SOURCE_NAMES[k]).join(', ')}.`;
-        replay = level_locked;
+        if (level_locked && editors.count('error') > 0) text += ' Fix the errors in the programs first, then play again.';
+        else replay = level_locked;
       }
       parts.push(text);
     } else if (level_basis) {
@@ -523,6 +535,11 @@ function update_board_status() {
     }
     if (!level_locked && !outdated.length) parts.push('The game rules are unlocked, so they can be changed: lock them to play.');
   }
+  elem.classList.toggle('attention', !level_locked || outdated.length > 0 || keep || (!playing && changed_since(run_basis).length > 0 && snapshots.length > 0));
+  // (the same as before: leave it, so that a button in it keeps the focus)
+  const shown = JSON.stringify([parts, keep, replay, has_level]);
+  if (elem.dataset.shown === shown) return;
+  elem.dataset.shown = shown;
   elem.textContent = parts.join(' ');
   if (keep) {
     const button = document.createElement('button');
@@ -535,12 +552,11 @@ function update_board_status() {
   if (replay) {
     const button = document.createElement('button');
     button.className = 'control-button replay-button';
-    button.textContent = '\u23F5 Play again';
+    set_label(button, '\u23F5', 'Play again');
     button.title = 'Play this level again with your changes, and come back to the time the board shows now';
     button.addEventListener('click', play_again);
     elem.append(' ', button);
   }
-  elem.classList.toggle('attention', !level_locked || outdated.length > 0 || keep || (!playing && changed_since(run_basis).length > 0 && snapshots.length > 0));
 }
 
 function lock_level_generation() {
@@ -785,6 +801,7 @@ $('timeline-next').addEventListener('click', () => show_snapshot(shown_snapshot 
 const results = { games: 0, verdict: null };
 
 function end_playing() {
+  hide_tutorial_invite();
   const stopped = stop_requested;
   if (stopped) return_to_time = null;
   results.games++;
@@ -975,6 +992,7 @@ function save_work_now() {
   }
 }
 
+editors.on_problems = () => update_board_status();
 editors.on_change = (key) => {
   if (key === 'level_state' || LEVEL_GEN_PROGRAMS.includes(key)) update_controls(); else update_board_status();
   if (!current || loading_game) return;
@@ -1456,11 +1474,30 @@ function save(filename, data, type = 'application/json') {
 // Refreshing after changing tabs
 function change_tabs() {
   if ($('tab5').checked) update_debug_view(); else link_cell(null);
+  show_open_tab();
   editors.resize();
   upload_status.innerText = '';
   load_status.innerText = '';
   versions_tab.shown();
   if ($('tab8').checked) grader.shown();
+}
+
+// On a phone, the row of tabs can scroll sideways: the open tab is scrolled into it.
+// (Only sideways: the page itself does not scroll.)
+function show_open_tab() {
+  const label = document.querySelector('input[name="tabs"]:checked + .tab-label');
+  const bar = label && label.parentElement;
+  if (!bar || bar.scrollWidth <= bar.clientWidth) return;
+  const left = label.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft;
+  if (left < bar.scrollLeft) bar.scrollLeft = left;
+  else if (left + label.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = left + label.offsetWidth - bar.clientWidth;
+}
+
+// The invitation to the tutorial (for new players) goes away after the first
+// game, or when another tab is opened: the player found their way.
+// (Only for this visit: whether it comes back is up to the tutorial, see invite.)
+function hide_tutorial_invite() {
+  $('tutorial-invite').hidden = true;
 }
 
 function select_tab(n) {
@@ -1804,7 +1841,10 @@ document.querySelectorAll('[data-action]').forEach((elem) => {
 speed_selector.addEventListener('change', select_speed);
 $('file-input').addEventListener('change', load_game_from_file);
 $('folder-input').addEventListener('change', load_folder);
-document.querySelectorAll('input[name="tabs"]').forEach((tab) => tab.addEventListener('change', change_tabs));
+document.querySelectorAll('input[name="tabs"]').forEach((tab) => tab.addEventListener('change', () => {
+  hide_tutorial_invite();
+  change_tabs();
+}));
 // Links to a tab (they also work as plain links, e.g. opened in a new window)
 document.addEventListener('click', (e) => {
   const link = e.target.closest && e.target.closest('a.tab-link[data-tab]');

@@ -14,6 +14,18 @@
   flex: none;
   font-family: FontAwesome;
   border: 1px solid #000;
+  /* (the colors of a light page, also in dark mode: games choose the colors of
+     cells and objects for a white board) */
+  color: #555;
+  background: #fff;
+}
+
+/* In dark mode, the board is a light card on the dark page */
+@media screen and (prefers-color-scheme: dark) {
+  .grid-visual {
+    margin: 8px;
+    box-shadow: 0 0 0 8px #fff;
+  }
 }
 
 .grid-visual-cell {

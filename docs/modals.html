@@ -1,11 +1,11 @@
-<!-- The info pop-ups that the (i) links open. Loaded into index.html by js/main.js (see load_fragments). -->
-  <div class="modal" id="modal-level-programs">
+<!-- The info pop-ups (dialogs) that the (i) buttons open (see js/modal.js). Loaded into index.html by js/main.js (see load_fragments). -->
+  <dialog class="modal" id="modal-level-programs" aria-labelledby="modal-level-programs-title">
     <div class="modal-dialog">
       <header class="modal-header">
-        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+        <button type="button" class="close-modal" aria-label="Close" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Auxiliary, level generation &amp; visibility programs</h3>
+        <h2 id="modal-level-programs-title">Auxiliary, level generation &amp; visibility programs</h2>
         <p>
           The auxiliary program can be used to define helping predicates
           that are used in the other programs. This program is added to the
@@ -35,15 +35,15 @@
         </p>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <div class="modal" id="modal-natures-moves">
+  <dialog class="modal" id="modal-natures-moves" aria-labelledby="modal-natures-moves-title">
     <div class="modal-dialog">
       <header class="modal-header">
-        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+        <button type="button" class="close-modal" aria-label="Close" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Nature's moves</h3>
+        <h2 id="modal-natures-moves-title">Nature's moves</h2>
         <p>
           This program expresses how the game
           progresses from one state to the next.
@@ -63,15 +63,15 @@
         </p>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <div class="modal" id="modal-winning-conditions">
+  <dialog class="modal" id="modal-winning-conditions" aria-labelledby="modal-winning-conditions-title">
     <div class="modal-dialog">
       <header class="modal-header">
-        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+        <button type="button" class="close-modal" aria-label="Close" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Winning conditions</h3>
+        <h2 id="modal-winning-conditions-title">Winning conditions</h2>
         <p>
           This program determines whether the player wins or loses the game,
           at each time step,
@@ -91,15 +91,15 @@
         </p>
       </div>
     </div>
-  </div>
+  </dialog>
 
-  <div class="modal" id="modal-player-program">
+  <dialog class="modal" id="modal-player-program" aria-labelledby="modal-player-program-title">
     <div class="modal-dialog">
       <header class="modal-header">
-        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+        <button type="button" class="close-modal" aria-label="Close" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Player strategy</h3>
+        <h2 id="modal-player-program-title">Player strategy</h2>
         <p>
           This program specifies what move(s) the player performs at each
           time step, and how the player's memory is updated.
@@ -128,14 +128,14 @@
         </p>
       </div>
     </div>
-  </div>
-  <div class="modal" id="modal-grading">
+  </dialog>
+  <dialog class="modal" id="modal-grading" aria-labelledby="modal-grading-title">
     <div class="modal-dialog">
       <header class="modal-header">
-        <button class="close-modal" aria-label="close modal" data-close>✕</button>
+        <button type="button" class="close-modal" aria-label="Close" data-close>✕</button>
       </header>
       <div class="modal-content">
-        <h3>Grading</h3>
+        <h2 id="modal-grading-title">Grading</h2>
         <p>
           <b>Loading.</b> In Canvas, <i>Download submissions</i> of the assignment gives one zip file
           with the files of all students, named after the student (e.g.
@@ -168,4 +168,4 @@
         </p>
       </div>
     </div>
-  </div>
+  </dialog>

@@ -440,7 +440,7 @@ test('playing step by step, and looking back', async (t) => {
   assert.equal(await page.locator('.grid-visual-cell.changed').count(), 0);
   // The Debug tab shows the step of the board, with a slider of its own
   await page.click('label[for=tab5]');
-  assert.match(await page.textContent('#debug-step-label'), /^Step 1: the player saw the board of time 0/);
+  assert.match(await page.textContent('#debug-step-label'), /^Time 0 \(as on the board\): what the player saw/);
   assert.match(await page.textContent('#debug-step'), /Player input/);
   // with the facts of each program in a locked editor, one fact per line
   const output_editors = page.locator('#debug-step .ace_editor.output-editor');
@@ -453,12 +453,12 @@ test('playing step by step, and looking back', async (t) => {
   assert.equal(await page.isHidden('.debug-timeline'), true);
   await page.click('#timeline-next');
   assert.match(await page.textContent('#timeline-label'), /^Time 1 of /);
-  assert.match(await page.textContent('#debug-step-label'), /^Step 2:/);
+  assert.match(await page.textContent('#debug-step-label'), /^Time 1 /);
   await page.evaluate(() => { document.getElementById('option-side-by-side').checked = false; document.getElementById('option-side-by-side').dispatchEvent(new Event('change')); });
   assert.equal(await page.isVisible('.debug-timeline'), true);
   await page.click('#debug-next');
   assert.match(await page.textContent('#timeline-label'), /^Time 2 of /);
-  assert.match(await page.textContent('#debug-step-label'), /^Step 3:/);
+  assert.match(await page.textContent('#debug-step-label'), /^Time 2 /);
   // Changing a program after the game: the board says so
   await set_program(page, 'player_move_program', (await value(page, 'player_move_program')) + '\n% changed');
   assert.match(await page.textContent('#board-status'), /^The board shows the last game \(WIN at time \d+\)\. Since then, you changed: Player strategy\./);
@@ -733,8 +733,9 @@ test('the page fits on a phone', async (t) => {
     const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     assert.ok(scroll <= width, `tab ${tab}: the page is ${scroll} pixels wide on a ${width} pixel screen`);
   }
-  // All tabs on one row
-  const tops = await page.evaluate(() => [...document.querySelectorAll('label[name=tabs]')]
+  // All tabs on one row (which scrolls sideways if they do not fit), each with its icon and name
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('label[for=tab2]')).fontSize), '11px');
+  const tops = await page.evaluate(() => [...document.querySelectorAll('.tab-label')]
     .filter((l) => l.offsetParent).map((l) => Math.round(l.getBoundingClientRect().top)));
   assert.ok(Math.max(...tops) - Math.min(...tops) <= 4, JSON.stringify(tops));
   // Long lines in the editors are wrapped
@@ -753,15 +754,34 @@ test('the texts of the tabs and the info pop-ups are loaded', async (t) => {
   assert.ok(await page.locator('#section-instructions .ace_editor').count() > 0);
   await page.click('label[for=tab6]');
   assert.match(await page.textContent('#section-internals'), /current-state rules/);
-  // an (i) link opens its pop-up, Escape closes it
+  // an (i) button opens its pop-up (a dialog, with the focus in it), Escape closes it,
+  // and the focus goes back to the button
   await page.click('label[for=tab3]');
-  await page.locator('#section-game-rules a.modal-link').first().click();
-  await page.waitForSelector('.modal.is-visible');
+  const info = page.locator('#section-game-rules button.modal-link').first();
+  await info.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('dialog.modal[open]');
+  assert.equal(await page.evaluate(() => document.activeElement.closest('dialog[open]') !== null), true);
+  assert.equal(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), 'Close');
+  assert.equal(await page.evaluate(() => {
+    const dialog = document.querySelector('dialog[open]');
+    return document.getElementById(dialog.getAttribute('aria-labelledby')).textContent;
+  }), 'Auxiliary, level generation & visibility programs');
+  // (Tab stays in the dialog)
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement.closest('dialog[open]') !== null || document.activeElement === document.body), true);
   await page.keyboard.press('Escape');
-  await page.waitForSelector('.modal.is-visible', { state: 'detached' });
-  await page.locator('#section-game-rules a.modal-link').first().click();
-  await page.click('.modal.is-visible [data-close]');
-  assert.equal(await page.locator('.modal.is-visible').count(), 0);
+  await page.waitForSelector('dialog.modal[open]', { state: 'detached' });
+  assert.equal(await info.evaluate((e) => e === document.activeElement), true);
+  // the close button, and a click next to the pop-up, close it too
+  await info.click();
+  await page.click('dialog[open] [data-close]');
+  assert.equal(await page.locator('dialog[open]').count(), 0);
+  await info.click();
+  await page.mouse.click(5, 5);
+  assert.equal(await page.locator('dialog[open]').count(), 0);
+  // (no javascript: links: the page has a Content-Security-Policy)
+  assert.equal(await page.locator('a[href^="javascript:"]').count(), 0);
   assert.deepEqual(page.errors, []);
 });
 
@@ -1380,7 +1400,8 @@ test('the tutorial: from the first move to a winning strategy', async (t) => {
   await page.click('.tutorial-body button[data-example=flag2]');
   await page.waitForSelector('#tutorial-card', { state: 'detached' });
   await page.waitForFunction(() => /flag is randomly placed/.test(window.logic_game.editors.value('level_gen_program')));
-  assert.equal(await page.isChecked('#tab4'), true);
+  // (the Strategy tab is opened once the game is loaded, which takes a moment after the programs are in the editors)
+  await page.waitForFunction(() => document.getElementById('tab4').checked);
   assert.equal(await page.locator('.tutorial-target').count(), 0);
   assert.equal(await page.evaluate(() => window.logic_game.work.load('example:flag3').game.player_move_program), 'my own work.');
   assert.deepEqual(page.errors, []);
@@ -1604,7 +1625,7 @@ test('the board next to the tabs on wide screens (an option), and above them oth
   const layout = () => page.evaluate(() => {
     const board = document.getElementById('board-pane').getBoundingClientRect();
     const tabs = document.getElementById('tabs-pane').getBoundingClientRect();
-    const labels = [...document.querySelectorAll('label[name=tabs]')].filter((l) => l.offsetParent);
+    const labels = [...document.querySelectorAll('.tab-label')].filter((l) => l.offsetParent);
     return {
       side_by_side: board.right <= tabs.left && board.top < tabs.bottom,
       // (the selected tab is a pixel higher)
@@ -1890,4 +1911,131 @@ test('grading: zip files with Zip64 fields, and an entry that cannot be read', a
   assert.match(await page.textContent('#grading-notes'), /roerich_12346_678902_game\.json was left out: it is compressed in a way that is not supported/);
   assert.deepEqual((await student_rows(page)).map((r) => r[0]), ['doejane', 'roerich']);
   assert.deepEqual(page.errors, []);
+});
+
+// ---- Accessibility, dark mode and the phone ------------------------------------------------
+
+test('the file pickers can be used with the keyboard, and show the focus', async (t) => {
+  const page = await open(t, '?tab=7&grader=true');
+  if (!page) return;
+  for (const [id, tab] of [['file-input', 7], ['folder-input', 7], ['grading-input', 8], ['grading-import', 8]]) {
+    await page.click(`label[for=tab${tab}]`);
+    // (from the element before it, with Tab: as someone with a keyboard would)
+    await page.locator(`#${id}`).evaluate((input) => {
+      const all = [...document.querySelectorAll('button, input, select, summary')].filter((e) => e === input || e.offsetParent);
+      all[all.indexOf(input) - 1].focus();
+    });
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.id), id);
+    const outline = await page.locator(`label[for=${id}]`).evaluate((l) => getComputedStyle(l).outlineStyle);
+    assert.equal(outline, 'solid', `the label of #${id} shows the focus`);
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.keyboard.press('Enter')]);
+    assert.equal(await chooser.element().evaluate((e) => e.id), id);
+  }
+  assert.deepEqual(page.errors, []);
+});
+
+test('the errors under an editor can be used with the keyboard', async (t) => {
+  const page = await open(t, '?tab=4');
+  if (!page) return;
+  await set_program(page, 'player_move_program', 'do(move(down)).\ndo(move(up)) :- observe(at(R,C,player).');
+  const item = page.locator('#player_move_program-problems li button');
+  await item.first().waitFor();
+  await item.first().focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(() => window.logic_game.editors.get('player_move_program').getCursorPosition().row), 1);
+  assert.equal(await page.evaluate(() => document.activeElement.closest('#player_move_program') !== null), true);
+  assert.deepEqual(page.errors, []);
+});
+
+test('after a change with an error, the board does not offer to play again', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  await page.selectOption('#speed-selector', '-1');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  // (WIN! without "(win)", which says nothing more)
+  assert.match(await game_output(page), /^WIN!\n/);
+  // The game was played: the invitation to the tutorial goes away
+  assert.equal(await page.isHidden('#tutorial-invite'), true);
+  const program = await page.evaluate(() => window.logic_game.editors.value('player_move_program'));
+  await set_program(page, 'player_move_program', program + '\n% changed');
+  await page.waitForSelector('#board-status .replay-button');
+  await set_program(page, 'player_move_program', program + '\nbroken(');
+  await page.waitForFunction(() => /Fix the errors in the programs first/.test(document.getElementById('board-status').textContent));
+  assert.equal(await page.locator('#board-status .replay-button').count(), 0);
+  await set_program(page, 'player_move_program', program + '\n% fixed');
+  await page.waitForSelector('#board-status .replay-button');
+  assert.deepEqual(page.errors, []);
+});
+
+test('the invitation to the tutorial goes away when another tab is opened', async (t) => {
+  const page = await open(t);
+  if (!page) return;
+  assert.equal(await page.isVisible('#tutorial-invite'), true);
+  await page.click('label[for=tab2]');
+  assert.equal(await page.isHidden('#tutorial-invite'), true);
+});
+
+test('dark mode: dark colors and editors, but the board stays white', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const page = await browser.newPage({ serviceWorkers: 'block', colorScheme: 'dark' });
+  t.after(() => page.close());
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(base + '?tab=4');
+  await page.waitForSelector('body[data-ready=true]');
+  const colors = () => page.evaluate(() => {
+    const style = (sel) => getComputedStyle(document.querySelector(sel));
+    return {
+      page: style('main').backgroundColor,
+      board: style('#visual').backgroundColor,
+      cell_text: style('#visual .grid-visual-cell').color,
+    };
+  });
+  await page.waitForFunction(() => document.querySelector('#player_move_program').classList.contains('ace_dark'));
+  let c = await colors();
+  assert.notEqual(c.page, 'rgb(255, 255, 255)');
+  assert.equal(c.board, 'rgb(255, 255, 255)');
+  assert.equal(c.cell_text, 'rgb(85, 85, 85)');
+  // A change of the setting changes the page and the editors at once
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.waitForFunction(() => !document.querySelector('#player_move_program').classList.contains('ace_dark'));
+  c = await colors();
+  assert.equal(c.page, 'rgb(255, 255, 255)');
+  assert.equal(c.board, 'rgb(255, 255, 255)');
+  // Printed, the page is light
+  await page.emulateMedia({ colorScheme: 'dark', media: 'print' });
+  assert.equal((await colors()).page, 'rgb(255, 255, 255)');
+  assert.deepEqual(errors, []);
+});
+
+test('on a phone, all eight tabs have a name, in a row that scrolls (not the page)', async (t) => {
+  if (skip) {
+    t.skip(skip);
+    return;
+  }
+  const context = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
+  t.after(() => context.close());
+  const page = await context.newPage();
+  await page.goto(base + '?grader=true&internals=true');
+  await page.waitForSelector('body[data-ready=true]');
+  const labels = await page.evaluate(() => [...document.querySelectorAll('.tab-label')].map((l) => {
+    const r = l.getBoundingClientRect();
+    return { text: l.textContent, size: getComputedStyle(l).fontSize, top: Math.round(r.top) };
+  }));
+  assert.equal(labels.length, 8);
+  for (const l of labels) assert.ok(l.text && l.size !== '0px', JSON.stringify(l));
+  assert.equal(new Set(labels.map((l) => l.top)).size, 1, JSON.stringify(labels));
+  for (const tab of [8, 6, 1]) {
+    await page.click(`label[for=tab${tab}]`);
+    const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    assert.ok(scroll <= width, `tab ${tab}: the page is ${scroll} pixels wide on a ${width} pixel screen`);
+    // (the open tab is scrolled into the row)
+    const box = await page.locator(`label[for=tab${tab}]`).boundingBox();
+    assert.ok(box.x >= 0 && box.x + box.width <= width + 1, `tab ${tab}: ${JSON.stringify(box)}`);
+  }
 });

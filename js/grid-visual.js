@@ -235,7 +235,7 @@ function visualize_grid(grid, changed = new Set()) {
 
 // Visual effects for when a game is won or lost
 export function display_win() {
-  document.getElementById('visual').style.setProperty('border', '3px solid #AADB1E');
+  document.getElementById('visual').style.setProperty('border', '3px solid #6E9A0C');      // (green: 3.3:1 on white)
 }
 export function display_lose() {
   document.getElementById('visual').style.setProperty('border', '3px solid #E10600');

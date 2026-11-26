@@ -1,5 +1,5 @@
 <!-- The Instructions tab. Loaded into index.html by js/main.js (see load_fragments). -->
-      <h3>General gameplay</h3>
+      <h2>General gameplay</h2>
       <p>
         This game is played by writing a logic program that expresses your
         strategy. You are the <i>player</i>.
@@ -25,7 +25,7 @@
         detail below.
       </p>
 
-      <h3>Playing: the controls</h3>
+      <h2>Playing: the controls</h2>
       <p>
         New to the game? The <i>tutorial</i> (in the <i>Control</i> tab) guides you
         through a first game, step by step.
@@ -63,7 +63,7 @@
         <kbd>Tab</kbd> goes to the cells, and the arrow keys move from cell to cell.
       </p>
 
-      <h3>How are levels generated?</h3>
+      <h2>How are levels generated?</h2>
       <p>
         The generation of levels is expressed by a logic program
         (labeled <i>level generation</i>).
@@ -122,7 +122,7 @@ decorate(game_type,grid).
 decorate(label,flag,font_f024).
 decorate(label,player,font_f007).</pre>
 
-      <h3>What can the player observe?</h3>
+      <h2>What can the player observe?</h2>
       <p>
         The logic program labeled <i>visibility</i> encodes what parts of the
         game are visible (or observable) to the player at each time step.
@@ -147,7 +147,7 @@ decorate(label,player,font_f007).</pre>
 % Everything is observable
 observe(at(R,C,O)) :- at(R,C,O).</pre>
 
-      <h3>How does the game progress?</h3>
+      <h2>How does the game progress?</h2>
       <p>
         The logic program labeled <i>nature's moves</i> expresses how the game
         progresses from one state to the next.
@@ -212,7 +212,7 @@ wipe_player_memory :- next(R,C,player), at(R,C,amnesia).</pre>
 % The flag moves randomly inside its column
 next(RANDINT(1,3),C,flag) :- at(R,C,flag).</pre>
 
-      <h3>When is a game won or lost?</h3>
+      <h2>When is a game won or lost?</h2>
       <p>
         At each time step, the logic program labeled <i>winning conditions</i>
         determines whether the player wins or loses the game, or whether it
@@ -250,7 +250,7 @@ win :- at(R,C,player), at(R,C,flag).
 % You lose if time runs out.
 lose(timeout) :- current_time(T), setting(time_bound(S)), T >= S.</pre>
 
-      <h3>How to instruct the player?</h3>
+      <h2>How to instruct the player?</h2>
       <p>
         At each time step, the logic program labeled <i>player strategy</i>
         specifies what move(s) the player performs at that time step,
@@ -322,7 +322,7 @@ do(wait).
 forget(counter(T)) :- memory(counter(T)).
 remember(counter(T+1)) :- memory(counter(T)).</pre>
 
-      <h3>Creating your own games</h3>
+      <h2>Creating your own games</h2>
       <p>
         You can either load and play an existing game.
         Loading games can be done in the <i>Control</i> tab
@@ -347,7 +347,7 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         start of a level, or the last game) and what changed since.
       </p>
 
-      <h3>Working on a project: versions and files</h3>
+      <h2>Working on a project: versions and files</h2>
       <p>
         Your work is saved in your browser automatically, for each game separately.
         In the <i>Versions</i> tab you can:
@@ -374,7 +374,7 @@ remember(counter(T+1)) :- memory(counter(T)).</pre>
         load a file, or when the files of a linked folder change.
       </p>
 
-      <h3>Playing on your own computer</h3>
+      <h2>Playing on your own computer</h2>
       <p>
         You can also work on a game on your own computer: with the programs in plain
         files, in your own editor, and in git. A <i>game folder</i> has one clingo file per
@@ -407,7 +407,7 @@ logic-game convert project.json my-game   # convert files (e.g. from the Version
         to the command-line version</a>.
       </p>
 
-      <h3>Tips for writing programs</h3>
+      <h2>Tips for writing programs</h2>
       <ul>
         <li>
           Only the first answer set that is found is used.
@@ -444,7 +444,7 @@ logic-game convert project.json my-game   # convert files (e.g. from the Version
         </li>
       </ul>
 
-      <h3>How is the game visualized?</h3>
+      <h2>How is the game visualized?</h2>
       <p>
         Currently, only games played on a rectangular grid can be visualized.
         In order for this to work,

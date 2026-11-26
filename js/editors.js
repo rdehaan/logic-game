@@ -39,9 +39,20 @@ const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 ace.config.set('basePath', 'vendor/ace');
 ace.config.setModuleUrl('ace/mode/gringo', 'js/mode-gringo.js');
 
+// A light theme, or a dark one when the browser (or the system) asks for dark
+// colors; when that changes, all editors on the page change with it.
+const dark_mode = window.matchMedia('(prefers-color-scheme: dark)');
+const editor_theme = () => dark_mode.matches ? 'ace/theme/tomorrow_night' : 'ace/theme/textmate';
+dark_mode.addEventListener('change', () => {
+  // (Ace keeps the editor of an element in element.env)
+  for (const elem of document.querySelectorAll('.ace_editor')) {
+    if (elem.env && elem.env.editor) elem.env.editor.setTheme(editor_theme());
+  }
+});
+
 function make_editor(id) {
   const editor = ace.edit(id);      // (an id, or the element itself)
-  editor.setTheme('ace/theme/textmate');
+  editor.setTheme(editor_theme());
   editor.setOptions({
     useSoftTabs: true,
     tabSize: 2,
@@ -86,7 +97,7 @@ function interface_line(key) {
   if (!iface) return null;
   const p = document.createElement('p');
   p.className = 'editor-interface';
-  const list = (sigs) => sigs.map((s) => `<tt>${s.replace('/*', '')}</tt>`).join(', ');
+  const list = (sigs) => sigs.map((s) => `<code>${s.replace('/*', '')}</code>`).join(', ');
   p.innerHTML = (iface.inputs.length ? `Gets: ${list(iface.inputs)} (and the auxiliary program).` : 'Gets: only the auxiliary program.') +
     ` Passes on: ${list(iface.outputs)}.`;
   return p;
@@ -103,6 +114,7 @@ export class Editors {
     this.timers = {};
     this.hint_timer = null;
     this.on_change = null;      // called with the key of an editor that changed
+    this.on_problems = null;    // called when the errors and warnings were drawn again
     for (const key of GAME_FIELDS) {
       const editor = make_editor(key);
       this.editors[key] = editor;
@@ -294,9 +306,14 @@ export class Editors {
     item.className = 'severity-' + e.severity;
     const label = { error: 'Error', warning: 'Warning', info: 'Note' }[e.severity];
     const where = [with_program ? SOURCE_NAMES[key] : null, e.line != null ? `line ${e.line}` : null].filter(Boolean).join(', ');
-    item.textContent = `${label}${where ? ' (' + where + ')' : ''}: ${e.message}`;
-    item.title = 'Click to go to the program';
-    item.addEventListener('click', () => this.go_to(key, e));
+    // (a button, so that it can also be used with the keyboard)
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'problem-button';
+    button.textContent = `${label}${where ? ' (' + where + ')' : ''}: ${e.message}`;
+    button.title = 'Go to the program';
+    button.addEventListener('click', () => this.go_to(key, e));
+    item.append(button);
     return item;
   }
 
@@ -343,6 +360,7 @@ export class Editors {
       this.notice.hidden = parts.length === 0;
       this.notice.classList.toggle('has-errors', errors > 0);
     }
+    if (this.on_problems) this.on_problems();
   }
 }
 

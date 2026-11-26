@@ -3,7 +3,6 @@
 
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>A logic game</title>
@@ -64,15 +63,15 @@
 
     <div class="game-controls">
       <div class="control-group">
-        <button data-action="do_generate" class="control-button" id="generate-button" disabled>&#x239A; Generate level</button>
-        <button data-action="clear_level" class="control-button" id="clear-button" disabled>&#x2717; Clear level</button>
-        <button data-action="reset_level" class="control-button" id="reset-button" disabled>&#x21BA; Reset level</button>
+        <button data-action="do_generate" class="control-button" id="generate-button" disabled><span aria-hidden="true">&#x239A;</span> Generate level</button>
+        <button data-action="clear_level" class="control-button" id="clear-button" disabled><span aria-hidden="true">&#x2717;</span> Clear level</button>
+        <button data-action="reset_level" class="control-button" id="reset-button" disabled><span aria-hidden="true">&#x21BA;</span> Reset level</button>
       </div>
       <div class="control-group">
-        <button data-action="do_play" class="control-button" id="play-button" title="Play (Ctrl+Enter)" disabled>&#x23F5; Play</button>
-        <button data-action="do_pause" class="control-button" id="pause-button" title="Pause (Space)" disabled>&#x23F8; Pause</button>
-        <button data-action="do_step" class="control-button" id="step-button" title="Play one step, then pause (Space)" disabled>&#x23ED; Step</button>
-        <button data-action="do_stop" class="control-button" id="stop-button" disabled>&#x23F9; Stop</button>
+        <button data-action="do_play" class="control-button" id="play-button" title="Play (Ctrl+Enter)" disabled><span aria-hidden="true">&#x23F5;</span> Play</button>
+        <button data-action="do_pause" class="control-button" id="pause-button" title="Pause (Space)" disabled><span aria-hidden="true">&#x23F8;</span> Pause</button>
+        <button data-action="do_step" class="control-button" id="step-button" title="Play one step, then pause (Space)" disabled><span aria-hidden="true">&#x23ED;</span> Step</button>
+        <button data-action="do_stop" class="control-button" id="stop-button" disabled><span aria-hidden="true">&#x23F9;</span> Stop</button>
       </div>
       <div class="control-group">
         <label for="speed-selector" class="speed-label">Speed:</label>
@@ -99,29 +98,32 @@
     </div>
 
     <div id="tabs-pane" class="tabs-pane">
+    <!-- The tabs: radio buttons (one is checked: its section is shown), with their labels -->
+    <div class="tab-bar">
     <input id="tab1" type="radio" name="tabs" checked>
-    <label for="tab1" name="tabs" title="Control">Control</label>
+    <label for="tab1" class="tab-label" title="Control">Control</label>
 
     <input id="tab2" type="radio" name="tabs">
-    <label for="tab2" name="tabs" title="Instructions">Instructions</label>
+    <label for="tab2" class="tab-label" title="Instructions">Instructions</label>
 
     <input id="tab3" type="radio" name="tabs">
-    <label for="tab3" name="tabs" title="Game rules">Game rules</label>
+    <label for="tab3" class="tab-label" title="Game rules">Game rules</label>
 
     <input id="tab4" type="radio" name="tabs">
-    <label for="tab4" name="tabs" title="Strategy">Strategy</label>
+    <label for="tab4" class="tab-label" title="Strategy">Strategy</label>
 
     <input id="tab5" type="radio" name="tabs">
-    <label for="tab5" name="tabs" title="Debug">Debug</label>
+    <label for="tab5" class="tab-label" title="Debug">Debug</label>
 
     <input id="tab7" type="radio" name="tabs">
-    <label for="tab7" name="tabs" title="Versions">Versions</label>
+    <label for="tab7" class="tab-label" title="Versions">Versions</label>
 
     <input id="tab6" type="radio" name="tabs">
-    <label for="tab6" name="tabs" title="Internals">Internals</label>
+    <label for="tab6" class="tab-label" title="Internals">Internals</label>
 
     <input id="tab8" type="radio" name="tabs">
-    <label for="tab8" name="tabs" title="Grading">Grading</label>
+    <label for="tab8" class="tab-label" title="Grading">Grading</label>
+    </div>
 
     <section id="section-control">
       <p>
@@ -137,7 +139,7 @@
         each step of a game. Below are the tutorial, the example games, and the options.
       </p>
 
-      <h3>Tutorial</h3>
+      <h2>Tutorial</h2>
       <p>
         New to the game? The tutorial guides you through a first game, step by step.
       </p>
@@ -145,7 +147,7 @@
       <p>Then play these games, each a bit harder than the one before:</p>
       <div id="first-games"></div>
 
-      <h3>Load game</h3>
+      <h2>Load game</h2>
       <select id="example-games">
         <optgroup label="Getting started">
           <option value="examples/flag1.json">Find the flag 1</option>
@@ -177,12 +179,11 @@
           <option value="examples/flag11-with-solutions-b.json">Find the flag 11 (with solutions, version B)</option>
         </optgroup>
       </select>
-      &nbsp;
       <button data-action="load_game" class="control-button">Load</button>
-      <p id="load-status"></p>
+      <p id="load-status" class="load-status"></p>
 
 
-      <h3>Options</h3>
+      <h2>Options</h2>
       <div class="options">
         <label class="inline-check"><input type="checkbox" id="option-side-by-side" data-option="side_by_side"> On wide screens, show the board next to the tabs (it stays in view while you scroll)</label>
         <label class="inline-check"><input type="checkbox" id="option-mark-changes" data-option="mark_changes"> Mark the cells on the board that changed in the last step</label>
@@ -204,27 +205,27 @@
     <section id="section-game-rules">
       <div id="rules-lock" class="rules-lock">
         <span id="rules-lock-text"></span>
-        <button data-action="lock_rules" class="control-button" id="lock-button">&#x25CF; Lock</button>
-        <button data-action="unlock_rules" class="control-button" id="unlock-button">&#x25CB; Unlock to edit</button>
+        <button data-action="lock_rules" class="control-button" id="lock-button"><span aria-hidden="true">&#x25CF;</span> Lock</button>
+        <button data-action="unlock_rules" class="control-button" id="unlock-button"><span aria-hidden="true">&#x25CB;</span> Unlock to edit</button>
       </div>
-      <h3>Auxiliary <a href="javascript:void(0)" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</a></h3>
+      <h2>Auxiliary <button type="button" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</button></h2>
       <p>
         This is an auxiliary program that is added to all programs.
       </p>
       <pre id="aux_program"></pre>
-      <h3>Level generation <a href="javascript:void(0)" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</a></h3>
+      <h2>Level generation <button type="button" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</button></h2>
       <p>
         This program expresses how levels are generated.
       </p>
       <pre id="level_gen_program"></pre>
 
-      <h3>Visibility <a href="javascript:void(0)" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</a></h3>
+      <h2>Visibility <button type="button" class="modal-link" data-open="modal-level-programs" aria-label="About the level programs">&#xf05a;</button></h2>
       <p>
         This program expresses what the player can observe.
       </p>
       <pre id="visibility_program"></pre>
 
-      <h3>Nature's moves <a href="javascript:void(0)" class="modal-link" data-open="modal-natures-moves" aria-label="About nature's moves">&#xf05a;</a></h3>
+      <h2>Nature's moves <button type="button" class="modal-link" data-open="modal-natures-moves" aria-label="About nature's moves">&#xf05a;</button></h2>
       <p>
         This program expresses nature's moves&mdash;i.e.,
         how the state of the board changes as a result of
@@ -232,7 +233,7 @@
       </p>
       <pre id="nature_program"></pre>
 
-      <h3>Winning conditions <a href="javascript:void(0)" class="modal-link" data-open="modal-winning-conditions" aria-label="About the winning conditions">&#xf05a;</a></h3>
+      <h2>Winning conditions <button type="button" class="modal-link" data-open="modal-winning-conditions" aria-label="About the winning conditions">&#xf05a;</button></h2>
       <p>
         This program expresses when the game is won or lost.
       </p>
@@ -240,13 +241,13 @@
     </section>
 
     <section id="section-player-strategy">
-      <h3>Player strategy <a href="javascript:void(0)" class="modal-link" data-open="modal-player-program" aria-label="About the player strategy">&#xf05a;</a></h3>
+      <h2>Player strategy <button type="button" class="modal-link" data-open="modal-player-program" aria-label="About the player strategy">&#xf05a;</button></h2>
       <p>
         This program computes the player's move(s).
       </p>
       <pre id="player_move_program"></pre>
 
-      <h3>Test your strategy</h3>
+      <h2>Test your strategy</h2>
       <p>
         This plays the game on many random levels (without drawing them),
         to see how often your strategy wins. Afterwards, the levels it did not
@@ -254,15 +255,18 @@
         load it onto the board to watch what happens, or copy a link to it.
       </p>
       <div class="test-controls">
-        Levels:&nbsp;<input type="number" id="test-levels" min="1" max="1000" value="20">
+        <label for="test-levels">Levels:</label>
+        <input type="number" id="test-levels" min="1" max="1000" value="20">
         <button data-action="run_test" id="test-button" class="control-button">Test</button>
+        <span id="test-why" class="control-why"></span>
         <button data-action="cancel_test" id="test-cancel" class="control-button" hidden>Cancel</button>
         <span id="test-progress"></span>
       </div>
       <p id="test-summary"></p>
       <ul id="test-results" class="test-results"></ul>
       <div id="test-level" class="test-controls" hidden>
-        Play any level of this test again: level&nbsp;<input type="number" id="test-level-number" min="1" value="1" aria-label="The number of the level">
+        <label for="test-level-number">Play any level of this test again: level</label>
+        <input type="number" id="test-level-number" min="1" value="1">
         <button data-action="load_test_level" class="control-button" id="test-level-load">Load</button>
         <button data-action="copy_test_level_link" class="control-button" id="test-level-link">Copy link</button>
         <span id="test-level-status"></span>
@@ -271,16 +275,15 @@
 
     <section id="section-debug">
       <div id="level-editor">
-        <h3>Level settings</h3>
+        <h2>Level settings</h2>
         <pre id="level_settings"></pre>
-        <h3>Level state</h3>
+        <h2>Level state</h2>
         <pre id="level_state"></pre>
-        <button data-action="update_interface" class="control-button">Show this level on the board</button>
-        <p>&nbsp;</p>
+        <p><button data-action="update_interface" class="control-button">Show this level on the board</button></p>
       </div>
 
       <div id="problems-box" hidden>
-        <h3>Errors and warnings</h3>
+        <h2>Errors and warnings</h2>
         <p>
           These are problems in the programs that clingo reported, or that
           the game noticed (for example, a program that uses a special
@@ -290,7 +293,7 @@
         <ul id="problems-summary" class="editor-problems"></ul>
       </div>
 
-      <h3>Game output</h3>
+      <h2>Game output</h2>
       <p>
         For each step of the last game: what went into the player's program
         (what the player observed, and the player's memory), what came out
@@ -322,26 +325,26 @@
       </p>
 
       <div class="versions-main">
-        <h3>Hand in your work</h3>
+        <h2>Hand in your work</h2>
         <p>
           The game file has all programs (your strategy too) and the level,
           like the example games: hand it in, or give it to someone.
         </p>
-        <button data-action="download_game" class="control-button primary-button">&#x2B73; Download the game file</button>
+        <button data-action="download_game" class="control-button primary-button"><span aria-hidden="true">&#x2B73;</span> Download the game file</button>
         <p id="game-reminder" class="versions-status game-reminder"></p>
 
-        <h3>Load a file or a folder</h3>
+        <h2>Load a file or a folder</h2>
         <p>
           A game file, a project file, a game folder (or a .zip of it), or a backup of everything.
           Your current work on that game is kept as a snapshot first.
         </p>
         <form id="upload-form" enctype="multipart/form-data">
+          <input type="file" id="file-input" class="file-picker" accept=".json,.zip,application/json,application/zip" required>
           <label for="file-input" class="control-button">Select file</label>
-          <input type="file" id="file-input" accept=".json,.zip,application/json,application/zip" required>
+          <input type="file" id="folder-input" class="file-picker" webkitdirectory>
           <label for="folder-input" class="control-button">Select folder</label>
-          <input type="file" id="folder-input" webkitdirectory>
         </form>
-        <p id="upload-status"></p>
+        <p id="upload-status" class="load-status"></p>
       </div>
 
       <details class="versions-more" data-remember="snapshots">
@@ -367,7 +370,7 @@
         <label class="inline-check"><input type="checkbox" id="show-auto" checked> Show the automatic snapshots</label>
         <ol id="snapshot-list" class="snapshot-list" reversed></ol>
 
-        <h4 id="compare-heading">Compare versions</h4>
+        <h3 id="compare-heading">Compare versions</h3>
         <div class="compare-controls">
           <label for="diff-from">From</label> <select id="diff-from"></select>
           <label for="diff-to">to</label> <select id="diff-to"></select>
@@ -428,6 +431,7 @@
         </p>
         <button data-action="share_game" class="control-button">Create link</button>
         <p id="share-box" hidden>
+          <label for="share-link">Link:</label>
           <input type="text" id="share-link" class="share-link" readonly>
           <span id="share-status"></span>
         </p>
@@ -462,7 +466,7 @@
         handed in, test them, grade them with the rubric, and write feedback to send to the
         students (as a PDF, a web page or text). Your grading is kept in this browser; export it
         to keep it safe, or to hand it to another grader.
-        <a href="javascript:void(0)" class="modal-link" data-open="modal-grading" aria-label="About grading">&#xf05a;</a>
+        <button type="button" class="modal-link" data-open="modal-grading" aria-label="About grading">&#xf05a;</button>
       </p>
 
       <details class="versions-more" data-remember="grading-submissions" open>
@@ -472,8 +476,8 @@
           file of one student, or game files (.json) and PDF files. Loading more adds students to the list.
         </p>
         <form id="grading-form">
+          <input type="file" id="grading-input" class="file-picker" multiple accept=".zip,.json,.pdf,application/zip,application/json,application/pdf">
           <label for="grading-input" class="control-button primary-button">Load submissions</label>
-          <input type="file" id="grading-input" multiple accept=".zip,.json,.pdf,application/zip,application/json,application/pdf">
         </form>
         <p id="grading-load-status" class="versions-status"></p>
         <ul id="grading-notes" class="grading-warnings"></ul>
@@ -497,8 +501,8 @@
         <div id="grading-pairs"></div>
         <p class="grading-actions">
           <button data-action="grading_export" class="control-button" title="All grading work (not the PDF files of the students), to keep it safe or to give it to another grader">Export the grading (.json)</button>
+          <input type="file" id="grading-import" class="file-picker" accept=".json,application/json">
           <label for="grading-import" class="control-button">Import grading&hellip;</label>
-          <input type="file" id="grading-import" accept=".json,application/json">
           <button data-action="grading_forget" class="control-button">Remove all students</button>
         </p>
       </details>
@@ -506,7 +510,7 @@
       <div id="grading-student" class="grading-student" hidden>
         <div class="grading-header">
           <button data-action="grading_prev" class="control-button" id="grading-prev" aria-label="Previous student" title="The student before">&#x25C0;</button>
-          <h3 id="grading-name"></h3>
+          <h2 id="grading-name"></h2>
           <button data-action="grading_next" class="control-button" id="grading-next" aria-label="Next student" title="The next student">&#x25B6;</button>
           <label class="inline-check">Status:
             <select id="grading-status">
@@ -532,7 +536,7 @@
           </div>
 
           <div class="grading-main">
-            <h4>Test the game</h4>
+            <h3>Test the game</h3>
             <p class="versions-help">
               Plays the game on new levels (as <i>Test your strategy</i> does), and measures how long
               the programs take, what the player does not see, which objects move, whether the
@@ -540,14 +544,15 @@
               example games and with the other submissions. The results suggest scores below.
             </p>
             <div class="test-controls">
-              Levels:&nbsp;<input type="number" id="grading-levels" min="1" max="500" value="20" aria-label="Number of levels">
+              <label for="grading-levels">Levels:</label>
+              <input type="number" id="grading-levels" min="1" max="500" value="20">
               <button data-action="grading_measure" class="control-button primary-button" id="grading-measure">Test and measure</button>
               <button data-action="grading_cancel" class="control-button" id="grading-cancel" hidden>Cancel</button>
               <span id="grading-progress"></span>
             </div>
             <div id="grading-results" class="grading-results"></div>
 
-            <h4>Rubric <span id="grading-rubric-title" class="summary-note"></span></h4>
+            <h3>Rubric <span id="grading-rubric-title" class="summary-note"></span></h3>
             <p class="grading-actions">
               <button data-action="grading_accept" class="control-button" id="grading-accept" title="Take over the suggestions for the items that are not decided yet">Accept the suggestions</button>
             </p>
@@ -556,7 +561,7 @@
               <label class="inline-check">Give another grade: <input type="number" id="grading-override" min="0" max="10" step="0.1" aria-label="Another grade"></label>
             </p>
 
-            <h4>Feedback</h4>
+            <h3>Feedback</h3>
             <label for="grading-comment" class="grading-label">Comment for the student</label>
             <textarea id="grading-comment" rows="6" class="grading-textarea"></textarea>
             <div class="grading-snippets">
@@ -569,7 +574,7 @@
               </details>
             </div>
 
-            <h5>Notes on lines of the programs</h5>
+            <h4>Notes on lines of the programs</h4>
             <ul id="grading-line-notes" class="grading-list"></ul>
             <div class="grading-note-form">
               <select id="grading-note-program" aria-label="Program"></select>
@@ -579,7 +584,7 @@
               <button data-action="grading_add_note" class="control-button">Add note</button>
             </div>
 
-            <h5>Pictures of the board</h5>
+            <h4>Pictures of the board</h4>
             <ul id="grading-images" class="grading-list grading-images"></ul>
             <div class="grading-note-form">
               <input type="text" id="grading-image-caption" placeholder="Caption (optional; by default: what the board shows)" aria-label="Caption">
@@ -609,8 +614,8 @@
         <div id="grading-rubric-summary" class="versions-help"></div>
         <p class="grading-actions">
           <button data-action="grading_download_rubric" class="control-button">Download the rubric (.json)</button>
+          <input type="file" id="grading-rubric-input" class="file-picker" accept=".json,application/json">
           <label for="grading-rubric-input" class="control-button">Load a rubric&hellip;</label>
-          <input type="file" id="grading-rubric-input" accept=".json,application/json">
           <button data-action="grading_default_rubric" class="control-button">Use the default rubric</button>
         </p>
         <p id="grading-rubric-status" class="versions-status"></p>
