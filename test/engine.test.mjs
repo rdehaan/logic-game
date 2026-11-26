@@ -178,6 +178,14 @@ test('nature can wipe the player memory', async () => {
   assert.match(result.log.join('\n'), /Player memory wiped by nature/);
 });
 
+test('a game with all fields, as text (also from a game file with other things in it)', () => {
+  const game = normalize_game({ aux_program: { x: 1 }, goal_program: ['win.'], nature_program: 7, player_move_program: 'do(wait).', extra: 'x' });
+  assert.deepEqual(Object.keys(game), GAME_FIELDS);
+  assert.equal(game.player_move_program, 'do(wait).');
+  for (const field of ['aux_program', 'goal_program', 'nature_program', 'level_state']) assert.equal(game[field], '', field);
+  assert.equal(normalize_game(null).aux_program, '');
+});
+
 test('memory: values are compared exactly, also with strings and nested terms', () => {
   const r = update_player_memory('memory(seen(1,2)). memory("a. b").', 'forget("a. b"). remember(seen(1,2)). remember(f(g(x))).');
   assert.deepEqual(r.player_memory.split(' ').sort(), ['memory(f(g(x))).', 'memory(seen(1,2)).']);

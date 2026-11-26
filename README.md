@@ -275,7 +275,7 @@ The full guide to the command-line version is [docs/CLI.md](docs/CLI.md); the In
 tab of the page has the basics (*Playing on your own computer*).
 
 `play`, `test` and `check` exit with code 3 when the game is not won, a level of the test is
-not won, or there are errors (and `grade` when a submission has no game), so they can be used in scripts and in CI.
+not won, or there are errors (and `grade` when a submission has no game, or it could not be tested), so they can be used in scripts and in CI.
 
 ## Offline use
 
@@ -322,7 +322,8 @@ The tests (in `test/`, run with Node's built-in test runner) check:
 - `folder.test.mjs`: the folder format (every example survives the round trip) and zip files
   (also zip bombs, which are not unpacked);
 - `cli.test.mjs`: the command-line version (new, check, play, test, convert, grade, feedback, the board as text),
-  and that every command and option is in its help and in docs/CLI.md;
+  that every command and option is in its help and in docs/CLI.md, and its safeguards (Node's
+  permission model, no control characters or formulas from submissions in its output, no symbolic links);
 - `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
   test results, a full storage, and project and backup files;
 - `grading.test.mjs`: the rubric and the grade, comments, similarity, the full board, measuring

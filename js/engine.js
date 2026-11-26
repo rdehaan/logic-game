@@ -38,10 +38,11 @@ export const SOURCE_NAMES = {
   nexts: 'next state (generated)',
 };
 
-// A game with all fields present (missing ones become empty programs).
+// A game with all fields present (missing ones become empty programs, and so
+// do fields that are not text: a game file can hold anything).
 export function normalize_game(game) {
   const out = {};
-  for (const field of GAME_FIELDS) out[field] = (game && game[field]) || '';
+  for (const field of GAME_FIELDS) out[field] = game && typeof game[field] === 'string' ? game[field] : '';
   return out;
 }
 

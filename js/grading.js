@@ -658,6 +658,16 @@ export function session_file(session) {
   };
 }
 
+// A cell of a CSV file. A text that a spreadsheet would take as a formula
+// (it starts with =, +, -, @, a tab or a carriage return; e.g. a student's
+// name or a comment) gets a ' in front, so that it stays text; numbers stay
+// numbers.
+export function csv_cell(x) {
+  let text = String(x);
+  if (/^[=+\-@\t\r]/.test(text) && !/^[+-]?\d+(\.\d+)?$/.test(text)) text = "'" + text;
+  return /[",\n\r;]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
 // Read an exported grading session (text). Returns { rubric, students }.
 export function read_session(text) {
   let data;
@@ -669,7 +679,14 @@ export function read_session(text) {
   if (!data || data.format !== GRADING_FORMAT) throw new Error('this is not a grading file');
   if (Number(data.format_version) > 1) throw new Error('this grading file was made by a newer version of the page: reload the page');
   if (!Array.isArray(data.students)) throw new Error('the grading file has no students');
-  const students = data.students.filter((st) => st && typeof st.key === 'string').map((st) => ({ ...new_student(st), ...st }));
+  const students = data.students.filter((st) => st && typeof st.key === 'string').map((st) => {
+    // (the name and Canvas id end up in file names, e.g. of the feedback)
+    if (typeof st.canvas_id === 'number') st = { ...st, canvas_id: String(st.canvas_id) };
+    if (typeof st.name !== 'string' || (st.canvas_id != null && typeof st.canvas_id !== 'string')) {
+      throw new Error(`the grading file has a student (${st.key}) without a proper name or Canvas id`);
+    }
+    return { ...new_student(st), ...st };
+  });
   return { rubric: data.rubric ? read_rubric(data.rubric) : null, students };
 }
 
@@ -721,8 +738,7 @@ export function grades_csv(rubric, students) {
         return item.required ? sc.value : sc.value === 'yes' ? format_number(item_points(item, sc)) : '0';
       }), st.comment || ''];
   });
-  const cell = (x) => (/[",\n\r;]/.test(String(x)) ? '"' + String(x).replace(/"/g, '""') + '"' : String(x));
-  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
+  return [header, ...rows].map((r) => r.map(csv_cell).join(',')).join('\r\n') + '\r\n';
 }
 
 export { GAME_FIELDS };

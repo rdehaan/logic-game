@@ -15,12 +15,12 @@ import { GAME_FIELDS, SOURCE_NAMES, GameSession, replay_rng, test_strategy, norm
 import { preprocess_program } from '../js/asp.js';
 import { game_hints } from '../js/hints.js';
 import { encode_game } from '../js/storage.js';
-import { text_board } from '../js/text-board.js';
+import { text_board, terminal_text } from '../js/text-board.js';
 import { load_game, save_game, kind_of, example_names, submission_files, EXAMPLES } from '../cli/game-files.mjs';
 import { run_with_permissions } from '../cli/permissions.mjs';
 import {
   DEFAULT_RUBRIC, read_rubric, rubric_items, measure_game, most_similar, fingerprint, suggest_all, apply_suggestions,
-  compute_grade, format_number, win_counts, npcs, session_file, read_session, grades_csv, STEP_PROGRAM_NAMES,
+  compute_grade, format_number, win_counts, npcs, session_file, read_session, grades_csv, csv_cell, STEP_PROGRAM_NAMES,
 } from '../js/grading.js';
 import { read_submissions } from '../js/submissions.js';
 import { feedback_model, feedback_markdown, feedback_html, feedback_pdf, feedback_name } from '../js/feedback.js';
@@ -74,9 +74,10 @@ Options for all commands:
 The full guide: docs/CLI.md (https://github.com/rdehaan/logic-game/blob/main/docs/CLI.md).
 
 Exit codes: 0 when all is well (play: won; test: every level won; check: no
-errors; grade: every submission has a game), 1 for an error in using the
-command, 3 when the game was not won, a test level was not won, check found
-errors, or a submission has no game.
+errors; grade: every submission has a game, and it could be tested), 1 for
+an error in using the command, 3 when the game was not won, a test level was
+not won, check found errors, or a submission has no game (or it could not be
+tested).
 `;
 
 const OPTIONS = {
@@ -112,12 +113,15 @@ function int_option(values, name, fallback, min = 0) {
   return n;
 }
 
-function out(line = '') {
-  process.stdout.write(line + '\n');
+// All that the command prints goes through out and err, without control
+// characters (the text can come from games and submissions: see terminal_text);
+// with { colors: true }, colors stay.
+function out(line = '', options = {}) {
+  process.stdout.write(terminal_text(line, options) + '\n');
 }
 
 function err(text) {
-  process.stderr.write(text);
+  process.stderr.write(terminal_text(text));
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -231,7 +235,7 @@ async function cmd_play([p], values) {
   const show = (facts, previous) => {
     if (quiet) return;
     const board = text_board(facts, { previous, ansi, legend: true });
-    out(board ? board.join('\n') : '(the board cannot be drawn: the level settings have no grid size)');
+    out(board ? board.join('\n') : '(the board cannot be drawn: the level settings have no grid size)', { colors: ansi });
   };
   const input = values.step && process.stdin.isTTY ? readline.createInterface({ input: process.stdin, output: process.stdout }) : null;
   try {
@@ -336,8 +340,7 @@ function measurements_csv(rubric, students) {
       npcs(m, rubric.checks).join(' '), m.distinct_levels, m.memory_steps, m.steps, top ? top.name : '', top ? Math.round(top.overall * 100) + '%' : '',
       ...items.map((item) => (sug[item.id] && sug[item.id].value) || ''), g.below_pass ? '' : format_number(g.computed)];
   });
-  const cell = (x) => (/[",\n\r;]/.test(String(x)) ? '"' + String(x).replace(/"/g, '""') + '"' : String(x));
-  return [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n') + '\r\n';
+  return [header, ...rows].map((r) => r.map(csv_cell).join(',')).join('\r\n') + '\r\n';
 }
 
 // The grading file that grade writes.
@@ -372,6 +375,7 @@ async function cmd_grade(paths, values) {
   const t0 = Date.now();
   out(`${students.length} submission${students.length === 1 ? '' : 's'}, ${levels} level${levels === 1 ? '' : 's'} each:`);
   let missing = 0;
+  let failed = 0;
   for (const [i, st] of students.entries()) {
     const who = `${st.name}${st.canvas_id ? ` (${st.canvas_id})` : ''}${st.late ? ', late' : ''}`;
     delete st.pdf_files;      // (not in a grading file)
@@ -380,14 +384,24 @@ async function cmd_grade(paths, values) {
       out(`- ${who}: ${st.warnings.join(' ')}`);
       continue;
     }
-    const m = await measure_game(solver, st.game, {
-      levels, max_time,
-      on_progress: ({ level }) => { if (progress) process.stderr.write(`\r  ${i + 1}/${students.length} ${st.name}: level ${level} of ${levels}\u2026\x1b[K`); },
-    });
+    // (one game that makes the measurements fail does not stop the others: it gets a warning)
+    let m;
+    try {
+      m = await measure_game(solver, st.game, {
+        levels, max_time,
+        on_progress: ({ level }) => { if (progress) process.stderr.write(`\r  ${i + 1}/${students.length} ${terminal_text(st.name)}: level ${level} of ${levels}\u2026\x1b[K`); },
+      });
+      st.similar = most_similar(st.game, [...examples, ...students.filter((x) => x !== st && x.game).map((x) => ({ name: `${x.name} (a submission)`, fingerprint: prints.get(x.key) }))], 3);
+      st.suggestions = suggest_all(rubric, m, st.similar);
+    } catch (e) {
+      if (progress) process.stderr.write('\r\x1b[K');
+      failed++;
+      st.warnings.push(`The game could not be tested: ${e.message}`);
+      out(`- ${who}: the game could not be tested: ${e.message}`);
+      continue;
+    }
     if (progress) process.stderr.write('\r\x1b[K');
     st.measurements = m;
-    st.similar = most_similar(st.game, [...examples, ...students.filter((x) => x !== st && x.game).map((x) => ({ name: `${x.name} (a submission)`, fingerprint: prints.get(x.key) }))], 3);
-    st.suggestions = suggest_all(rubric, m, st.similar);
     if (values.accept) st.scores = apply_suggestions(rubric, st.scores, st.suggestions);
     const g = compute_grade(rubric, apply_suggestions(rubric, {}, st.suggestions));
     const slowest = Object.entries(m.program_ms).sort((a, b) => b[1].max - a[1].max)[0];
@@ -404,7 +418,7 @@ async function cmd_grade(paths, values) {
   if (values.csv) fs.writeFileSync(values.csv, measurements_csv(rubric, students));
   out(`\nWrote ${out_file}${values.csv ? ` and ${values.csv}` : ''} (${((Date.now() - t0) / 1000).toFixed(1)} seconds).`);
   out('In the web page (grader mode), Grading tab: Import grading... loads it; load the submissions there too, to see the PDF files.');
-  return missing ? 3 : 0;
+  return missing || failed ? 3 : 0;
 }
 
 const FORMATS = ['pdf', 'html', 'md'];
@@ -429,7 +443,9 @@ async function cmd_feedback([file, folder], values) {
   for (const st of session.students) {
     const model = feedback_model(rubric, st);
     pictures += model.images.length;
-    const name = path.join(folder, feedback_name(st));
+    const name = path.resolve(folder, feedback_name(st));
+    // (feedback_name makes a plain file name; this makes sure it stays in the folder)
+    if (path.dirname(name) !== path.resolve(folder)) throw new Error(`the feedback of ${st.name} would not be in ${folder}`);
     if (formats.includes('pdf')) fs.writeFileSync(name + '.pdf', feedback_pdf(model));
     if (formats.includes('html')) fs.writeFileSync(name + '.html', feedback_html(model));
     if (formats.includes('md')) fs.writeFileSync(name + '.md', feedback_markdown(model));
@@ -457,7 +473,7 @@ async function main(argv) {
   try {
     parsed = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true });
   } catch (e) {
-    process.stderr.write(e.message + '\n\n' + HELP);
+    err(e.message + '\n\n' + HELP);
     return 1;
   }
   const [command, ...rest] = parsed.positionals;
@@ -467,13 +483,13 @@ async function main(argv) {
   }
   const run = COMMANDS[command];
   if (!run) {
-    process.stderr.write(`Unknown command: ${command}\n\n${HELP}`);
+    err(`Unknown command: ${command}\n\n${HELP}`);
     return 1;
   }
   try {
     return await run(rest, parsed.values);
   } catch (e) {
-    process.stderr.write((e instanceof UsageError ? '' : 'Error: ') + e.message + '\n');
+    err((e instanceof UsageError ? '' : 'Error: ') + e.message + '\n');
     return 1;
   }
 }

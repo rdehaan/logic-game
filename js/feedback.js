@@ -221,6 +221,8 @@ export function feedback_pdf(model, images = []) {
 
 // A file name for the feedback of a student (without the extension).
 export function feedback_name(st) {
-  const base = (st.name || 'student').normalize('NFKD').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'student';
-  return `feedback-${base}${st.canvas_id ? '-' + st.canvas_id : ''}`;
+  // (only letters, digits and dashes: the name and the Canvas id come from a file that can be changed by hand)
+  const clean = (text) => String(text || '').normalize('NFKD').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const id = clean(st.canvas_id);
+  return `feedback-${clean(st.name) || 'student'}${id ? '-' + id : ''}`;
 }

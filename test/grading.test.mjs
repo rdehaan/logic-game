@@ -9,7 +9,7 @@ import {
   DEFAULT_RUBRIC, read_rubric, rubric_items, compute_grade, item_points, comment_stats, game_comment_stats,
   program_tokens, similarity, most_similar, full_view, level_view, state_objects, observed_objects,
   measure_game, suggest_all, apply_suggestions, static_facts, new_student, session_file, read_session,
-  merge_students, grades_csv, npcs,
+  merge_students, grades_csv, csv_cell, npcs,
 } from '../js/grading.js';
 import { read_submissions, read_submission, parse_canvas_name } from '../js/submissions.js';
 import { make_zip, read_zip, game_to_files, ZipLimitError } from '../js/folder.js';
@@ -226,6 +226,15 @@ test('a grading session: export, import, merge, and the grades as CSV', () => {
   assert.equal(lines[0], 'student,canvas_id,late,status,grade,timing,novel,documented,visual,hidden,npc,random,new_levels,memory,comment');
   assert.ok(lines[1].startsWith('doejane,1,,done,10,yes,yes,yes,0.5,1,1,0.5,0.5,1,"Nice;'));
   assert.ok(csv.includes('"roe, ""rich""",2,,new,'));
+  // Texts that a spreadsheet would take as a formula stay text; numbers stay numbers
+  assert.deepEqual(['=1+1', '+31 6', '-x', '@SUM(A1)', '\tx', '\rx', '-1', '+2.5', 7, 'a=b'].map(csv_cell),
+    ["'=1+1", "'+31 6", "'-x", "'@SUM(A1)", "'\tx", '"\'\rx"', '-1', '+2.5', '7', 'a=b']);
+  assert.ok(grades_csv(rubric, [{ ...b, name: '=HYPERLINK("http://x")' }]).includes('\r\n"\'=HYPERLINK(""http://x"")",2,'));
+  // A grading file changed by hand: the name and Canvas id are text (they end up in file names)
+  const changed = (st) => JSON.stringify(session_file({ rubric, students: [{ ...b, ...st }] }));
+  assert.equal(read_session(changed({ canvas_id: 12 })).students[0].canvas_id, '12');
+  assert.throws(() => read_session(changed({ canvas_id: ['..', 'x'] })), /without a proper name or Canvas id/);
+  assert.throws(() => read_session(changed({ name: { a: 1 } })), /without a proper name or Canvas id/);
 });
 
 // ---- Reading submissions ------------------------------------------------------------------

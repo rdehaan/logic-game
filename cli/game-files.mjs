@@ -28,8 +28,21 @@ export function kind_of(p) {
   return 'folder';
 }
 
+// Whether there is a file at p that is not a symbolic link. Files in game
+// folders and folders of submissions that are symbolic links are not read: in a
+// folder from someone else, one could point to any file (e.g. a key in the home
+// folder), which would end up in a game or a grading file.
+function plain_file(p) {
+  try {
+    return fs.lstatSync(p).isFile();
+  } catch {
+    return false;
+  }
+}
+
 // Read a game. Returns { game, title, files, source } where files says which
 // file holds which program (for a folder; else null), and source what was read.
+// (In a folder, files that are symbolic links are not read: see plain_file.)
 export async function load_game(p) {
   if (!fs.existsSync(p)) {
     const example = path.join(EXAMPLES, p.replace(/\.json$/, '') + '.json');
@@ -40,13 +53,13 @@ export async function load_game(p) {
   }
   const kind = kind_of(p);
   if (kind === 'folder') {
-    const contents = {};
+    const contents = Object.create(null);
     const manifest = path.join(p, MANIFEST);
-    if (fs.existsSync(manifest)) contents[MANIFEST] = fs.readFileSync(manifest, 'utf8');
+    if (plain_file(manifest)) contents[MANIFEST] = fs.readFileSync(manifest, 'utf8');
     const files = file_names(contents[MANIFEST]);
     for (const f of Object.values(files)) {
       const full = path.join(p, f);
-      if (fs.existsSync(full)) contents[f] = fs.readFileSync(full, 'utf8');
+      if (plain_file(full)) contents[f] = fs.readFileSync(full, 'utf8');
     }
     const out = files_to_game(contents);
     return { ...out, title: out.title || path.basename(path.resolve(p)), source: p };
@@ -98,15 +111,20 @@ export function save_game(p, game, { title = '', project = null, as_project = fa
 // The files to read for grading, from paths on the command line: files as they
 // are (zip, json, pdf), and folders: the files in a folder are read one by one,
 // except that each folder in it is one student's submission (as a zip file of it).
-// Returns [{ name, bytes }].
+// Symbolic links in folders are left out (see plain_file). Returns [{ name, bytes }].
 export function submission_files(paths) {
   const list = [];
   const folder_zip = (dir) => {
-    const files = {};
-    for (const f of fs.readdirSync(dir, { recursive: true }).map(String)) {
-      const full = path.join(dir, f);
-      if (fs.statSync(full).isFile()) files[f.split(path.sep).join('/')] = new Uint8Array(fs.readFileSync(full));
-    }
+    const files = Object.create(null);
+    // (not with readdirSync's recursive: it also goes into folders that are symbolic links)
+    const add = (folder, prefix) => {
+      for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+        const full = path.join(folder, entry.name);
+        if (entry.isDirectory()) add(full, prefix + entry.name + '/');
+        else if (entry.isFile()) files[prefix + entry.name] = new Uint8Array(fs.readFileSync(full));
+      }
+    };
+    add(dir, '');
     return make_zip(files);
   };
   for (const p of paths) {
