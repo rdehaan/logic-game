@@ -117,18 +117,54 @@ function report_parts(report) {
 }
 
 const AceRange = ace.require('ace/range').Range;
-let debug_editors = [];
+let debug_editors = [];      // the editors that the Debug tab shows now
 let debug_shown = null;      // the report (or text) that the Debug tab shows
+
+// The editors for the facts are made once, and used again for every step (with
+// other text): making an editor takes much longer (it measures itself, which
+// makes the browser lay out the page).
+const debug_editor_pool = [];
+
+function debug_editor(k) {
+  if (!debug_editor_pool[k]) {
+    const editor = make_output_editor(document.createElement('div'), '');
+    editor.fact_atoms = [];
+    editor.linked_markers = [];
+    editor.step_markers = [];
+    editor.step_gutter_rows = [];
+    link_facts_to_board(editor);
+    debug_editor_pool[k] = editor;
+  }
+  return debug_editor_pool[k];
+}
+
+// Put facts into an editor of the pool; `is_new(atom)` says which ones to mark as new.
+function show_facts(editor, atoms, is_new) {
+  const session = editor.session;
+  for (const id of [...editor.step_markers, ...editor.linked_markers]) session.removeMarker(id);
+  for (const row of editor.step_gutter_rows) session.removeGutterDecoration(row, 'fact-new-gutter');
+  editor.step_markers = [];
+  editor.step_gutter_rows = [];
+  editor.linked_markers = [];
+  editor.fact_atoms = atoms;
+  session.setValue(answer_set_to_fact_lines(atoms));      // (also forgets the undo history)
+  if (!is_new) return;
+  atoms.forEach((atom, row) => {
+    if (!is_new(atom)) return;
+    editor.step_markers.push(session.addMarker(new AceRange(row, 0, row, 1), 'fact-new', 'fullLine'));
+    session.addGutterDecoration(row, 'fact-new-gutter');
+    editor.step_gutter_rows.push(row);
+  });
+}
 
 // Facts and the board: hovering over a fact in the Debug tab highlights its
 // cell on the board, and hovering over a cell highlights the facts about it
 // (only while the Debug tab is open: elsewhere the highlights would only confuse).
-function link_facts_to_board(editor, atoms) {
-  editor.fact_atoms = atoms;
-  editor.linked_markers = [];
+function link_facts_to_board(editor) {
   const cell_at = (row) => {
     const size = board_size();
-    return size && atoms[row] ? cell_of_atom(atoms[row], size.width, size.height) : null;
+    const atom = editor.fact_atoms[row];
+    return size && atom ? cell_of_atom(atom, size.width, size.height) : null;
   };
   editor.container.addEventListener('mousemove', (e) => {
     const { row } = editor.renderer.screenToTextCoordinates(e.clientX, e.clientY);
@@ -160,10 +196,6 @@ function link_cell(cell) {
 }
 on_cell_hover((cell) => link_cell($('tab5').checked ? cell : null));
 
-// Show a report in the Debug tab: a locked editor for each program's facts
-// (one fact per line), and the other lines as text. With the report of the
-// step before (`previous`), the facts that are new are marked, and the ones
-// that are gone are listed under the editor.
 // Keep the height of `elem` while its contents are made again, until the new
 // editors in it have been drawn (they get their height when they are drawn, in
 // a next frame): else the page is shorter for a moment, and the browser scrolls
@@ -188,12 +220,15 @@ function keep_height(elem) {
   };
 }
 
+// Show a report in the Debug tab: a locked editor for each program's facts
+// (one fact per line), and the other lines as text. With the report of the
+// step before (`previous`), the facts that are new are marked, and the ones
+// that are gone are listed under the editor.
 function show_debug_step(report, text = '', previous = null) {
   const only = Boolean(previous && options.only_changes);
   const key = report != null ? (only ? '\u0001' : '') + report : '\0' + text;
   if (key === debug_shown) return;
   debug_shown = key;
-  for (const editor of debug_editors) editor.destroy();
   debug_editors = [];
   linked_cell = null;
   const elem = $('debug-step');
@@ -241,19 +276,10 @@ function show_debug_step(report, text = '', previous = null) {
       p.textContent = !all.length ? '(nothing)' : `(no changes: ${unchanged} fact${unchanged > 1 ? 's' : ''} as in the step before)`;
       elem.append(p);
     } else {
-      const div = document.createElement('div');
-      elem.append(div);
-      const editor = make_output_editor(div, answer_set_to_fact_lines(atoms));
+      const editor = debug_editor(debug_editors.length);
       debug_editors.push(editor);
-      link_facts_to_board(editor, atoms);
-      if (old) {
-        const was = new Set(old);
-        atoms.forEach((atom, row) => {
-          if (was.has(atom)) return;
-          editor.session.addMarker(new AceRange(row, 0, row, 1), 'fact-new', 'fullLine');
-          editor.session.addGutterDecoration(row, 'fact-new-gutter');
-        });
-      }
+      show_facts(editor, atoms, old ? (atom) => !was_all.has(atom) : null);
+      elem.append(editor.container);
       if (only && unchanged) {
         const p = document.createElement('p');
         p.className = 'debug-unchanged';
@@ -278,11 +304,18 @@ function show_debug_step(report, text = '', previous = null) {
       }
     }
   }
+  // (a new editor does not know its size yet; the others are as wide as before)
+  for (const editor of debug_editors) {
+    if (!editor.sized) editor.resize();
+    editor.sized = true;
+  }
   drawn(debug_editors);
 }
 
 // The Debug tab: the messages, and the report of the step of the board that is shown.
 function update_debug_view() {
+  // (only while the Debug tab is open: it is brought up to date when it is opened)
+  if (!$('tab5').checked) return;
   $('debug-messages').textContent = output_messages.join('\n').trim();
   $('debug-messages').hidden = output_messages.length === 0;
   const snap = snapshots[shown_snapshot];
@@ -1398,7 +1431,7 @@ function save(filename, data, type = 'application/json') {
 
 // Refreshing after changing tabs
 function change_tabs() {
-  if (!$('tab5').checked) link_cell(null);
+  if ($('tab5').checked) update_debug_view(); else link_cell(null);
   editors.resize();
   upload_status.innerText = '';
   load_status.innerText = '';

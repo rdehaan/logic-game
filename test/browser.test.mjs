@@ -838,6 +838,40 @@ test('the Debug tab marks what changed since the step before, or shows only that
   assert.equal(await page.isChecked('#option-only-changes'), false);
 });
 
+test('the Debug tab shows the same after going through the steps as when going to a step at once', async (t) => {
+  // (its editors are used again from step to step: nothing of an earlier step may stay behind)
+  const debug_view = (page) => page.evaluate(() => [...document.querySelectorAll('#debug-step .output-editor')].map((elem) => {
+    const editor = ace.edit(elem);
+    const markers = Object.values(editor.session.getMarkers()).filter((m) => m.clazz === 'fact-new').map((m) => m.range.start.row).sort((a, b) => a - b);
+    return { text: editor.getValue(), markers, height: elem.offsetHeight, undo: editor.session.getUndoManager().hasUndo() };
+  }));
+  const play = async (page) => {
+    await page.selectOption('#speed-selector', '-1');
+    await page.click('#play-button');
+    await wait_for_verdict(page);
+    await page.evaluate(() => document.activeElement.blur());
+  };
+  const settled = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const stepping = await open(t, '?file=flag3-with-solutions&tab=5');
+  if (!stepping) return;
+  await play(stepping);
+  await stepping.keyboard.press('Home');
+  for (let i = 0; i < 5; i++) await stepping.keyboard.press('ArrowRight');
+  await stepping.keyboard.press('ArrowLeft');
+  await stepping.keyboard.press('ArrowRight');
+  await settled(stepping);
+  const at_once = await open(t, '?file=flag3-with-solutions&tab=5');
+  await play(at_once);
+  await at_once.fill('#timeline', '6');
+  await at_once.dispatchEvent('#timeline', 'input');
+  await settled(at_once);
+  const [a, b] = [await debug_view(stepping), await debug_view(at_once)];
+  assert.ok(a.length > 0);
+  assert.ok(a.some((e) => e.markers.length > 0));
+  assert.deepEqual(a, b);
+  assert.ok(a.every((e) => e.height > 0 && !e.undo));
+});
+
 test('facts and the board: hovering over a fact shows its cell, and over a cell its facts', async (t) => {
   const page = await open(t, '?file=flag3-with-solutions&tab=5');
   if (!page) return;

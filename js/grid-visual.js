@@ -131,9 +131,15 @@ const MIN_CELL = 6;
 const MAX_CELL = 96;
 const SIDE_BY_SIDE_MIN = 1100;      // (as in css/main.css)
 
+// The width of the container of the board, as last measured (by the ResizeObserver
+// of watch_size): reading it from the page at every step would make the browser
+// lay out the page again.
+let container_width = null;
+
 function cell_size(width, height) {
   const container = document.getElementById('visual-container');
-  const available_width = Math.max(100, (container ? container.clientWidth : window.innerWidth) - 4);
+  if (container_width == null && container) container_width = container.clientWidth;
+  const available_width = Math.max(100, (container ? container_width : window.innerWidth) - 4);
   // (next to the tabs, the board shares the height of the screen with the buttons)
   const share = document.body.classList.contains('side-by-side') && window.innerWidth >= SIDE_BY_SIDE_MIN ? 0.55 : 0.7;
   const available_height = Math.max(160, Math.min(window.innerHeight * share, 640));
@@ -168,6 +174,7 @@ function watch_size() {
   let last = null;
   resize_observer = new ResizeObserver(() => {
     const w = container.clientWidth;
+    container_width = w;
     if (w !== last) {
       last = w;
       layout_grid();
