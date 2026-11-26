@@ -11,8 +11,8 @@ import {
   measure_game, suggest_all, apply_suggestions, static_facts, new_student, session_file, read_session,
   merge_students, grades_csv, npcs,
 } from '../js/grading.js';
-import { read_submissions, parse_canvas_name } from '../js/submissions.js';
-import { make_zip, read_zip, game_to_files } from '../js/folder.js';
+import { read_submissions, read_submission, parse_canvas_name } from '../js/submissions.js';
+import { make_zip, read_zip, game_to_files, ZipLimitError } from '../js/folder.js';
 import { compute_grid_ds, label_text } from '../js/grid-visual.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -281,6 +281,24 @@ test('reading the zip file of one student, and loose files', async () => {
   assert.equal(students[0].pdfs.length, 1);
   assert.match(students[0].warnings.join(' '), /extra\.json: this is not a game or project file/);
   assert.equal(students[1].game.goal_program, examples.flag4.goal_program);
+});
+
+test('submissions: zip bombs are not unpacked, and the names of files are only names', async () => {
+  // A file in a student's zip file that is too large: left out, with a warning for that student
+  const big = make_zip({ 'hw3/game.json': JSON.stringify(examples.flag2), 'hw3/big.pdf': PDF });
+  new DataView(big.buffer).setUint32(big.length - 22 - 46 - 'hw3/big.pdf'.length + 24, 200e6, true);
+  const { students, notes } = await read_submissions([{ name: 'all.zip', bytes: make_zip({ 'doejane_101_901_hw3.zip': big }) }]);
+  assert.deepEqual(notes, []);
+  assert.ok(students[0].game);
+  assert.match(students[0].warnings.join(' '), /big\.pdf in hw3\.zip is too large when unpacked \(200 MB; at most 100 MB/);
+  // All together too large: nothing is read
+  await assert.rejects(read_submission({ 'a.zip': make_zip({ 'b.zip': make_zip({ 'c.json': 'x'.repeat(600) }) }) }, { limit: 1000, left: 1000 }), ZipLimitError);
+  // A file named __proto__ (Canvas' name for it, or in a zip file)
+  const odd = await read_submissions([
+    { name: 'eve_105_906___proto__', bytes: PDF },
+    { name: 'rob.zip', bytes: make_zip({ ['__proto__']: PDF, 'game.json': JSON.stringify(examples.flag2) }) },
+  ]);
+  assert.deepEqual(odd.students.map((st) => [st.name, st.files, st.pdfs]), [['eve', ['__proto__'], ['__proto__']], ['rob', ['__proto__', 'game.json'], ['__proto__']]]);
 });
 
 test('zip files with bytes', async () => {

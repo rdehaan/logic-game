@@ -10,7 +10,7 @@
 // (or a game folder, see folder.js); every PDF is kept, to read next to the rubric.
 //
 // This module does not use the DOM.
-import { read_zip, files_to_game, strip_common_dir, MANIFEST, DEFAULT_FILES } from './folder.js';
+import { read_zip, zip_budget, ZipLimitError, files_to_game, strip_common_dir, MANIFEST, DEFAULT_FILES } from './folder.js';
 import { read_file } from './versions.js';
 import { new_student } from './grading.js';
 
@@ -30,24 +30,27 @@ const ignored = (path) => /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db)(\/|$)/.test(pa
 const decode = (bytes) => new TextDecoder().decode(bytes);
 
 // The files of a submission, with zip files unpacked (also zip files inside zip
-// files, up to a few levels): { path: Uint8Array }.
-async function unpack(files, warnings, depth = 0) {
-  const out = {};
+// files, up to a few levels): { path: Uint8Array }. `budget`: see zip_budget in
+// folder.js (when it runs out, a ZipLimitError is thrown).
+// (Objects without a prototype: a file can be named '__proto__'.)
+async function unpack(files, warnings, budget, depth = 0) {
+  const out = Object.create(null);
   for (const [path, bytes] of Object.entries(files)) {
     if (ignored(path)) continue;
     if (is_zip(path, bytes) && depth < 3) {
       let inner;
       const skipped = [];
       try {
-        inner = await read_zip(bytes, { binary: true, skipped });
+        inner = await read_zip(bytes, { binary: true, skipped, budget });
       } catch (e) {
+        if (e instanceof ZipLimitError) throw e;
         warnings.push(`${path.replace(/^.*\//, '')} could not be unpacked: ${e.message}.`);
         out[path] = bytes;
         continue;
       }
       for (const x of skipped) warnings.push(`${x.name.replace(/^.*\//, '')} in ${path.replace(/^.*\//, '')} ${x.reason}.`);
       const stem = path.replace(/\.zip$/i, '');
-      for (const [p, b] of Object.entries(await unpack(inner, warnings, depth + 1))) out[stem + '/' + p] = b;
+      for (const [p, b] of Object.entries(await unpack(inner, warnings, budget, depth + 1))) out[stem + '/' + p] = b;
     } else {
       out[path] = bytes;
     }
@@ -57,9 +60,9 @@ async function unpack(files, warnings, depth = 0) {
 
 // The game and the PDFs among the files of one submission ({ path: Uint8Array }).
 // Returns { game, game_file, pdfs: [{ name, bytes }], files: [paths], warnings }.
-export async function read_submission(raw) {
+export async function read_submission(raw, budget = zip_budget()) {
   const warnings = [];
-  const files = await unpack(raw, warnings);
+  const files = await unpack(raw, warnings, budget);
   const paths = Object.keys(files).sort();
   let game = null;
   let game_file = null;
@@ -113,11 +116,15 @@ export async function read_submission(raw) {
 // - Any other zip file is the submission of one student (named after the file),
 //   unless it holds files with Canvas' names.
 // - Other files are one student each.
+// Zip files are unpacked within the limits in folder.js (ZIP_MAX_...): a file
+// that is too large is left out with a note or warning; when all together
+// are too large, a ZipLimitError is thrown.
 export async function read_submissions(list) {
   const groups = new Map();      // key -> { name, canvas_id, late, files: { path: bytes } }
   const notes = [];
+  const budget = zip_budget(list.reduce((n, x) => n + x.bytes.length, 0));
   const add = (key, info, path, bytes) => {
-    if (!groups.has(key)) groups.set(key, { ...info, files: {} });
+    if (!groups.has(key)) groups.set(key, { ...info, files: Object.create(null) });
     const g = groups.get(key);
     g.late = g.late || info.late;
     g.files[path] = bytes;
@@ -133,8 +140,9 @@ export async function read_submissions(list) {
       let inner;
       const skipped = [];
       try {
-        inner = await read_zip(bytes, { binary: true, skipped });
+        inner = await read_zip(bytes, { binary: true, skipped, budget });
       } catch (e) {
+        if (e instanceof ZipLimitError) throw e;
         notes.push(`${name}: ${e.message}`);
         continue;
       }
@@ -157,7 +165,7 @@ export async function read_submissions(list) {
   }
   const students = [];
   for (const [key, g] of groups) {
-    const sub = await read_submission(g.files);
+    const sub = await read_submission(g.files, budget);
     const st = new_student({
       key, name: g.name, canvas_id: g.canvas_id, late: g.late, files: sub.files, warnings: sub.warnings,
       game: sub.game, game_file: sub.game_file, pdfs: sub.pdfs.map((p) => p.name),

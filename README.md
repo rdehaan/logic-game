@@ -319,7 +319,8 @@ The tests (in `test/`, run with Node's built-in test runner) check:
 - `hints.test.mjs`: the analysis of programs and the warnings about special predicates
   (no clingo needed); the example games get no warnings;
 - `storage.test.mjs`: share links (every example survives the round trip) and saved work;
-- `folder.test.mjs`: the folder format (every example survives the round trip) and zip files;
+- `folder.test.mjs`: the folder format (every example survives the round trip) and zip files
+  (also zip bombs, which are not unpacked);
 - `cli.test.mjs`: the command-line version (new, check, play, test, convert, grade, feedback, the board as text),
   and that every command and option is in its help and in docs/CLI.md;
 - `versions.test.mjs`: differences (checked against a longest common subsequence), snapshots,
