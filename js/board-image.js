@@ -1,5 +1,5 @@
 // Pictures of the board, for the feedback of the grader: the board drawn on a
-// canvas (as grid-visual.js draws it on the page: the same labels, colours, fog
+// canvas (as grid-visual.js draws it on the page: the same labels, colors, fog
 // and faded hidden items), as a PNG (for the web page) or a JPEG (for the PDF).
 import { compute_grid_ds, label_text, css_color } from './grid-visual.js';
 

@@ -202,7 +202,7 @@ Pictures of the board are only drawn by the web page: the feedback written here 
 
 - `--timeout S`: stop a call to clingo after S seconds (default 10), as on the page;
 - `--max-steps N`: stop a game after N steps (default 500);
-- `--no-color`: no colours (also when the environment variable `NO_COLOR` is set);
+- `--no-color`: no colors (also when the environment variable `NO_COLOR` is set);
 - `-h`, `--help` (or the command `help`): the list of commands and options.
 
 Short forms: `-v` for `--verbose`, `-q` for `--quiet`.

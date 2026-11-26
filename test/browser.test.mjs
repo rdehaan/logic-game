@@ -1650,7 +1650,7 @@ test('a test result stays with the game that was tested; loading another game st
   await page.waitForFunction(() => /Level \d+ of 200/.test(document.getElementById('test-progress').textContent));
   await page.click('label[for=tab1]');
   await page.click('#first-games button[data-example=flag5]');
-  await page.waitForFunction(() => /^Cancelled after/.test(document.getElementById('test-progress').textContent));
+  await page.waitForFunction(() => /^Canceled after/.test(document.getElementById('test-progress').textContent));
   assert.deepEqual(await page.evaluate(() => window.logic_game.versions.list('example:flag5')), []);
   assert.deepEqual(await page.evaluate(() => window.logic_game.versions.list('example:flag3-with-solutions')), []);
   // A test that finishes is kept with its own game

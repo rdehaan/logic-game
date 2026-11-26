@@ -242,7 +242,7 @@ test('testing a strategy on many levels is reproducible', async () => {
   const again = await play_headless(solver, { ...weak, ...level }, { rng, verbose: false });
   assert.equal(again.verdict, lost.verdict);
   assert.equal(again.steps, lost.steps);
-  // The solution wins everywhere; cancelling stops the test
+  // The solution wins everywhere; canceling stops the test
   assert.ok((await test_strategy(solver, game, { levels: 3 })).every((r) => r.verdict === 'win'));
   let n = 0;
   assert.equal((await test_strategy(solver, game, { levels: 10, on_level: () => { n += 1; }, cancelled: () => n >= 2 })).length, 2);

@@ -10,7 +10,7 @@ import { rubric_items, compute_grade, item_points, format_number, win_counts, ST
 import { SOURCE_NAMES } from './engine.js';
 import { PdfDocument } from './pdf.js';
 
-const VERDICTS = { win: 'won', lose: 'lost', timeout: 'timed out', stopped: 'stopped (clingo took too long)', 'no level': 'no level generated', cancelled: 'cancelled' };
+const VERDICTS = { win: 'won', lose: 'lost', timeout: 'timed out', stopped: 'stopped (clingo took too long)', 'no level': 'no level generated', cancelled: 'canceled' };
 
 // Everything the feedback says, in one object (the documents are made from it).
 export function feedback_model(rubric, st) {

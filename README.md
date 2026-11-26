@@ -83,7 +83,7 @@ can only be generated, and a game only played, with locked rules, so it is alway
 programs a game was played with. While they are unlocked, the buttons say *Lock rules and
 generate level*, *Lock rules and play* and *Lock rules and test*. Locking keeps the level, unless the auxiliary or level
 generation program changed since it was made. Such a level is *out of date* as soon as one of
-those programs is edited: the board is greyed out, Play and Step are disabled, and *Lock rules
+those programs is edited: the board is grayed out, Play and Step are disabled, and *Lock rules
 and generate level* is the highlighted next step. Keeping the level anyway takes an explicit
 click (*Keep this level*, or *Keep the old level anyway* after locking removed it). The line below the buttons says what the board
 shows (the start of a level and where it came from, or the last game), and which programs

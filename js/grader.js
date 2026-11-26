@@ -19,7 +19,7 @@ import { same_game } from './storage.js';
 const $ = (id) => document.getElementById(id);
 const SAVE_DELAY_MS = 300;
 const STATUS_NAMES = { new: 'not started', 'in progress': 'in progress', done: 'done' };
-const VERDICT_NAMES = { win: 'won', lose: 'lost', timeout: 'timed out', stopped: 'stopped (clingo took too long)', 'no level': 'no level generated', cancelled: 'cancelled' };
+const VERDICT_NAMES = { win: 'won', lose: 'lost', timeout: 'timed out', stopped: 'stopped (clingo took too long)', 'no level': 'no level generated', cancelled: 'canceled' };
 
 function el(tag, props = {}, ...children) {
   const e = document.createElement(tag);
@@ -422,7 +422,7 @@ export class GraderTab {
       st.similar = await this.similar_games(st, game);
       st.suggestions = suggest_all(this.rubric, m, st.similar);
       this.changed(st);
-      $('grading-progress').textContent = (m.cancelled ? `Cancelled after ${m.levels.length} levels` : 'Done') +
+      $('grading-progress').textContent = (m.cancelled ? `Canceled after ${m.levels.length} levels` : 'Done') +
         ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
     } catch (e) {
       $('grading-progress').textContent = 'Testing failed: ' + e.message;

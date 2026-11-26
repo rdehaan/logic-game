@@ -1545,7 +1545,7 @@ async function run_test() {
     $('test-cancel').hidden = true;
     update_controls();
     const n = Object.values(counts).reduce((a, b) => a + b, 0);
-    $('test-progress').textContent = (test_cancelled ? `Cancelled after ${n} levels` : `Done`) +
+    $('test-progress').textContent = (test_cancelled ? `Canceled after ${n} levels` : `Done`) +
       ` (${((performance.now() - t0) / 1000).toFixed(1)} seconds).`;
     // Any level of the test can be played again (not only the ones listed)
     if (n > 0) {

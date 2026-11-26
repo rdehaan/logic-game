@@ -37,7 +37,7 @@ test('the board as text', () => {
     'F = flag, P = player, T = tree (lower case: not observed by the player); ~ = cannot be seen',
   ]);
   assert.equal(text_board('setting(grid_width(3)).'), null);
-  // Changed cells are marked with colours (only with ansi)
+  // Changed cells are marked with colors (only with ansi)
   const before = 'observe(at(1,1,player)). setting(grid_width(2)). setting(grid_height(1)).';
   const after = 'observe(at(1,2,player)). setting(grid_width(2)). setting(grid_height(1)).';
   assert.match(text_board(after, { previous: before, ansi: true })[1], /\x1b\[43m/);

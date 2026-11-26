@@ -184,7 +184,7 @@ test('measuring a game: hidden objects, a game without randomness or memory that
   assert.equal(static_facts(plain).randint, false);
 });
 
-test('measuring a game: a level generation that fails, and cancelling', async () => {
+test('measuring a game: a level generation that fails, and canceling', async () => {
   const broken = { ...examples['flag9-with-solutions'], level_gen_program: 'a. :- a.' };
   const m = await measure_game(solver, broken, { levels: 2 });
   assert.deepEqual(m.levels.map((l) => l.verdict), ['no level', 'no level']);

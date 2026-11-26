@@ -5,7 +5,7 @@
 // flag F, ...), or its label when that is a short string. Items that the
 // player does not observe (decorate(item,...)) are in lower case; cells the
 // player cannot see (fog) are shown as ~. Optionally, cells that changed since
-// the board before are highlighted (with ANSI colours).
+// the board before are highlighted (with ANSI colors).
 //
 // This module does not use the DOM.
 import { compute_grid_ds, changed_cells } from './grid-visual.js';
@@ -37,7 +37,7 @@ const color = {
 
 // The board described by the facts, as lines of text (or null if it has no size).
 // Options: previous (the facts of the board before, to mark the changed cells),
-// ansi (use colours), legend (add a line that says which symbol is which object).
+// ansi (use colors), legend (add a line that says which symbol is which object).
 export function text_board(facts, { previous = null, ansi = false, legend = true } = {}) {
   const grid = compute_grid_ds(facts);
   if (!grid) return null;

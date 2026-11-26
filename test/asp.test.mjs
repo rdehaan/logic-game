@@ -103,7 +103,7 @@ test('the board is computed from the observed facts', () => {
   assert.deepEqual(compute_grid_ds('setting(grid_height(1)). setting(grid_width(1)). observe(at(1,1,cow(2))).').cells.get(1), ['cow(2)']);
 });
 
-test('labels and colours cannot inject anything into the page', () => {
+test('labels and colors cannot inject anything into the page', () => {
   assert.equal(label_text('font_f024'), '\uf024');
   assert.equal(label_text('empty'), '');
   assert.equal(label_text(undefined), '?');
