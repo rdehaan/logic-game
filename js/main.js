@@ -486,6 +486,9 @@ function update_controls() {
   $('visual-container').classList.toggle('outdated', outdated.length > 0);
   editors.set_read_only(RULE_PROGRAMS, level_locked || playing);
   editors.set_read_only(['player_move_program'], playing);
+  // The level editor too: a game (also a paused one) goes on with the level it started with
+  editors.set_read_only(['level_state', 'level_settings'], playing);
+  set_button($('show-level-button'), !playing, why);
   update_board_status();
 }
 
@@ -827,7 +830,34 @@ async function do_step() {
   await do_play();
 }
 
+// (true while Play starts or plays a game, until it ends or pauses: Stop asks
+// it to stop; without it, as when paused, Stop ends the game at once)
+let play_running = false;
+
 async function do_play() {
+  play_running = true;
+  try {
+    await play_game();
+  } catch (e) {
+    if (!playing) throw e;
+    game_failed(e);
+  } finally {
+    play_running = false;
+  }
+}
+
+// An error in the page itself during a game (not in the programs: those are
+// reported as problems): end the game, so that every button works again, and say so.
+function game_failed(error) {
+  console.error(error);
+  add_to_game_output(`The game was stopped by an error in the page: ${error && error.message ? error.message : error}\n`);
+  stop_requested = true;
+  end_playing();
+  board_notice = 'The game was stopped by an error in the page (see the game output in the Debug tab).';
+  update_interface();
+}
+
+async function play_game() {
   if (!level_locked) {
     lock_rules();
     if (!editors.value('level_state')) {
@@ -927,7 +957,7 @@ function do_pause() {
 function do_stop() {
   if (!playing) return;
   stop_requested = true;
-  if (game_paused) {
+  if (game_paused || !play_running) {
     end_playing();
     reset_debugging();
   } else {

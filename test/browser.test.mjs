@@ -2104,6 +2104,70 @@ test('dark mode: dark colors and editors, but the board stays white', async (t) 
   assert.deepEqual(errors, []);
 });
 
+test('during a game, also a paused one, the level cannot be changed in the level editor', async (t) => {
+  const page = await open(t, '?editor=true&file=flag3-with-solutions&tab=5');
+  if (!page) return;
+  const level = () => page.evaluate(() => ({
+    read_only: window.logic_game.editors.get('level_state').getReadOnly(),
+    settings_read_only: window.logic_game.editors.get('level_settings').getReadOnly(),
+    show: !document.getElementById('show-level-button').disabled,
+    why: document.getElementById('show-level-button').title,
+  }));
+  assert.deepEqual(await level(), { read_only: false, settings_read_only: false, show: true, why: '' });
+  await page.selectOption('#speed-selector', '1000');
+  await page.click('#play-button');
+  await page.waitForFunction(() => document.getElementById('timeline-label').textContent.startsWith('Time 1'));
+  await page.click('#pause-button');
+  await page.waitForFunction(() => !document.getElementById('play-button').disabled);
+  assert.deepEqual(await level(), { read_only: true, settings_read_only: true, show: false, why: 'Not while a game is going on (Stop ends it).' });
+  // The game goes on with its level, to the end
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.match(await game_output(page), /^WIN!/);
+  assert.deepEqual((await level()).read_only, false);
+  // Stop also gives the level editor back
+  await page.selectOption('#speed-selector', '1000');
+  await page.click('#play-button');
+  await page.waitForFunction(() => document.getElementById('timeline-label').textContent.startsWith('Time 1'));
+  await page.click('#pause-button');
+  await page.waitForFunction(() => !document.getElementById('play-button').disabled);
+  await page.click('#stop-button');
+  await page.waitForFunction(() => !window.logic_game.editors.get('level_state').getReadOnly());
+  assert.equal((await level()).show, true);
+  assert.deepEqual(page.errors, []);
+});
+
+test('an error in the page during a game ends the game, and every button works again', async (t) => {
+  const page = await open(t, '?file=flag3-with-solutions&tab=5');
+  if (!page) return;
+  await page.selectOption('#speed-selector', '1000');
+  await page.click('#play-button');
+  await page.waitForFunction(() => document.getElementById('timeline-label').textContent.startsWith('Time 1'));
+  await page.click('#pause-button');
+  await page.waitForFunction(() => !document.getElementById('play-button').disabled);
+  // Something that should not happen: clingo fails in an unexpected way
+  await page.evaluate(() => {
+    const solver = window.logic_game.solver;
+    solver.real_solve = solver.solve;
+    solver.solve = async () => { throw new Error('something unexpected'); };
+  });
+  page.on('console', () => {});      // (the error is also logged in the console)
+  await page.click('#play-button');
+  await page.waitForFunction(() => !/Playing/.test(document.getElementById('board-status').textContent));
+  assert.match(await page.textContent('#board-status'), /stopped by an error in the page/);
+  assert.match(await game_output(page), /stopped by an error in the page: something unexpected/);
+  assert.equal(await page.isDisabled('#stop-button'), true);
+  assert.equal(await page.isDisabled('#play-button'), false);
+  assert.equal(await page.evaluate(() => window.logic_game.editors.get('player_move_program').getReadOnly()), false);
+  // ... and a next game plays as usual
+  await page.evaluate(() => { window.logic_game.solver.solve = window.logic_game.solver.real_solve; });
+  await page.selectOption('#speed-selector', '0');
+  await page.click('#play-button');
+  await wait_for_verdict(page);
+  assert.match(await game_output(page), /^WIN!/);
+});
+
 test('the theme button at the top goes from Auto to Light to Dark, and the choice is kept', async (t) => {
   if (skip) {
     t.skip(skip);
