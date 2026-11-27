@@ -120,63 +120,46 @@ a:visited {
   outline-offset: 1px;
 }
 
-/* The title, with the switch for the colors in the top right corner */
+/* The title, with the buttons for the colors (js/theme.js) and Settings in the
+   top right corner */
 .site-header {
   position: relative;
 }
 
-.theme-switch {
+.header-buttons {
   position: absolute;
   top: 10px;
   right: 12px;
   display: flex;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--surface);
-  font-size: 12px;
-  line-height: 1;
+  align-items: center;
+  gap: 8px;
 }
 
-.theme-switch label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
-  color: var(--muted);
+.theme-toggle {
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.icon-button {
+  padding: 1px 8px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
   cursor: pointer;
 }
 
-.theme-switch label + label {
-  border-left: 1px solid var(--border-strong);
-}
-
-/* (the radio buttons are not shown, but can be used with the keyboard: Tab, then the arrow keys) */
-.theme-switch input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.theme-switch label:has(input:checked) {
-  color: var(--button-text);
-  background: var(--surface-3);
-  font-weight: 600;
-}
-
-.theme-switch label:has(input:focus-visible) {
-  outline: 2px solid var(--focus);
-  outline-offset: -2px;
-}
-
-.theme-icon {
-  font-family: FontAwesome;
-  font-weight: 900;
+.icon-button:hover,
+.theme-toggle:hover {
+  border-color: var(--muted);
 }
 
 @media print {
-  .theme-switch {
+  .header-buttons {
     display: none;
   }
 }
@@ -526,9 +509,49 @@ dialog.modal::backdrop {
   background: var(--backdrop);
 }
 
+/* Settings and the keyboard shortcuts: narrower than the info pop-ups */
+dialog.modal.modal-narrow {
+  max-width: 760px;
+}
+
 @media screen and (max-width: 650px) {
   dialog.modal {
     width: calc(100% - 32px);
+  }
+}
+
+.dialog-note {
+  color: var(--muted);
+}
+
+.modal-content h3 {
+  margin-top: 1.2em;
+}
+
+/* (the same width for the keys in every list of the dialog, so that they line up) */
+.keys-list {
+  display: grid;
+  grid-template-columns: 10.5em 1fr;
+  gap: 6px 14px;
+  margin: 0 0 8px;
+}
+
+.keys-list dt {
+  white-space: nowrap;
+}
+
+.keys-list dd {
+  margin: 0;
+}
+
+@media screen and (max-width: 520px) {
+  .keys-list {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .keys-list dd {
+    margin-bottom: 8px;
   }
 }
 

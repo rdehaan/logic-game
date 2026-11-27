@@ -31,19 +31,9 @@
 
   <header class="site-header">
     <h1>A Logic Game</h1>
-    <div class="theme-switch" role="radiogroup" aria-label="Colors of the page">
-      <label title="As your browser or system is set">
-        <input type="radio" name="theme" value="auto">
-        <span class="theme-icon" aria-hidden="true">&#xf042;</span><span class="theme-name">Auto</span>
-      </label>
-      <label title="Light colors">
-        <input type="radio" name="theme" value="light">
-        <span class="theme-icon" aria-hidden="true">&#xf185;</span><span class="theme-name">Light</span>
-      </label>
-      <label title="Dark colors (the board stays white)">
-        <input type="radio" name="theme" value="dark">
-        <span class="theme-icon" aria-hidden="true">&#xf186;</span><span class="theme-name">Dark</span>
-      </label>
+    <div class="header-buttons">
+      <button class="control-button theme-toggle" id="theme-button" data-theme-toggle type="button">&#x25D0; Auto</button>
+      <button class="icon-button" id="settings-button" type="button" title="Settings" aria-label="Settings" data-open="dialog-settings">&#x2699;</button>
     </div>
   </header>
 
@@ -206,22 +196,10 @@
 
 
       <h2>Options</h2>
-      <div class="options">
-        <label class="inline-check"><input type="checkbox" id="option-side-by-side" data-option="side_by_side"> On wide screens, show the board next to the tabs (it stays in view while you scroll)</label>
-        <label class="inline-check"><input type="checkbox" id="option-mark-changes" data-option="mark_changes"> Mark the cells on the board that changed in the last step</label>
-        <label class="inline-check"><input type="checkbox" id="option-solutions" data-option="solutions"> Show the example games with solutions</label>
-        <label class="inline-check"><input type="checkbox" id="option-editor" data-option="editor"> Show the level editor (in the Debug tab)</label>
-        <label class="inline-check"><input type="checkbox" id="option-internals" data-option="internals"> Show the Internals tab (how the game works inside)</label>
-        <label class="inline-check"><input type="checkbox" id="option-grader" data-option="grader"> Grader mode, for teachers: the Grading tab, to test, grade and give feedback on the games of students</label>
-        <label class="inline-check">Time limit for each call to clingo:
-          <input type="number" id="option-timeout" data-option="timeout" min="1" max="600" step="1"> seconds</label>
-      </div>
-      <p class="versions-help">These options are kept in this browser. They can also be set
-        in a link (then only for that visit):
-        <code>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;grader=true&amp;timeout=30</code>
-        (and <code>=false</code> to turn one off; <code>=1</code>, <code>=yes</code> or just the name, as in <code>?grader</code>,
-        also turn one on). A link can also set <code>only_changes</code> (<i>Show only what changed</i>, in the
-        Debug tab) and <code>full_view</code> (<i>Show everything on the board</i>, in grader mode).</p>
+      <p>The options (the board next to the tabs, marking the cells that changed, the example games
+        with solutions, the level editor, the Internals tab, grader mode and the time limit for clingo)
+        are in <button type="button" class="link-button" data-open="dialog-settings">Settings</button>
+        (<span aria-hidden="true">&#x2699;</span> at the top of the page).</p>
     </section>
 
     <section id="section-instructions" data-include="docs/instructions.html"></section>
@@ -656,6 +634,82 @@
     </div>
 
   </main>
+
+  <!-- Settings (the gear at the top of the page), and the keyboard shortcuts (? when not typing):
+       dialogs as the info pop-ups (js/modal.js). The options are wired up in js/main.js (set_option). -->
+  <dialog class="modal modal-narrow" id="dialog-settings" aria-labelledby="dialog-settings-title">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button type="button" class="close-modal" aria-label="Close" data-close>&#x2715;</button>
+      </header>
+      <div class="modal-content">
+        <h2 id="dialog-settings-title">Settings</h2>
+        <h3>Options</h3>
+        <div class="options">
+          <label class="inline-check"><input type="checkbox" id="option-side-by-side" data-option="side_by_side"> On wide screens, show the board next to the tabs (it stays in view while you scroll)</label>
+          <label class="inline-check"><input type="checkbox" id="option-mark-changes" data-option="mark_changes"> Mark the cells on the board that changed in the last step</label>
+          <label class="inline-check"><input type="checkbox" id="option-solutions" data-option="solutions"> Show the example games with solutions</label>
+          <label class="inline-check"><input type="checkbox" id="option-editor" data-option="editor"> Show the level editor (in the Debug tab)</label>
+          <label class="inline-check"><input type="checkbox" id="option-internals" data-option="internals"> Show the Internals tab (how the game works inside)</label>
+          <label class="inline-check"><input type="checkbox" id="option-grader" data-option="grader"> Grader mode, for teachers: the Grading tab, to test, grade and give feedback on the games of students</label>
+          <label class="inline-check">Time limit for each call to clingo:
+            <input type="number" id="option-timeout" data-option="timeout" min="1" max="600" step="1"> seconds</label>
+        </div>
+        <p class="versions-help">These options are kept in this browser. They can also be set
+          in a link (then only for that visit):
+          <code>?side_by_side=true&amp;mark_changes=true&amp;solutions=true&amp;editor=true&amp;internals=true&amp;grader=true&amp;timeout=30</code>
+          (and <code>=false</code> to turn one off; <code>=1</code>, <code>=yes</code> or just the name, as in <code>?grader</code>,
+          also turn one on). A link can also set <code>only_changes</code> (<i>Show only what changed</i>, in the
+          Debug tab) and <code>full_view</code> (<i>Show everything on the board</i>, in grader mode).</p>
+
+        <h3>Colors</h3>
+        <p><button class="control-button theme-toggle" data-theme-toggle type="button">&#x25D0; Auto</button>
+          <span class="dialog-note">Auto follows your browser or system; the button goes on to Light, Dark and
+          Auto again (it is also at the top of the page). In dark mode the board stays white.</span></p>
+
+        <h3>Keyboard</h3>
+        <p><button type="button" class="link-button" data-open="dialog-keys">Keyboard shortcuts</button>
+          <span class="dialog-note">(or press <kbd>?</kbd> when you are not typing)</span></p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal modal-narrow" id="dialog-keys" aria-labelledby="dialog-keys-title">
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <button type="button" class="close-modal" aria-label="Close" data-close>&#x2715;</button>
+      </header>
+      <div class="modal-content">
+        <h2 id="dialog-keys-title">Keyboard shortcuts</h2>
+        <p class="dialog-note">On a Mac, <kbd>&#x2318;</kbd> instead of <kbd>Ctrl</kbd>.</p>
+        <h3>Everywhere</h3>
+        <dl class="keys-list">
+          <dt><kbd>Ctrl</kbd>+<kbd>Enter</kbd></dt><dd>play the game, also while you type in an editor</dd>
+          <dt><kbd>Esc</kbd></dt><dd>close a pop-up, such as this one</dd>
+        </dl>
+        <h3>When you are not typing</h3>
+        <dl class="keys-list">
+          <dt><kbd>Space</kbd></dt><dd>pause the game while it plays; otherwise play one step</dd>
+          <dt><kbd>&#x2190;</kbd> <kbd>&#x2192;</kbd></dt><dd>the time before / after on the board (the slider under the board), after a game</dd>
+          <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>the first / last time on the board</dd>
+          <dt><kbd>?</kbd></dt><dd>this list</dd>
+        </dl>
+        <h3>On the board</h3>
+        <p class="dialog-note">When a cell has the focus (<kbd>Tab</kbd> to the board).</p>
+        <dl class="keys-list">
+          <dt><kbd>&#x2190;</kbd> <kbd>&#x2191;</kbd> <kbd>&#x2192;</kbd> <kbd>&#x2193;</kbd></dt><dd>from cell to cell; in the Debug tab, the facts about the cell are marked</dd>
+          <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>the first / last cell of the row</dd>
+        </dl>
+        <h3>In the editors</h3>
+        <dl class="keys-list">
+          <dt><kbd>Ctrl</kbd>+<kbd>/</kbd></dt><dd>comment the selected lines out, or back in</dd>
+          <dt><kbd>Ctrl</kbd>+<kbd>Space</kbd></dt><dd>suggestions to complete a word (they also appear while you type)</dd>
+        </dl>
+        <h3>Tabs</h3>
+        <p>On the row of tabs, the arrow keys go from tab to tab.</p>
+      </div>
+    </div>
+  </dialog>
 
   <div id="modals" data-include="docs/modals.html"></div>
 

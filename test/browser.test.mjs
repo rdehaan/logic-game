@@ -57,6 +57,17 @@ function collect_errors(page, errors) {
   });
 }
 
+// The options are in Settings (the gear at the top): open it, and close it again (Escape),
+// so that the page behind it can be used.
+async function open_settings(page) {
+  await page.click('#settings-button');
+  await page.waitForSelector('#dialog-settings[open]');
+}
+async function close_settings(page) {
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#dialog-settings:not([open])', { state: 'attached' });
+}
+
 // Open the page, and collect the errors that happen in it.
 async function open(t, query = '') {
   if (skip) {
@@ -578,11 +589,14 @@ test('a level made with another level generation program is out of date: generat
   assert.deepEqual(page.errors, []);
 });
 
-test('options in the Control tab are kept, and can be set in the URL', async (t) => {
+test('options in Settings are kept, and can be set in the URL', async (t) => {
   const page = await open(t);
   if (!page) return;
   assert.equal(await page.isHidden('label[for=tab6]'), true);
   assert.equal(await page.locator('#example-games optgroup[label=Solutions]').count(), 0);
+  // (the Control tab says where they are)
+  await page.click('#section-control button[data-open=dialog-settings]');
+  await page.waitForSelector('#dialog-settings[open]');
   await page.check('#option-internals');
   await page.check('#option-solutions');
   await page.check('#option-editor');
@@ -590,6 +604,7 @@ test('options in the Control tab are kept, and can be set in the URL', async (t)
   await page.dispatchEvent('#option-timeout', 'change');
   assert.equal(await page.isChecked('#option-mark-changes'), false);
   await page.check('#option-mark-changes');
+  await close_settings(page);
   assert.equal(await page.isVisible('label[for=tab6]'), true);
   assert.equal(await page.locator('#example-games optgroup[label=Solutions]').count(), 1);
   assert.equal(await page.evaluate(() => window.logic_game.solver.timeout_ms), 25000);
@@ -615,9 +630,11 @@ test('options in the Control tab are kept, and can be set in the URL', async (t)
   assert.equal(await page.isChecked('#option-mark-changes'), true);
   // Turning off the Internals tab while it is open goes to the Control tab
   await page.click('label[for=tab6]');
-  await page.click('label[for=tab1]');
+  await open_settings(page);
   await page.uncheck('#option-internals');
+  await close_settings(page);
   assert.equal(await page.isHidden('label[for=tab6]'), true);
+  assert.equal(await page.isChecked('#tab1'), true);
 });
 
 test('testing a strategy on many levels, and playing a level of the test again', async (t) => {
@@ -1363,8 +1380,9 @@ test('reset everything: a fresh start, as on a first visit', async (t) => {
   if (!page) return;
   page.on('dialog', (dialog) => dialog.accept());
   await page.click('#tutorial-invite button[data-action=dismiss_tutorial]');
-  await page.click('label[for=tab1]');
+  await open_settings(page);
   await page.check('#option-solutions');
+  await close_settings(page);
   await set_program(page, 'player_move_program', 'do(move(up)).');
   await page.waitForFunction(() => window.logic_game.work.origins().length === 1);
   await page.click('label[for=tab7]');
@@ -1716,8 +1734,9 @@ test('the board next to the tabs on wide screens (an option), and above them oth
   await page.setViewportSize({ width: 1000, height: 900 });
   assert.equal((await layout()).side_by_side, false);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.click('label[for=tab1]');
+  await open_settings(page);
   await page.uncheck('#option-side-by-side');
+  await close_settings(page);
   assert.equal((await layout()).side_by_side, false);
   await page.goto(base + '?side_by_side=true');
   await page.waitForSelector('body[data-ready=true]');
@@ -1794,7 +1813,9 @@ test('grader mode: an option (also in the link), with the Grading tab and the wh
   if (!page) return;
   assert.equal(await page.isVisible('label[for=tab8]'), false);
   assert.equal(await page.isVisible('#full-view-box'), false);
+  await open_settings(page);
   await page.check('#option-grader');
+  await close_settings(page);
   assert.equal(await page.isVisible('label[for=tab8]'), true);
   assert.equal(await page.isVisible('#full-view'), true);
   // The flag is not visible to the player at the start: with everything shown, it is (faded)
@@ -1810,8 +1831,9 @@ test('grader mode: an option (also in the link), with the Grading tab and the wh
   await page.waitForFunction(() => document.querySelectorAll('#visual .grid-visual-hidden').length === 0);
   // Turning grader mode off hides the tab (and the whole board)
   await page.click('label[for=tab8]');
-  await page.click('label[for=tab1]');
+  await open_settings(page);
   await page.uncheck('#option-grader');
+  await close_settings(page);
   assert.equal(await page.isVisible('label[for=tab8]'), false);
   // In a link
   const other = await open(t, '?grader=true&tab=8');
@@ -2082,7 +2104,7 @@ test('dark mode: dark colors and editors, but the board stays white', async (t) 
   assert.deepEqual(errors, []);
 });
 
-test('the switch at the top chooses the colors: Auto, Light or Dark, and the choice is kept', async (t) => {
+test('the theme button at the top goes from Auto to Light to Dark, and the choice is kept', async (t) => {
   if (skip) {
     t.skip(skip);
     return;
@@ -2096,10 +2118,10 @@ test('the switch at the top chooses the colors: Auto, Light or Dark, and the cho
   await page.waitForSelector('body[data-ready=true]');
   const state = () => page.evaluate(() => ({
     theme: document.documentElement.dataset.theme,
-    checked: document.querySelector('.theme-switch input:checked').value,
+    button: document.getElementById('theme-button').textContent,
+    label: document.getElementById('theme-button').getAttribute('aria-label'),
     page: getComputedStyle(document.querySelector('main')).backgroundColor,
     board: getComputedStyle(document.querySelector('#visual')).backgroundColor,
-    editor_dark: document.querySelector('#player_move_program').classList.contains('ace_dark'),
     stored: localStorage.getItem('logic-game:theme'),
   }));
   const until = (theme) => page.waitForFunction((t) => document.documentElement.dataset.theme === t &&
@@ -2107,44 +2129,96 @@ test('the switch at the top chooses the colors: Auto, Light or Dark, and the cho
   // Auto, with a dark system: dark
   await until('dark');
   let s = await state();
-  assert.equal(s.checked, 'auto');
+  assert.equal(s.button, '◐ Auto');
+  assert.match(s.label, /^Color theme: Auto/);
   assert.equal(s.board, 'rgb(255, 255, 255)');
   assert.equal(s.stored, null);
   // Light, although the system is dark
-  await page.click('.theme-switch label:has(input[value=light])');
+  await page.click('#theme-button');
   await until('light');
   s = await state();
-  assert.deepEqual([s.checked, s.page, s.stored], ['light', 'rgb(255, 255, 255)', 'light']);
+  assert.deepEqual([s.button, s.page, s.stored], ['☀ Light', 'rgb(255, 255, 255)', 'light']);
   // ... also after a reload (set before the page is shown: no dark page first)
   await page.reload();
   assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
   await page.waitForSelector('body[data-ready=true]');
   await until('light');
-  assert.equal((await state()).checked, 'light');
+  assert.equal((await state()).button, '☀ Light');
   // Dark, with a light system; the board stays white
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.click('.theme-switch label:has(input[value=dark])');
+  await page.click('#theme-button');
   await until('dark');
   s = await state();
-  assert.deepEqual([s.checked, s.board, s.stored], ['dark', 'rgb(255, 255, 255)', 'dark']);
+  assert.deepEqual([s.button, s.board, s.stored], ['☾ Dark', 'rgb(255, 255, 255)', 'dark']);
   assert.notEqual(s.page, 'rgb(255, 255, 255)');
-  // With the keyboard (arrow keys, as radio buttons): back to Auto, which follows the system again
-  await page.focus('.theme-switch input[value=dark]');
-  await page.keyboard.press('ArrowLeft');
-  await page.keyboard.press('ArrowLeft');
+  // The same button in Settings, with the keyboard: back to Auto, which follows the system again
+  await open_settings(page);
+  const in_settings = page.locator('#dialog-settings [data-theme-toggle]');
+  assert.equal(await in_settings.textContent(), '☾ Dark');
+  await in_settings.focus();
+  await page.keyboard.press('Enter');
   await until('light');
+  assert.equal(await in_settings.textContent(), '◐ Auto');
+  await close_settings(page);
   s = await state();
-  assert.deepEqual([s.checked, s.stored], ['auto', null]);
+  assert.deepEqual([s.button, s.stored], ['◐ Auto', null]);
   await page.emulateMedia({ colorScheme: 'dark' });
   await until('dark');
   // A choice made in another tab of the site counts here too
   const other = await context.newPage();
   await other.goto(base);
   await other.waitForSelector('body[data-ready=true]');
-  await other.click('.theme-switch label:has(input[value=light])');
+  await other.click('#theme-button');
   await until('light');
-  assert.equal((await state()).checked, 'light');
+  assert.equal((await state()).button, '☀ Light');
   assert.deepEqual(errors, []);
+});
+
+test('Settings and the keyboard shortcuts: the gear, and ? when not typing', async (t) => {
+  const page = await open(t, '?tab=4');
+  if (!page) return;
+  // The gear opens Settings, with the options; Escape closes it, and the focus goes back
+  await page.click('#settings-button');
+  await page.waitForSelector('#dialog-settings[open]');
+  assert.equal(await page.isVisible('#option-grader'), true);
+  assert.equal(await page.isVisible('#option-timeout'), true);
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#dialog-settings:not([open])', { state: 'attached' });
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'settings-button');
+  // The Control tab no longer has the options themselves
+  assert.equal(await page.locator('#section-control input[data-option]').count(), 0);
+  // ? (when not typing) opens the shortcuts
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('?');
+  await page.waitForSelector('#dialog-keys[open]');
+  assert.match(await page.textContent('#dialog-keys'), /Ctrl\+Enter[\s\S]*Space[\s\S]*this list/);
+  // ... where ? does nothing more (no second dialog), and Escape closes it
+  await page.keyboard.press('?');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#dialog-keys:not([open])', { state: 'attached' });
+  assert.equal(await page.locator('dialog[open]').count(), 0);
+  // ... also from Settings
+  await open_settings(page);
+  await page.click('#dialog-settings button[data-open=dialog-keys]');
+  await page.waitForSelector('#dialog-keys[open]');
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('#dialog-keys:not([open])', { state: 'attached' });
+  assert.equal(await page.isVisible('#dialog-settings'), true);
+  await close_settings(page);
+  // While typing (in an editor, or a number field), ? is just a character
+  await page.click('#player_move_program .ace_content');
+  await page.keyboard.press('End');
+  await page.keyboard.type('%?');
+  assert.equal(await page.locator('dialog[open]').count(), 0);
+  assert.match(await page.evaluate(() => window.logic_game.editors.value('player_move_program')), /%\?/);
+  await page.focus('#test-levels');
+  await page.keyboard.press('?');
+  assert.equal(await page.locator('dialog[open]').count(), 0);
+  // With the focus on a button, ? opens the shortcuts
+  await page.focus('#theme-button');
+  await page.keyboard.press('?');
+  await page.waitForSelector('#dialog-keys[open]');
+  assert.deepEqual(page.errors, []);
 });
 
 test('on a phone, all eight tabs have a name, in a row that scrolls (not the page)', async (t) => {
@@ -2181,8 +2255,9 @@ test('the grading tutorial is offered once, on the first visit of grader mode', 
   if (!page) return;
   // (not without grader mode)
   assert.equal(await page.isHidden('#grading-tutorial-invite'), true);
-  await page.click('label[for=tab1]');
+  await open_settings(page);
   await page.check('#option-grader');
+  await close_settings(page);
   await page.click('label[for=tab8]');
   assert.equal(await page.isVisible('#grading-tutorial-invite'), true);
   await page.click('#grading-tutorial-invite button[data-action=dismiss_grading_tutorial]');

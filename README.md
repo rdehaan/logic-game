@@ -42,7 +42,7 @@ shows how long clingo took for each program in each step.
 | `docs/instructions.html`, `docs/internals.html`, `docs/modals.html` | The texts of the Instructions and Internals tabs, and the info pop-ups (loaded into the page) |
 | `css/main.css`, `css/visual.css` | The look of the page, and of the board |
 | `js/main.js` | The page: the buttons and the lock of the game rules, playing a game step by step, what the board shows, the Debug tab, options, loading and saving games, game folders, and wiring up the other modules |
-| `js/theme.js` | Light or dark: the choice of the switch at the top, set on the page before it is shown (a plain script, not a module) |
+| `js/theme.js` | Light or dark: the choice of the theme button at the top, set on the page before it is shown (a plain script, not a module) |
 | `js/engine.js` | The game engine: how the programs are run and connected (no DOM) |
 | `js/solver.js` | Calls clingo-wasm: time limit, stopping, reading results and errors (no DOM) |
 | `js/asp.js` | Text helpers: composing programs, `RANDINT`, reading clingo's error messages (no DOM) |
@@ -112,7 +112,7 @@ to cell, and the cell with the focus is highlighted with its facts, as when hove
 
 ## Options
 
-In the Control tab (kept in the browser), and in the URL for one visit (`=false` turns one off;
+In *Settings* (the gear at the top right of the page; kept in the browser), and in the URL for one visit (`=false` turns one off;
 `=true`, `=1`, `=yes` or just the name, as in `?grader`, turn one on):
 `?side_by_side=false` (on screens of 1100 pixels and wider, the board, its slider and buttons
 stay in view on the left while the tabs scroll on the right; on by default), `?mark_changes=true` (mark the cells on the board that changed in the last step; off by default,
@@ -128,10 +128,15 @@ Other URL options: `?file=flag3` (load an example; without it, the page opens *F
 which they are shown: 1 Control, 2 Instructions, 3 Game rules, 4 Strategy, 5 Debug, 7 Versions,
 6 Internals (only with `internals=true`) and 8 Grading (only with `grader=true`).
 
-Colors: the switch at the top right of the page chooses *Auto* (light or dark, as the browser or
-the system is set; the default), *Light* or *Dark*, and the choice is kept in the browser. In dark
-mode the board stays white, because games choose the colors of its cells for a white board.
-Printed pages are always light.
+Colors: the theme button at the top right of the page (also in *Settings*) shows the choice,
+*Auto* (light or dark, as the browser or the system is set; the default), *Light* or *Dark*; each
+click goes on to the next one, and the choice is kept in the browser. In dark mode the board stays
+white, because games choose the colors of its cells for a white board. Printed pages are always
+light.
+
+Keyboard shortcuts: *Settings*, *Keyboard shortcuts*, or press `?` when not typing (the dialog
+`#dialog-keys` in `index.html`; the keys themselves are in `js/main.js`, near `shortcut_play`, and
+`js/grid-visual.js` for the board).
 
 ## Feedback for players
 
@@ -160,7 +165,7 @@ that was won) can be loaded or linked to by its number.
 
 ## Grader mode (for teachers)
 
-Grader mode is an option in the Control tab (anyone can turn it on; `?grader=true` in a link).
+Grader mode is an option in *Settings* (anyone can turn it on; `?grader=true` in a link).
 It adds the *Grading* tab, and a switch under the board, *Show everything on the board*: the
 objects that the player does not see are drawn faded (`full_view` in `js/grading.js`: the
 objects of the game state that are not observed become `decorate(item,R,C,O)`).
@@ -221,7 +226,7 @@ objects of the game state that are not observed become `decorate(item,R,C,O)`).
 
 ## Grading, step by step (for teachers)
 
-1. **Turn on grader mode**: in the Control tab, *Grader mode*, or open the page with
+1. **Turn on grader mode**: in *Settings* (the gear at the top right), *Grader mode*, or open the page with
    `?grader=true` (https://rdehaan.github.io/logic-game/?grader=true&tab=8). The *Grading* tab
    appears. The first time, it offers a short tutorial with two made-up students.
 2. **Download the submissions**: in Canvas, on the page of the assignment, *Download submissions*.

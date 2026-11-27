@@ -1834,7 +1834,8 @@ const actions = {
 //
 // Ctrl+Enter (Cmd+Enter on a Mac): play, also while typing in an editor.
 // When not typing: Space pauses, or plays one step; the arrow keys (and Home
-// and End) move through the timeline under the board.
+// and End) move through the timeline under the board; ? shows all shortcuts
+// (the dialog #dialog-keys in index.html: keep it up to date with these).
 
 function shortcut_play() {
   if (!$('play-button').disabled) do_play();
@@ -1851,6 +1852,13 @@ function keys_taken(target) {
   return Boolean(target.closest && target.closest('input, textarea, select, button, [contenteditable], .ace_editor, #visual, .modal'));
 }
 
+// Whether the player is typing (a key is a character then, also ?)
+function typing(target) {
+  if (!target.closest) return false;
+  if (target.closest('textarea, select, [contenteditable], .ace_editor')) return true;
+  return target.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|file|range|color)$/.test(target.type);
+}
+
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     if (e.target.closest && e.target.closest('.ace_editor')) return;      // (the editor's own command)
@@ -1858,7 +1866,14 @@ document.addEventListener('keydown', (e) => {
     shortcut_play();
     return;
   }
-  if (e.ctrlKey || e.metaKey || e.altKey || keys_taken(e.target)) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  // ? opens the list of shortcuts (when not typing, and no pop-up is open)
+  if (e.key === '?' && !typing(e.target) && !document.querySelector('dialog[open]')) {
+    e.preventDefault();
+    $('dialog-keys').showModal();
+    return;
+  }
+  if (keys_taken(e.target)) return;
   if (e.key === ' ') {
     e.preventDefault();
     if (playing && !game_paused) do_pause();
@@ -1898,7 +1913,7 @@ window.addEventListener('storage', (e) => {
 
 // ---- Options --------------------------------------------------------------------------
 //
-// Set in the Control tab (and kept in this browser), or in the URL, e.g.
+// Set in Settings (the gear at the top; kept in this browser), or in the URL, e.g.
 // ?side_by_side=true&mark_changes=true&solutions=true&editor=true&internals=true&timeout=30
 // (then only for this visit). Every checkbox option can be set in the URL.
 
@@ -1978,17 +1993,6 @@ for (const input of document.querySelectorAll('[data-option]')) {
   });
 }
 $('mark-changes').addEventListener('change', () => set_option('mark_changes', $('mark-changes').checked));
-
-// The switch for the colors of the page (Auto, Light, Dark): see js/theme.js
-{
-  const theme_inputs = document.querySelectorAll('.theme-switch input[name="theme"]');
-  const show_choice = () => {
-    for (const input of theme_inputs) input.checked = input.value === window.logic_game_theme.choice;
-  };
-  for (const input of theme_inputs) input.addEventListener('change', () => window.logic_game_theme.set(input.value));
-  document.addEventListener('themechange', show_choice);
-  show_choice();
-}
 apply_options();
 
 // Select a particular tab if specified in the URL
